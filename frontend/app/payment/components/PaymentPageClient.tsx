@@ -99,31 +99,12 @@ export default function PaymentPageClient() {
 
       const result = await response.json();
 
-      console.log("Update Pancake result:", result);
-
       if (!response.ok || !result.success) {
         throw new Error(
           result?.message || "Không thể cập nhật thông tin giao hàng.",
         );
       }
 
-      console.log({
-        fullName: data.fullName,
-        shippingPhone: data.phone,
-        registrationPhone,
-        province: data.province,
-        ward: data.ward,
-        address: data.address,
-        fullAddress,
-        referralCode,
-        maNguoiBan: referralCode,
-        combo,
-        amount: payment.amount,
-        transferContent,
-        pancakeLeadId: result.leadId,
-      });
-
-      // Tạm thời thông báo thành công
       alert(
         "Cập nhật thông tin thành công!\n\n" +
           "ZMoms đã nhận được thông tin giao hàng của mẹ.",

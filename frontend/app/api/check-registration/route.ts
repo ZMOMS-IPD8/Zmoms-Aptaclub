@@ -72,13 +72,8 @@ export async function POST(req: NextRequest) {
 
     const result = await response.json();
 
-    console.log("Pancake registration check:", JSON.stringify(result, null, 2));
-
     if (!response.ok) {
-      console.error(
-        "Pancake registration check error:",
-        JSON.stringify(result, null, 2),
-      );
+      console.error("Pancake registration check error:", response.status);
 
       return NextResponse.json(
         {
@@ -95,8 +90,6 @@ export async function POST(req: NextRequest) {
       : [];
 
     if (existingLeads.length === 0) {
-      console.log("Registered phone not found:", cleanPhone);
-
       return NextResponse.json({
         registered: false,
         purchased: false,
@@ -105,16 +98,12 @@ export async function POST(req: NextRequest) {
 
     const lead = existingLeads[0];
 
-    const sanPham = lead?.san_pham;
+    const tenCombo = lead?.ten_combo;
 
     const purchased =
-      sanPham !== null &&
-      sanPham !== undefined &&
-      String(sanPham).trim() !== "";
-
-    console.log("Registered phone found:", cleanPhone);
-    console.log("Pancake san_pham:", sanPham);
-    console.log("Purchased:", purchased);
+      tenCombo !== null &&
+      tenCombo !== undefined &&
+      String(tenCombo).trim() !== "";
 
     return NextResponse.json({
       registered: true,

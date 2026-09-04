@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
           status: "INVALID_DATA",
           message: "Thiếu thông tin bắt buộc.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
           status: "CONFIG_ERROR",
           message: "Chưa cấu hình Pancake API.",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -67,10 +67,6 @@ export async function POST(req: NextRequest) {
     const cleanFullName = String(fullName).trim();
     const cleanProvince = String(province).trim();
     const cleanReferralCode = String(referralCode ?? "").trim();
-
-    console.log("=== REGISTRATION REQUEST ===");
-    console.log("Phone:", cleanPhone);
-    console.log("Full name:", cleanFullName);
 
     const rawBabyDate = String(babyDate).trim();
     const [year, month, day] = rawBabyDate.split("-");
@@ -89,16 +85,13 @@ export async function POST(req: NextRequest) {
           status: "INVALID_DATE",
           message: "Định dạng ngày không hợp lệ.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const cleanBabyDate = `${year}-${month}-${day} 00:00:00`;
 
     const zmomsSourceId = "zl_626069465683660973";
-
-    console.log("=== ZMOMS SOURCE ID ===");
-    console.log(zmomsSourceId);
 
     const filter = {
       is_group: false,
@@ -118,9 +111,6 @@ export async function POST(req: NextRequest) {
       ],
     };
 
-    console.log("=== PANCAKE SEARCH FILTER ===");
-    console.log(JSON.stringify(filter, null, 2));
-
     const checkUrl =
       `https://crm.pancake.vn/api/workspaces/` +
       `${workspaceId}/lead/records` +
@@ -135,11 +125,7 @@ export async function POST(req: NextRequest) {
       cache: "no-store",
     });
 
-    const checkResult =
-      (await checkResponse.json()) as PancakeResponse;
-
-    console.log("=== PANCAKE SEARCH RESPONSE ===");
-    console.log(JSON.stringify(checkResult, null, 2));
+    const checkResult = (await checkResponse.json()) as PancakeResponse;
 
     if (!checkResponse.ok) {
       console.error("Pancake lead search error:", checkResult);
@@ -151,23 +137,15 @@ export async function POST(req: NextRequest) {
           message:
             "Không thể kiểm tra thông tin trên Pancake. Vui lòng thử lại.",
         },
-        { status: checkResponse.status }
+        { status: checkResponse.status },
       );
     }
 
-    const existingLeads = Array.isArray(
-      checkResult?.data?.entries
-    )
+    const existingLeads = Array.isArray(checkResult?.data?.entries)
       ? checkResult.data.entries
       : [];
 
-    console.log("=== MATCHING LEADS ===");
-    console.log("Count:", existingLeads.length);
-    console.log(JSON.stringify(existingLeads, null, 2));
-
     if (existingLeads.length === 0) {
-      console.log("RESULT: NOT_IN_ZALO");
-
       return NextResponse.json(
         {
           success: false,
@@ -176,51 +154,22 @@ export async function POST(req: NextRequest) {
             "Hiện tại bạn chưa tham gia Zalo OA của ZMoms. Vui lòng vào Zalo OA và để lại số điện thoại Zalo của mình để tiếp tục.",
           zaloUrl,
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     const lead = existingLeads[0];
 
-    console.log("=== SELECTED LEAD ===");
-    console.log(
-      JSON.stringify(
-        {
-          id: lead?.id,
-          lead_id: lead?.lead_id,
-          record_id: lead?.record_id,
-          name: lead?.name,
-          phone_number: lead?.phone_number,
-          source: lead?.source,
-          ho_va_ten_lien_he:
-            lead?.ho_va_ten_lien_he,
-        },
-        null,
-        2
-      )
-    );
-
     const existingContactName =
       typeof lead?.ho_va_ten_lien_he === "string"
         ? lead.ho_va_ten_lien_he.trim()
         : lead?.ho_va_ten_lien_he &&
-          typeof lead.ho_va_ten_lien_he === "object" &&
-          "value" in lead.ho_va_ten_lien_he
-        ? String(
-            lead.ho_va_ten_lien_he.value ?? ""
-          ).trim()
-        : "";
-
-    console.log(
-      "=== EXISTING CONTACT NAME ==="
-    );
-    console.log(
-      JSON.stringify(existingContactName)
-    );
+            typeof lead.ho_va_ten_lien_he === "object" &&
+            "value" in lead.ho_va_ten_lien_he
+          ? String(lead.ho_va_ten_lien_he.value ?? "").trim()
+          : "";
 
     if (existingContactName) {
-      console.log("RESULT: ALREADY_REGISTERED");
-
       return NextResponse.json(
         {
           success: false,
@@ -229,64 +178,38 @@ export async function POST(req: NextRequest) {
             "Thông tin của bạn đã được đăng ký rồi. Vui lòng liên hệ ZMoms để được hỗ trợ.",
           zaloUrl,
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
-    const leadId =
-      lead?.id ||
-      lead?.lead_id ||
-      lead?.record_id;
-
-    console.log("=== LEAD ID TO UPDATE ===");
-    console.log(leadId);
+    const leadId = lead?.id || lead?.lead_id || lead?.record_id;
 
     if (!leadId) {
       return NextResponse.json(
         {
           success: false,
           status: "MISSING_LEAD_ID",
-          message:
-            "Không xác định được Lead cần cập nhật trên Pancake.",
+          message: "Không xác định được Lead cần cập nhật trên Pancake.",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     const eligibleForDanoneCRM =
-      consentAptaclub === true &&
-      consentDanone === true;
+      consentAptaclub === true && consentDanone === true;
 
     const pancakePayload = {
       id: leadId,
-      name:
-        String(lead?.name ?? "").trim() ||
-        cleanFullName,
+      name: String(lead?.name ?? "").trim() || cleanFullName,
       phone_number: cleanPhone,
       ho_va_ten_lien_he: cleanFullName,
-      ngay_du_sinh_hoac_ngay_sinh_cua_be:
-        cleanBabyDate,
+      ngay_du_sinh_hoac_ngay_sinh_cua_be: cleanBabyDate,
       thanh_pho: cleanProvince,
-      ma_gioi_thieu_dang_ky:
-        cleanReferralCode,
-      da_doc_chinh_sach_aptamil:
-        consentDanone === true
-          ? "true"
-          : "false",
-      dong_y_nhan_thong_bao:
-        consentMarketing === true
-          ? "true"
-          : "false",
-      chia_se_de_dang_ky_aptaclub:
-        consentAptaclub === true
-          ? "true"
-          : "false",
+      ma_gioi_thieu_dang_ky: cleanReferralCode,
+      da_doc_chinh_sach_aptamil: consentDanone === true ? "true" : "false",
+      dong_y_nhan_thong_bao: consentMarketing === true ? "true" : "false",
+      chia_se_de_dang_ky_aptaclub: consentAptaclub === true ? "true" : "false",
     };
-
-    console.log("=== PANCAKE UPDATE PAYLOAD ===");
-    console.log(
-      JSON.stringify(pancakePayload, null, 2)
-    );
 
     const updateUrl =
       `https://crm.pancake.vn/api/workspaces/` +
@@ -302,19 +225,10 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(pancakePayload),
     });
 
-    const updateResult =
-      (await updateResponse.json()) as PancakeResponse;
-
-    console.log("=== PANCAKE UPDATE RESPONSE ===");
-    console.log(
-      JSON.stringify(updateResult, null, 2)
-    );
+    const updateResult = (await updateResponse.json()) as PancakeResponse;
 
     if (!updateResponse.ok) {
-      console.error(
-        "Pancake lead update error:",
-        updateResult
-      );
+      console.error("Pancake lead update error:", updateResult);
 
       return NextResponse.json(
         {
@@ -325,32 +239,27 @@ export async function POST(req: NextRequest) {
             "Cập nhật thông tin thất bại. Vui lòng thử lại hoặc liên hệ ZMoms để được hỗ trợ.",
           zaloUrl,
         },
-        { status: updateResponse.status }
+        { status: updateResponse.status },
       );
     }
-
-    console.log("RESULT: UPDATED");
 
     return NextResponse.json({
       success: true,
       status: "UPDATED",
-      message:
-        "Thông tin của bạn đã được cập nhật thành công.",
+      message: "Thông tin của bạn đã được cập nhật thành công.",
       eligibleForDanoneCRM,
       pancake: updateResult,
     });
   } catch (error) {
-    console.error("=== PANCAKE API ERROR ===");
-    console.error(error);
+    console.error("Pancake API error:", error);
 
     return NextResponse.json(
       {
         success: false,
         status: "SERVER_ERROR",
-        message:
-          "Có lỗi xảy ra khi cập nhật thông tin. Vui lòng thử lại.",
+        message: "Có lỗi xảy ra khi cập nhật thông tin. Vui lòng thử lại.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

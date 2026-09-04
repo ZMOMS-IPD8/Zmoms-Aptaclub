@@ -13,15 +13,8 @@ export default function PaymentQR({ combo, phone }: Props) {
 
   const payment = getPaymentConfig(combo);
 
-  // Nội dung chuyển khoản gồm:
-  // Tên combo + SĐT đăng ký
-  //
-  // Ví dụ:
-  // ZMOMS COMBO NHO 0901234567
-  // ZMOMS COMBO LON 0901234567
   const transferContent = `${payment.transferContent} ${phone}`.trim();
 
-  // Tạo URL QR VietQR
   const qrUrl =
     `https://vietqr.app/img?acc=${encodeURIComponent(payment.accountNumber)}` +
     `&bank=${encodeURIComponent(payment.bankCode)}` +
@@ -30,7 +23,6 @@ export default function PaymentQR({ combo, phone }: Props) {
 
   const formatPrice = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
 
-  // Tải mã QR
   const handleDownload = async () => {
     try {
       setDownloadLoading(true);
@@ -55,26 +47,20 @@ export default function PaymentQR({ combo, phone }: Props) {
 
       URL.revokeObjectURL(url);
     } catch {
-      // Nếu trình duyệt không cho tải trực tiếp,
-      // mở QR ở tab mới để khách tự lưu.
       window.open(qrUrl, "_blank");
     } finally {
       setDownloadLoading(false);
     }
   };
 
-  // Copy thông tin
   const handleCopy = async (value: string) => {
     try {
       await navigator.clipboard.writeText(value);
-    } catch {
-      // Không làm gì nếu trình duyệt không hỗ trợ clipboard
-    }
+    } catch {}
   };
 
   return (
     <section className="rounded-2xl bg-white p-5 shadow-sm sm:p-6">
-      {/* QR */}
       <div className="text-center">
         <p className="text-sm font-bold text-[#12335B]">
           QUÉT MÃ QR ĐỂ CHUYỂN KHOẢN
@@ -93,9 +79,7 @@ export default function PaymentQR({ combo, phone }: Props) {
         </p>
       </div>
 
-      {/* Thông tin chuyển khoản */}
       <div className="mt-5 space-y-3 rounded-xl bg-[#F8FAFC] p-4">
-        {/* Ngân hàng */}
         <div className="flex items-start justify-between gap-4">
           <span className="text-sm text-gray-500">Ngân hàng</span>
 
@@ -104,7 +88,6 @@ export default function PaymentQR({ combo, phone }: Props) {
           </span>
         </div>
 
-        {/* Số tài khoản */}
         <div className="flex items-start justify-between gap-4">
           <span className="text-sm text-gray-500">Số tài khoản</span>
 
@@ -118,7 +101,6 @@ export default function PaymentQR({ combo, phone }: Props) {
           </button>
         </div>
 
-        {/* Chủ tài khoản */}
         <div className="flex items-start justify-between gap-4">
           <span className="text-sm text-gray-500">Chủ tài khoản</span>
 
@@ -127,7 +109,6 @@ export default function PaymentQR({ combo, phone }: Props) {
           </span>
         </div>
 
-        {/* Số tiền */}
         <div className="flex items-start justify-between gap-4">
           <span className="text-sm text-gray-500">Số tiền</span>
 
@@ -141,7 +122,6 @@ export default function PaymentQR({ combo, phone }: Props) {
           </button>
         </div>
 
-        {/* Nội dung chuyển khoản */}
         <div className="border-t border-gray-200 pt-3">
           <p className="text-sm text-gray-500">Nội dung chuyển khoản</p>
 
@@ -160,7 +140,6 @@ export default function PaymentQR({ combo, phone }: Props) {
         </div>
       </div>
 
-      {/* Download QR */}
       <button
         type="button"
         onClick={handleDownload}
