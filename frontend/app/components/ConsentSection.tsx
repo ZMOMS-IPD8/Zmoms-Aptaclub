@@ -3,13 +3,11 @@ type ConsentSectionProps = {
   consentAptaclub: boolean;
   consentMarketing: boolean;
   consentDanone: boolean;
-  consentAptaclubZalo: boolean;
 
   setConsentMember: (value: boolean) => void;
   setConsentAptaclub: (value: boolean) => void;
   setConsentMarketing: (value: boolean) => void;
   setConsentDanone: (value: boolean) => void;
-  setConsentAptaclubZalo: (value: boolean) => void;
 };
 
 export default function ConsentSection({
@@ -17,12 +15,10 @@ export default function ConsentSection({
   consentAptaclub,
   consentMarketing,
   consentDanone,
-  consentAptaclubZalo,
   setConsentMember,
   setConsentAptaclub,
   setConsentMarketing,
   setConsentDanone,
-  setConsentAptaclubZalo,
 }: ConsentSectionProps) {
   return (
     <section className="mt-6 sm:mt-7">
@@ -36,7 +32,6 @@ export default function ConsentSection({
       </p>
 
       <div className="mt-4 space-y-5 sm:space-y-6">
-        {/* 1. Zmoms Membership */}
         <label className="flex cursor-pointer items-start gap-3">
           <input
             type="checkbox"
@@ -54,7 +49,6 @@ export default function ConsentSection({
           </span>
         </label>
 
-        {/* 2. Zmoms -> Danone */}
         <label className="flex cursor-pointer items-start gap-3">
           <input
             type="checkbox"
@@ -72,7 +66,6 @@ export default function ConsentSection({
           </span>
         </label>
 
-        {/* 3. Zmoms Marketing */}
         <label className="flex cursor-pointer items-start gap-3">
           <input
             type="checkbox"
@@ -90,7 +83,6 @@ export default function ConsentSection({
           </span>
         </label>
 
-        {/* 4. Danone Privacy Consent */}
         <label className="flex cursor-pointer items-start gap-3">
           <input
             type="checkbox"
@@ -117,23 +109,6 @@ export default function ConsentSection({
             <span className="mt-1 block text-[12px] italic leading-5 text-[#666] sm:text-[13px]">
               (Tự nguyện — nếu không đồng ý, dữ liệu sẽ không được chuyển sang
               CRM Danone)
-            </span>
-          </span>
-        </label>
-
-        {/* 5. Aptaclub Zalo OA */}
-        <label className="flex cursor-pointer items-start gap-3">
-          <input
-            type="checkbox"
-            checked={consentAptaclubZalo}
-            onChange={(e) => setConsentAptaclubZalo(e.target.checked)}
-            className="mt-1 h-5 w-5 shrink-0 accent-[#ec0a7d]"
-          />
-
-          <span className="text-[13px] leading-5 text-[#222] sm:text-[14px] sm:leading-6">
-            Tôi đồng ý theo dõi Zalo OA Aptaclub Vietnam.
-            <span className="mt-1 block text-[12px] italic leading-5 text-[#666] sm:text-[13px]">
-              (Tự nguyện)
             </span>
           </span>
         </label>
