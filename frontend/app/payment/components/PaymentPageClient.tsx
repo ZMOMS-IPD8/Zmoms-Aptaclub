@@ -6,7 +6,7 @@ import PaymentQR from "./PaymentQR";
 import PaymentGuide from "./PaymentGuide";
 import ShippingForm from "./ShippingForm";
 import PaymentStatus from "./PaymentStatus";
-import { OFFERS } from "../../uu-dai/data/offerData";
+import { OFFERS } from "../../deal/data/offerData";
 import { getPaymentConfig } from "../data/paymentData";
 
 function formatPrice(value: number) {

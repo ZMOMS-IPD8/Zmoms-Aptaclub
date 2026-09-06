@@ -14,15 +14,8 @@ function formatPrice(value: number) {
   return `${value.toLocaleString("vi-VN")}đ`;
 }
 
-export default function OfferCard({
-  offer,
-  active,
-  discountApplied,
-  onClick,
-}: Props) {
+export default function OfferCard({ offer, active, onClick }: Props) {
   const totalValue = COMBO_TOTAL_VALUES[offer.type as "small" | "large"];
-
-  const payment = discountApplied ? offer.discountedPrice : offer.originalPrice;
 
   return (
     <button
@@ -70,29 +63,29 @@ export default function OfferCard({
             Số tiền mẹ phải chi trả
           </p>
 
-          <p
-            className="mt-1 text-2xl font-extrabold sm:text-[28px]"
-            style={{ color: offer.color }}
-          >
-            {formatPrice(payment)}
-          </p>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-sm font-semibold text-gray-400 line-through">
+              {formatPrice(offer.originalPrice)}
+            </span>
+
+            <span
+              className="text-2xl font-extrabold sm:text-[28px]"
+              style={{ color: offer.color }}
+            >
+              {formatPrice(offer.discountedPrice)}
+            </span>
+          </div>
         </div>
 
-        {discountApplied ? (
-          <div
-            className="mt-3 inline-flex rounded-full px-3 py-1 text-[11px] font-bold"
-            style={{
-              backgroundColor: offer.bgColor,
-              color: offer.color,
-            }}
-          >
-            ĐÃ GIẢM 300.000đ
-          </div>
-        ) : (
-          <p className="mt-3 text-xs leading-5 text-gray-500">
-            Nhập mã giới thiệu để được giảm 300.000đ
-          </p>
-        )}
+        <div
+          className="mt-3 inline-flex rounded-full px-3 py-1 text-[11px] font-bold"
+          style={{
+            backgroundColor: offer.bgColor,
+            color: offer.color,
+          }}
+        >
+          ƯU ĐÃI 300.000đ
+        </div>
       </div>
     </button>
   );

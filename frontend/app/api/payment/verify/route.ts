@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateReferralCode } from "../../../uu-dai/data/referralCodes";
+import { validateReferralCode } from "../../../deal/data/referralCodes";
 import { checkMemberByPhone } from "../../../lib/pancake/member";
 
 type ComboType = "small" | "large";
