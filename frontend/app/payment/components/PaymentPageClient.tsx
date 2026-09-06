@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import PaymentQR from "./PaymentQR";
 import PaymentGuide from "./PaymentGuide";
 import ShippingForm from "./ShippingForm";
+import PaymentStatus from "./PaymentStatus";
 import { OFFERS } from "../../uu-dai/data/offerData";
 import { getPaymentConfig } from "../data/paymentData";
 
@@ -20,18 +21,24 @@ type ShippingData = {
   address: string;
 };
 
+type ComboType = "small" | "large";
+
+type AccessStatus = "checking" | "granted" | "alreadyPurchased" | "denied";
+
 export default function PaymentPageClient() {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [accessStatus, setAccessStatus] = useState<AccessStatus>("checking");
+  const [orderSuccess, setOrderSuccess] = useState(false);
+  const [zaloUrl, setZaloUrl] = useState("");
 
   const registrationPhone = searchParams.get("phone") || "";
   const referralCode = searchParams.get("referralCode") || "";
   const comboParam = searchParams.get("combo");
 
-  const combo =
+  const combo: ComboType | null =
     comboParam === "large" ? "large" : comboParam === "small" ? "small" : null;
 
   const offer = useMemo(
@@ -39,33 +46,69 @@ export default function PaymentPageClient() {
     [combo],
   );
 
-  if (!combo || !offer) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#FFFAF5] px-4">
-        <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-sm">
-          <h1 className="text-xl font-extrabold text-[#12335B]">
-            Thông tin đơn hàng không hợp lệ
-          </h1>
+  useEffect(() => {
+    let cancelled = false;
 
-          <p className="mt-2 text-sm leading-6 text-gray-500">
-            Mẹ vui lòng quay lại trang ưu đãi và chọn lại combo.
-          </p>
+    const verifyPaymentAccess = async () => {
+      if (!registrationPhone || !referralCode || !combo) {
+        if (!cancelled) {
+          setAccessStatus("denied");
+        }
 
-          <a
-            href="/success"
-            className="mt-5 flex w-full items-center justify-center rounded-full bg-[#12335B] px-5 py-3 text-sm font-bold text-white"
-          >
-            QUAY LẠI
-          </a>
-        </div>
-      </main>
-    );
-  }
+        return;
+      }
 
-  const payment = getPaymentConfig(combo);
+      try {
+        const response = await fetch("/api/payment/verify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+          body: JSON.stringify({
+            phone: registrationPhone,
+            referralCode,
+            combo,
+          }),
+        });
+
+        const result = await response.json();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (result.zaloUrl) {
+          setZaloUrl(result.zaloUrl);
+        }
+
+        if (result.alreadyPurchased) {
+          setAccessStatus("alreadyPurchased");
+          return;
+        }
+
+        if (!response.ok || !result.success || !result.verified) {
+          setAccessStatus("denied");
+          return;
+        }
+
+        setAccessStatus("granted");
+      } catch {
+        if (!cancelled) {
+          setAccessStatus("denied");
+        }
+      }
+    };
+
+    verifyPaymentAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [registrationPhone, referralCode, combo]);
 
   const handleShippingSubmit = async (data: ShippingData) => {
-    if (submitting) {
+    if (submitting || !combo) {
       return;
     }
 
@@ -76,14 +119,7 @@ export default function PaymentPageClient() {
       .filter(Boolean)
       .join(", ");
 
-    const transferContent =
-      `${payment.transferContent} ${registrationPhone}`.trim();
-
     try {
-      if (!registrationPhone) {
-        throw new Error("Không tìm thấy số điện thoại đăng ký.");
-      }
-
       const response = await fetch("/api/payment/update-lead", {
         method: "POST",
         headers: {
@@ -94,10 +130,21 @@ export default function PaymentPageClient() {
           shippingPhone: data.phone,
           fullAddress,
           maNguoiBan: referralCode,
+          combo,
         }),
       });
 
       const result = await response.json();
+
+      if (result.zaloUrl) {
+        setZaloUrl(result.zaloUrl);
+      }
+
+      if (result.alreadyPurchased) {
+        setOrderSuccess(false);
+        setAccessStatus("alreadyPurchased");
+        return;
+      }
 
       if (!response.ok || !result.success) {
         throw new Error(
@@ -105,13 +152,9 @@ export default function PaymentPageClient() {
         );
       }
 
-      alert(
-        "Cập nhật thông tin thành công!\n\n" +
-          "ZMoms đã nhận được thông tin giao hàng của mẹ.",
-      );
+      setSubmitError("");
+      setOrderSuccess(true);
     } catch (error) {
-      console.error("Update shipping information error:", error);
-
       setSubmitError(
         error instanceof Error
           ? error.message
@@ -121,6 +164,28 @@ export default function PaymentPageClient() {
       setSubmitting(false);
     }
   };
+
+  if (accessStatus === "checking") {
+    return <PaymentStatus status="checking" />;
+  }
+
+  if (accessStatus === "alreadyPurchased") {
+    return <PaymentStatus status="alreadyPurchased" zaloUrl={zaloUrl} />;
+  }
+
+  if (accessStatus === "denied") {
+    return <PaymentStatus status="denied" />;
+  }
+
+  if (!combo || !offer) {
+    return null;
+  }
+
+  if (orderSuccess) {
+    return <PaymentStatus status="success" zaloUrl={zaloUrl} />;
+  }
+
+  const payment = getPaymentConfig(combo);
 
   return (
     <main className="min-h-screen bg-[#FFFAF5] px-4 py-6 sm:py-10">

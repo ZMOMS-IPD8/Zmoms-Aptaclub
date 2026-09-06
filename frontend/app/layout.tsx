@@ -8,8 +8,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Đăng ký hội viên Zmoms",
+  title: "Ưu Đãi Hội viên Zmoms",
   description: "Đăng ký hội viên và xác nhận đồng ý chia sẻ dữ liệu cá nhân",
+  icons: {
+    icon: "/logo-zmoms.png",
+    shortcut: "/logo-zmoms.png",
+    apple: "/logo-zmoms.png",
+  },
 };
 
 export default function RootLayout({

@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { validateReferralCode } from "../data/referralCodes";
 
-const OA_APTACLUB_URL = "https://zalo.me/677026056827804330";
-
 type Props = {
   onVerified: (phone: string, referralCode: string) => void;
 };
@@ -15,6 +13,7 @@ export default function ReferralVerification({ onVerified }: Props) {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [zaloUrl, setZaloUrl] = useState("");
 
   const [showNotRegistered, setShowNotRegistered] = useState(false);
   const [showAlreadyPurchased, setShowAlreadyPurchased] = useState(false);
@@ -29,12 +28,14 @@ export default function ReferralVerification({ onVerified }: Props) {
   };
 
   const handleReferralChange = (value: string) => {
-    setReferralCode(value.toUpperCase().trim());
+    setReferralCode(value.toUpperCase().replace(/\s/g, ""));
     setError("");
   };
 
   const handleVerify = async () => {
     setError("");
+
+    const normalizedReferralCode = referralCode.trim().toUpperCase();
 
     if (!phone) {
       setError("Mẹ vui lòng nhập số điện thoại.");
@@ -46,8 +47,13 @@ export default function ReferralVerification({ onVerified }: Props) {
       return;
     }
 
-    if (!referralCode) {
+    if (!normalizedReferralCode) {
       setError("Mẹ vui lòng nhập mã giới thiệu.");
+      return;
+    }
+
+    if (!validateReferralCode(normalizedReferralCode)) {
+      setError("Mã giới thiệu không hợp lệ. Mẹ vui lòng kiểm tra lại.");
       return;
     }
 
@@ -61,11 +67,15 @@ export default function ReferralVerification({ onVerified }: Props) {
         },
         body: JSON.stringify({
           phone,
-          referralCode,
+          referralCode: normalizedReferralCode,
         }),
       });
 
       const data = await response.json();
+
+      if (data.zaloUrl) {
+        setZaloUrl(data.zaloUrl);
+      }
 
       if (!response.ok || !data.registered) {
         setShowNotRegistered(true);
@@ -77,17 +87,8 @@ export default function ReferralVerification({ onVerified }: Props) {
         return;
       }
 
-      const validCode = validateReferralCode(referralCode);
-
-      if (!validCode) {
-        setError("Mã giới thiệu không hợp lệ. Mẹ vui lòng kiểm tra lại.");
-        return;
-      }
-
-      onVerified(phone, referralCode);
-    } catch (error) {
-      console.error("Verify referral error:", error);
-
+      onVerified(phone, normalizedReferralCode);
+    } catch {
       setError("Không thể kiểm tra thông tin lúc này. Mẹ vui lòng thử lại.");
     } finally {
       setLoading(false);
@@ -147,7 +148,7 @@ export default function ReferralVerification({ onVerified }: Props) {
               autoComplete="off"
               value={referralCode}
               onChange={(e) => handleReferralChange(e.target.value)}
-              placeholder="Nhập mã giới thiệu"
+              placeholder="Nhập Mã giới thiệu"
               className="h-12 w-full rounded-xl border border-[#D8E1EB] bg-white px-4 text-sm font-medium uppercase tracking-wide text-[#12335B] outline-none transition placeholder:text-gray-400 focus:border-[#18A8DC] focus:ring-2 focus:ring-[#18A8DC]/10"
             />
           </div>
@@ -173,8 +174,11 @@ export default function ReferralVerification({ onVerified }: Props) {
 
       {showNotRegistered && (
         <NotRegisteredModal
+          zaloUrl={zaloUrl}
           onRegister={() => {
-            window.location.href = OA_APTACLUB_URL;
+            if (zaloUrl) {
+              window.location.href = zaloUrl;
+            }
           }}
           onClose={() => {
             setShowNotRegistered(false);
@@ -194,9 +198,11 @@ export default function ReferralVerification({ onVerified }: Props) {
 }
 
 function NotRegisteredModal({
+  zaloUrl,
   onRegister,
   onClose,
 }: {
+  zaloUrl: string;
   onRegister: () => void;
   onClose: () => void;
 }) {
@@ -241,7 +247,8 @@ function NotRegisteredModal({
           <button
             type="button"
             onClick={onRegister}
-            className="w-full rounded-full bg-[#F5A623] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#E89512]"
+            disabled={!zaloUrl}
+            className="w-full rounded-full bg-[#F5A623] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#E89512] disabled:cursor-not-allowed disabled:opacity-60"
           >
             QUAN TÂM OA ĐỂ ĐĂNG KÝ
           </button>

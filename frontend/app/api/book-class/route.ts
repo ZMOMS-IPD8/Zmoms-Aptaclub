@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkMemberByPhone } from "../../lib/pancake/member";
 
-type PancakeLead = {
-  id?: string;
-  lead_id?: string;
-  record_id?: string;
-  [key: string]: unknown;
-};
+function getFieldValue(value: unknown): string {
+  if (typeof value === "string") {
+    return value.trim();
+  }
 
-type PancakeResponse = {
-  success?: boolean;
-  data?: {
-    entries?: PancakeLead[];
-    [key: string]: unknown;
-  };
-  message?: string;
-  [key: string]: unknown;
-};
+  if (typeof value === "number") {
+    return String(value).trim();
+  }
+
+  if (value && typeof value === "object" && "value" in value) {
+    return String((value as { value?: unknown }).value ?? "").trim();
+  }
+
+  return "";
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -71,6 +71,44 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const member = await checkMemberByPhone(cleanPhone);
+
+    if (!member.registered || !member.leadId || !member.lead) {
+      return NextResponse.json(
+        {
+          success: false,
+          registered: false,
+          status: "MEMBER_NOT_FOUND",
+          message: "Số điện thoại này chưa đăng ký hội viên.",
+        },
+        { status: 403 },
+      );
+    }
+
+    const existingLink = getFieldValue(member.lead.link_lop_hoc);
+    const existingTime = getFieldValue(member.lead.thoi_gian_tham_du);
+    const existingConsent = getFieldValue(member.lead.dong_y_tham_du_lop_hoc);
+
+    const hasExistingBooking =
+      existingConsent === "Có" &&
+      Boolean(existingLink) &&
+      Boolean(existingTime);
+
+    if (hasExistingBooking) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "CLASS_ALREADY_BOOKED",
+          message: "Mẹ đã đăng ký lớp học trước đó. Mẹ không cần đăng ký lại.",
+          booking: {
+            linkLopHoc: existingLink,
+            thoiGianThamDu: existingTime,
+          },
+        },
+        { status: 409 },
+      );
+    }
+
     const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
     const apiKey = process.env.PANCAKE_API_KEY;
 
@@ -85,77 +123,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const filter = {
-      is_group: false,
-      fields: [
-        {
-          field_name: "phone_number",
-          type: "$enter_value",
-          value: cleanPhone,
-          is_filter_exclude: false,
-        },
-      ],
-    };
-
-    const findUrl =
-      `https://crm.pancake.vn/api/workspaces/` +
-      `${workspaceId}/lead/records` +
-      `?api_key=${encodeURIComponent(apiKey)}` +
-      `&filter=${encodeURIComponent(JSON.stringify(filter))}`;
-
-    const findResponse = await fetch(findUrl, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    });
-
-    const findResult = (await findResponse.json()) as PancakeResponse;
-
-    if (!findResponse.ok) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "SEARCH_FAILED",
-          message: "Không thể tìm thông tin hội viên trên Pancake.",
-        },
-        { status: findResponse.status },
-      );
-    }
-
-    const leads = Array.isArray(findResult?.data?.entries)
-      ? findResult.data.entries
-      : [];
-
-    if (leads.length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "MEMBER_NOT_FOUND",
-          message: "Không tìm thấy thông tin hội viên với số điện thoại này.",
-        },
-        { status: 404 },
-      );
-    }
-
-    const lead = leads[0];
-
-    const leadId = lead?.id || lead?.lead_id || lead?.record_id;
-
-    if (!leadId) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "MISSING_LEAD_ID",
-          message: "Không xác định được Lead trên Pancake.",
-        },
-        { status: 500 },
-      );
-    }
-
     const updatePayload = {
-      id: String(leadId),
+      id: member.leadId,
       link_lop_hoc: linkLopHoc,
       thoi_gian_tham_du: thoiGianThamDu,
       dong_y_tham_du_lop_hoc: "Có",
@@ -175,7 +144,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(updatePayload),
     });
 
-    const updateResult = (await updateResponse.json()) as PancakeResponse;
+    const updateResult = await updateResponse.json();
 
     if (!updateResponse.ok) {
       return NextResponse.json(
@@ -185,8 +154,6 @@ export async function POST(req: NextRequest) {
           message:
             updateResult?.message ||
             "Pancake không thể cập nhật thông tin lớp học.",
-          pancakeStatus: updateResponse.status,
-          pancake: updateResult,
         },
         { status: updateResponse.status },
       );
@@ -202,17 +169,17 @@ export async function POST(req: NextRequest) {
         thoiGianThamDu,
         dongYThamDuLopHoc: "Có",
       },
-      leadId: String(leadId),
-      pancake: updateResult,
+      leadId: member.leadId,
     });
   } catch (error) {
-    console.error("Book class API error:", error);
-
     return NextResponse.json(
       {
         success: false,
         status: "SERVER_ERROR",
-        message: "Có lỗi xảy ra khi đăng ký lớp học. Mẹ vui lòng thử lại.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Có lỗi xảy ra khi đăng ký lớp học. Mẹ vui lòng thử lại.",
       },
       { status: 500 },
     );

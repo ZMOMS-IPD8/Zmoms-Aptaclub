@@ -5,12 +5,10 @@ export const PAYMENT_CONFIG = {
     accountNumber: "151103240704",
     accountName: "ZMOMS VIETNAM",
   },
-
   small: {
     amount: 349000,
     transferContent: "ZMOMS COMBO NHO",
   },
-
   large: {
     amount: 829000,
     transferContent: "ZMOMS COMBO LON",

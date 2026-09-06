@@ -11,6 +11,25 @@ export type RegistrationDialogState = {
   zaloUrl?: string;
 };
 
+const REFERRAL_CODE_REGEX = /^(PG|NHS|SPA|SALE)([0-9]{3})$/;
+
+const isValidReferralCode = (code: string) => {
+  if (!code) {
+    return true;
+  }
+
+  const normalizedCode = code.trim().toUpperCase();
+  const match = normalizedCode.match(REFERRAL_CODE_REGEX);
+
+  if (!match) {
+    return false;
+  }
+
+  const number = Number(match[2]);
+
+  return number >= 1 && number <= 999;
+};
+
 export function useRegistrationForm() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -41,7 +60,7 @@ export function useRegistrationForm() {
       phone: phone.trim(),
       province,
       babyDate,
-      referralCode: referralCode.trim(),
+      referralCode: referralCode.trim().toUpperCase(),
       consentMember,
       consentAptaclub,
       consentMarketing,
@@ -74,6 +93,10 @@ export function useRegistrationForm() {
       return "Vui lòng chọn ngày dự sinh hoặc ngày sinh của bé.";
     }
 
+    if (!isValidReferralCode(referralCode)) {
+      return "Mã giới thiệu không hợp lệ.";
+    }
+
     if (!consentMember) {
       return "Vui lòng đồng ý đăng ký hội viên để tiếp tục.";
     }
@@ -89,7 +112,7 @@ export function useRegistrationForm() {
     if (error) {
       setDialog({
         open: true,
-        title: "Thông tin chưa đầy đủ",
+        title: "Thông tin chưa hợp lệ",
         message: error,
         status: "warning",
       });
@@ -144,19 +167,33 @@ export function useRegistrationForm() {
         return;
       }
 
+      if (result?.status === "INVALID_REFERRAL_CODE") {
+        setDialog({
+          open: true,
+          title: "Mã giới thiệu không hợp lệ",
+          message:
+            result?.message || "Vui lòng kiểm tra lại mã giới thiệu của bạn.",
+          status: "warning",
+        });
+
+        return;
+      }
+
       if (result?.status === "UPDATED") {
+        const zaloUrl = result?.zaloUrl;
+
         setDialog({
           open: true,
           title: "Chúc mừng đăng ký thành công",
           message: "Cảm ơn mẹ đã đăng ký cùng ZMoms!",
           status: "success",
-          zaloUrl: result?.zaloUrl,
+          zaloUrl,
         });
 
-        if (result?.zaloUrl) {
+        if (zaloUrl) {
           setTimeout(() => {
-            window.location.href = result.zaloUrl;
-          }, 2000);
+            window.location.href = zaloUrl;
+          }, 1500);
         }
 
         return;
@@ -182,17 +219,19 @@ export function useRegistrationForm() {
         message:
           result?.message || "Thông tin của bạn đã được cập nhật thành công.",
         status: "success",
+        zaloUrl: result?.zaloUrl,
       });
-    } catch (error) {
-      console.error("Registration error:", error);
 
+      if (result?.zaloUrl) {
+        setTimeout(() => {
+          window.location.href = result.zaloUrl;
+        }, 1500);
+      }
+    } catch {
       setDialog({
         open: true,
         title: "Có lỗi xảy ra",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Có lỗi xảy ra khi cập nhật thông tin. Vui lòng thử lại.",
+        message: "Có lỗi xảy ra khi cập nhật thông tin. Vui lòng thử lại.",
         status: "error",
       });
     } finally {

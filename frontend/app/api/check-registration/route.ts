@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkMemberByPhone } from "../../lib/pancake/member";
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,25 +10,12 @@ export async function POST(req: NextRequest) {
     if (!phone) {
       return NextResponse.json(
         {
+          success: false,
           registered: false,
           purchased: false,
-          message: "Vui lòng nhập số điện thoại.",
+          message: "Mẹ vui lòng nhập số điện thoại.",
         },
         { status: 400 },
-      );
-    }
-
-    const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
-    const apiKey = process.env.PANCAKE_API_KEY;
-
-    if (!workspaceId || !apiKey) {
-      return NextResponse.json(
-        {
-          registered: false,
-          purchased: false,
-          message: "Chưa cấu hình Pancake API.",
-        },
-        { status: 500 },
       );
     }
 
@@ -36,69 +24,30 @@ export async function POST(req: NextRequest) {
     if (!/^0\d{9}$/.test(cleanPhone)) {
       return NextResponse.json(
         {
+          success: false,
           registered: false,
           purchased: false,
-          message: "Số điện thoại không đúng định dạng.",
+          message:
+            "Số điện thoại không đúng định dạng. Mẹ vui lòng kiểm tra lại.",
         },
         { status: 400 },
       );
     }
 
-    const filter = {
-      is_group: false,
-      fields: [
-        {
-          field_name: "phone_number",
-          type: "$enter_value",
-          value: cleanPhone,
-          is_filter_exclude: false,
-        },
-      ],
-    };
+    const zaloUrl = process.env.ZMOMS_ZALO_OA_URL || "";
 
-    const checkUrl =
-      `https://crm.pancake.vn/api/workspaces/` +
-      `${workspaceId}/lead/records` +
-      `?api_key=${encodeURIComponent(apiKey)}` +
-      `&filter=${encodeURIComponent(JSON.stringify(filter))}`;
+    const member = await checkMemberByPhone(cleanPhone);
 
-    const response = await fetch(checkUrl, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      console.error("Pancake registration check error:", response.status);
-
-      return NextResponse.json(
-        {
-          registered: false,
-          purchased: false,
-          message: "Không thể kiểm tra số điện thoại trên Pancake.",
-        },
-        { status: response.status },
-      );
-    }
-
-    const existingLeads = Array.isArray(result?.data?.entries)
-      ? result.data.entries
-      : [];
-
-    if (existingLeads.length === 0) {
+    if (!member.registered || !member.lead) {
       return NextResponse.json({
+        success: true,
         registered: false,
         purchased: false,
+        zaloUrl,
       });
     }
 
-    const lead = existingLeads[0];
-
-    const tenCombo = lead?.ten_combo;
+    const tenCombo = member.lead.ten_combo;
 
     const purchased =
       tenCombo !== null &&
@@ -106,17 +55,27 @@ export async function POST(req: NextRequest) {
       String(tenCombo).trim() !== "";
 
     return NextResponse.json({
+      success: true,
       registered: true,
       purchased,
+      member: {
+        leadId: member.leadId,
+        name: member.fullName,
+        phone: member.phone,
+      },
+      zaloUrl,
     });
   } catch (error) {
-    console.error("Check registration API error:", error);
-
     return NextResponse.json(
       {
+        success: false,
         registered: false,
         purchased: false,
-        message: "Có lỗi xảy ra khi kiểm tra thông tin.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Có lỗi xảy ra khi kiểm tra thông tin.",
+        zaloUrl: process.env.ZMOMS_ZALO_OA_URL || "",
       },
       { status: 500 },
     );

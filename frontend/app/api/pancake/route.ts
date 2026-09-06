@@ -4,10 +4,13 @@ type PancakeLead = {
   id?: string;
   lead_id?: string;
   record_id?: string;
+
   name?: string | null;
   phone_number?: string | null;
   source?: string | number | null;
+
   ho_va_ten_lien_he?: string | null | { value?: string | null };
+
   [key: string]: unknown;
 };
 
@@ -22,20 +25,52 @@ type PancakeResponse = {
   [key: string]: unknown;
 };
 
+const REFERRAL_CODE_REGEX = /^(PG|NHS|SPA|SALE)([0-9]{3})$/;
+
+function getFieldValue(value: unknown): string {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+
+  if (value && typeof value === "object" && "value" in value) {
+    return String((value as { value?: unknown }).value ?? "").trim();
+  }
+
+  return "";
+}
+
+function isValidReferralCode(code: string) {
+  if (!code) {
+    return true;
+  }
+
+  const match = code.match(REFERRAL_CODE_REGEX);
+
+  if (!match) {
+    return false;
+  }
+
+  const number = Number(match[2]);
+
+  return number >= 1 && number <= 999;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const {
-      fullName,
-      phone,
-      province,
-      babyDate,
-      referralCode,
-      consentAptaclub,
-      consentMarketing,
-      consentDanone,
-    } = body;
+    const fullName = String(body?.fullName ?? "").trim();
+    const phone = String(body?.phone ?? "").trim();
+    const province = String(body?.province ?? "").trim();
+    const babyDate = String(body?.babyDate ?? "").trim();
+
+    const referralCode = String(body?.referralCode ?? "")
+      .trim()
+      .toUpperCase();
+
+    const consentAptaclub = body?.consentAptaclub === true;
+    const consentMarketing = body?.consentMarketing === true;
+    const consentDanone = body?.consentDanone === true;
 
     if (!fullName || !phone || !province || !babyDate) {
       return NextResponse.json(
@@ -63,22 +98,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cleanPhone = String(phone).trim();
-    const cleanFullName = String(fullName).trim();
-    const cleanProvince = String(province).trim();
-    const cleanReferralCode = String(referralCode ?? "").trim();
+    const cleanPhone = phone.replace(/\D/g, "");
+    const cleanFullName = fullName.trim();
+    const cleanProvince = province.trim();
 
-    const rawBabyDate = String(babyDate).trim();
-    const [year, month, day] = rawBabyDate.split("-");
+    if (!/^0\d{9}$/.test(cleanPhone)) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "INVALID_PHONE",
+          message: "Số điện thoại không đúng định dạng.",
+        },
+        { status: 400 },
+      );
+    }
 
-    if (
-      !year ||
-      !month ||
-      !day ||
-      year.length !== 4 ||
-      month.length !== 2 ||
-      day.length !== 2
-    ) {
+    if (!isValidReferralCode(referralCode)) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "INVALID_REFERRAL_CODE",
+          message: "Mã giới thiệu không hợp lệ.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const dateMatch = babyDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (!dateMatch) {
       return NextResponse.json(
         {
           success: false,
@@ -89,7 +137,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const [, year, month, day] = dateMatch;
+
     const cleanBabyDate = `${year}-${month}-${day} 00:00:00`;
+
+    const registrationTime = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    }).format(new Date());
 
     const zmomsSourceId = "zl_626069465683660973";
 
@@ -128,8 +189,6 @@ export async function POST(req: NextRequest) {
     const checkResult = (await checkResponse.json()) as PancakeResponse;
 
     if (!checkResponse.ok) {
-      console.error("Pancake lead search error:", checkResult);
-
       return NextResponse.json(
         {
           success: false,
@@ -160,14 +219,7 @@ export async function POST(req: NextRequest) {
 
     const lead = existingLeads[0];
 
-    const existingContactName =
-      typeof lead?.ho_va_ten_lien_he === "string"
-        ? lead.ho_va_ten_lien_he.trim()
-        : lead?.ho_va_ten_lien_he &&
-            typeof lead.ho_va_ten_lien_he === "object" &&
-            "value" in lead.ho_va_ten_lien_he
-          ? String(lead.ho_va_ten_lien_he.value ?? "").trim()
-          : "";
+    const existingContactName = getFieldValue(lead.ho_va_ten_lien_he);
 
     if (existingContactName) {
       return NextResponse.json(
@@ -182,7 +234,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const leadId = lead?.id || lead?.lead_id || lead?.record_id;
+    const leadId = lead.id || lead.lead_id || lead.record_id;
 
     if (!leadId) {
       return NextResponse.json(
@@ -195,20 +247,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const eligibleForDanoneCRM =
-      consentAptaclub === true && consentDanone === true;
+    const eligibleForDanoneCRM = consentAptaclub && consentDanone;
 
     const pancakePayload = {
-      id: leadId,
-      name: String(lead?.name ?? "").trim() || cleanFullName,
+      id: String(leadId),
+      name: String(lead.name ?? "").trim() || cleanFullName,
       phone_number: cleanPhone,
       ho_va_ten_lien_he: cleanFullName,
       ngay_du_sinh_hoac_ngay_sinh_cua_be: cleanBabyDate,
+      thoi_gian_dang_ky: registrationTime,
       thanh_pho: cleanProvince,
-      ma_gioi_thieu_dang_ky: cleanReferralCode,
-      da_doc_chinh_sach_aptamil: consentDanone === true ? "true" : "false",
-      dong_y_nhan_thong_bao: consentMarketing === true ? "true" : "false",
-      chia_se_de_dang_ky_aptaclub: consentAptaclub === true ? "true" : "false",
+      ma_gioi_thieu_dang_ky: referralCode,
+      da_doc_chinh_sach_aptamil: consentDanone ? "true" : "false",
+      dong_y_nhan_thong_bao: consentMarketing ? "true" : "false",
+      chia_se_de_dang_ky_aptaclub: consentAptaclub ? "true" : "false",
     };
 
     const updateUrl =
@@ -228,8 +280,6 @@ export async function POST(req: NextRequest) {
     const updateResult = (await updateResponse.json()) as PancakeResponse;
 
     if (!updateResponse.ok) {
-      console.error("Pancake lead update error:", updateResult);
-
       return NextResponse.json(
         {
           success: false,
@@ -248,11 +298,10 @@ export async function POST(req: NextRequest) {
       status: "UPDATED",
       message: "Thông tin của bạn đã được cập nhật thành công.",
       eligibleForDanoneCRM,
+      zaloUrl,
       pancake: updateResult,
     });
-  } catch (error) {
-    console.error("Pancake API error:", error);
-
+  } catch {
     return NextResponse.json(
       {
         success: false,

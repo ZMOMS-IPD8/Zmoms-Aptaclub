@@ -1,10 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
+import { validateReferralCode } from "../../../uu-dai/data/referralCodes";
+import { checkMemberByPhone } from "../../../lib/pancake/member";
+
+type ComboType = "small" | "large";
+
+type UpdateLeadBody = {
+  registrationPhone: string;
+  shippingPhone: string;
+  fullAddress: string;
+  maNguoiBan?: string;
+  combo: ComboType;
+};
+
+const COMBO_CONFIG: Record<
+  ComboType,
+  {
+    name: string;
+    price: number;
+  }
+> = {
+  small: {
+    name: "Combo nhỏ",
+    price: 349000,
+  },
+  large: {
+    name: "Combo lớn",
+    price: 829000,
+  },
+};
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = (await req.json()) as UpdateLeadBody;
 
-    const { registrationPhone, shippingPhone, fullAddress, maNguoiBan } = body;
+    const { registrationPhone, shippingPhone, fullAddress, maNguoiBan, combo } =
+      body;
 
     if (!registrationPhone) {
       return NextResponse.json(
@@ -36,17 +66,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
-
-    const apiKey = process.env.PANCAKE_API_KEY;
-
-    if (!workspaceId || !apiKey) {
+    if (combo !== "small" && combo !== "large") {
       return NextResponse.json(
         {
           success: false,
-          message: "Chưa cấu hình Pancake API.",
+          message: "Combo đặt hàng không hợp lệ.",
         },
-        { status: 500 },
+        { status: 400 },
       );
     }
 
@@ -58,7 +84,9 @@ export async function POST(req: NextRequest) {
 
     const cleanAddress = String(fullAddress).trim();
 
-    const cleanMaNguoiBan = String(maNguoiBan ?? "").trim();
+    const cleanMaNguoiBan = String(maNguoiBan ?? "")
+      .trim()
+      .toUpperCase();
 
     if (!/^0\d{9}$/.test(cleanRegistrationPhone)) {
       return NextResponse.json(
@@ -80,86 +108,110 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const filter = {
-      is_group: false,
-      fields: [
-        {
-          field_name: "phone_number",
-          type: "$enter_value",
-          value: cleanRegistrationPhone,
-          is_filter_exclude: false,
-        },
-      ],
-    };
-
-    const findUrl =
-      `https://crm.pancake.vn/api/workspaces/` +
-      `${workspaceId}/lead/records` +
-      `?api_key=${encodeURIComponent(apiKey)}` +
-      `&filter=${encodeURIComponent(JSON.stringify(filter))}`;
-
-    const findResponse = await fetch(findUrl, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    });
-
-    const findResult = await findResponse.json();
-
-    if (!findResponse.ok) {
+    if (!validateReferralCode(cleanMaNguoiBan)) {
       return NextResponse.json(
         {
           success: false,
-          message: "Không thể tìm Lead trên Pancake.",
-          pancake: findResult,
+          message: "Mã người bán không hợp lệ.",
         },
-        {
-          status: findResponse.status,
-        },
+        { status: 400 },
       );
     }
 
-    const leads = Array.isArray(findResult?.data?.entries)
-      ? findResult.data.entries
-      : [];
+    const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
+    const apiKey = process.env.PANCAKE_API_KEY;
+    const zaloUrl = process.env.ZMOMS_ZALO_OA_URL || "";
 
-    if (leads.length === 0) {
+    if (!workspaceId || !apiKey) {
       return NextResponse.json(
         {
           success: false,
-          leadFound: false,
-          message: "Không tìm thấy Lead tương ứng với số điện thoại đăng ký.",
+          message: "Chưa cấu hình Pancake API.",
         },
-        { status: 404 },
+        { status: 500 },
       );
     }
 
-    const lead = leads[0];
+    const member = await checkMemberByPhone(cleanRegistrationPhone);
 
-    if (!lead?.id) {
+    if (!member.registered || !member.lead) {
       return NextResponse.json(
         {
           success: false,
-          leadFound: false,
-          message: "Lead tìm thấy nhưng không có ID.",
+          registered: false,
+          message: "Số điện thoại chưa đăng ký hội viên.",
         },
-        { status: 422 },
+        { status: 403 },
       );
     }
+
+    const lead = member.lead;
+    const leadId = member.leadId;
+
+    const registeredReferralCode = String(lead.ma_gioi_thieu_dang_ky ?? "")
+      .trim()
+      .toUpperCase();
+
+    if (!registeredReferralCode) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Chưa có mã giới thiệu trong thông tin đăng ký.",
+        },
+        { status: 403 },
+      );
+    }
+
+    if (registeredReferralCode !== cleanMaNguoiBan) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Mã người bán không khớp với thông tin đăng ký.",
+        },
+        { status: 403 },
+      );
+    }
+
+    const existingOrderDate = String(lead.ngay_dat_hang ?? "").trim();
+
+    if (existingOrderDate) {
+      return NextResponse.json(
+        {
+          success: false,
+          alreadyPurchased: true,
+          zaloUrl,
+          message:
+            "Số điện thoại này đã đặt hàng. Mẹ vui lòng nhắn tin qua Zalo OA để biết tình trạng đơn hàng.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const selectedCombo = COMBO_CONFIG[combo];
+
+    const orderDate = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    }).format(new Date());
 
     const updatePayload: Record<string, string> = {
-      id: String(lead.id),
-      name: lead.name || "Khách hàng Zmoms",
-      phone_number: lead.phone_number || cleanRegistrationPhone,
+      id: leadId,
+      name: String(lead.name ?? "").trim() || "Khách hàng Zmoms",
+      phone_number:
+        String(lead.phone_number ?? "").trim() || cleanRegistrationPhone,
       so_dien_thoai_giao_hang: cleanShippingPhone,
       full_address: cleanAddress,
+      ma_nguoi_ban: cleanMaNguoiBan,
+      ten_combo: selectedCombo.name,
+      gia_tien: String(selectedCombo.price),
+      ngay_dat_hang: orderDate,
     };
-
-    if (cleanMaNguoiBan) {
-      updatePayload.ma_nguoi_ban = cleanMaNguoiBan;
-    }
 
     const updateUrl =
       `https://crm.pancake.vn/api/workspaces/` +
@@ -182,33 +234,35 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           leadFound: true,
-          leadId: lead.id,
+          leadId,
           message:
             updateResult?.message ||
             "Không thể cập nhật thông tin Lead trên Pancake.",
-          pancake: updateResult,
         },
-        {
-          status: updateResponse.status,
-        },
+        { status: updateResponse.status },
       );
     }
 
     return NextResponse.json({
       success: true,
       leadFound: true,
-      leadId: lead.id,
-      maNguoiBan: cleanMaNguoiBan || null,
-      message: "Đã cập nhật thông tin giao hàng và mã người bán trên Pancake.",
-      pancake: updateResult,
+      leadId,
+      maNguoiBan: cleanMaNguoiBan,
+      tenCombo: selectedCombo.name,
+      giaTien: selectedCombo.price,
+      ngayDatHang: orderDate,
+      zaloUrl,
+      message:
+        "Đã cập nhật thông tin giao hàng, combo, giá tiền và ngày đặt hàng trên Pancake.",
     });
   } catch (error) {
-    console.error("Pancake update lead error:", error);
-
     return NextResponse.json(
       {
         success: false,
-        message: "Có lỗi xảy ra khi cập nhật Lead trên Pancake.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Có lỗi xảy ra khi cập nhật Lead trên Pancake.",
       },
       { status: 500 },
     );
