@@ -27,6 +27,22 @@ export const CLASS_SESSIONS: ClassSession[] = [
     meetUrl: "https://meet.google.com/yyy-yyyy-yyy",
   },
   {
+    id: "north-03",
+    region: "north",
+    title: "Lớp học cùng Nữ hộ sinh",
+    date: "2026-09-21",
+    time: "20:00",
+    meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
+  },
+  {
+    id: "north-04",
+    region: "north",
+    title: "Lớp học cùng Nữ hộ sinh",
+    date: "2026-09-28",
+    time: "20:00",
+    meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
+  },
+  {
     id: "south-01",
     region: "south",
     title: "Lớp học cùng Nữ hộ sinh",
@@ -41,6 +57,22 @@ export const CLASS_SESSIONS: ClassSession[] = [
     date: "2026-09-16",
     time: "20:00",
     meetUrl: "https://meet.google.com/yyy-yyyy-yyy",
+  },
+  {
+    id: "south-03",
+    region: "south",
+    title: "Lớp học cùng Nữ hộ sinh",
+    date: "2026-09-23",
+    time: "20:00",
+    meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
+  },
+  {
+    id: "south-04",
+    region: "south",
+    title: "Lớp học cùng Nữ hộ sinh",
+    date: "2026-09-30",
+    time: "20:00",
+    meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
   },
 ];
 
@@ -70,6 +102,12 @@ const NORTH_PROVINCES = [
   "Lai Châu",
   "Sơn La",
   "Hòa Bình",
+  "Thanh Hóa",
+  "Nghệ An",
+  "Hà Tĩnh",
+  "Quảng Bình",
+  "Quảng Trị",
+  "Thừa Thiên Huế",
 ];
 
 export function getRegion(province: string): Region {
