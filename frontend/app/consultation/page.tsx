@@ -128,6 +128,14 @@ export default function ConsultationPage() {
     }
 
     if (member.hasPostSurvey) {
+      setError("Mẹ đã hoàn thành khảo sát sau buổi học rồi.");
+      return;
+    }
+
+    if (!member.hasPreSurvey) {
+      setError(
+        "Mẹ cần hoàn thành khảo sát trước buổi học trước khi thực hiện khảo sát sau.",
+      );
       return;
     }
 
@@ -349,13 +357,16 @@ export default function ConsultationPage() {
           />
         )}
 
-        {step === "postSurvey" && member && (
-          <PostSurvey
-            member={member}
-            onComplete={handlePostSurveyComplete}
-            onBack={handlePostSurveyBack}
-          />
-        )}
+        {step === "postSurvey" &&
+          member &&
+          member.hasPreSurvey &&
+          !member.hasPostSurvey && (
+            <PostSurvey
+              member={member}
+              onComplete={handlePostSurveyComplete}
+              onBack={handlePostSurveyBack}
+            />
+          )}
 
         {step === "success" && member && (
           <ConsultationSuccess

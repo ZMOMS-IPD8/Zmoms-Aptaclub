@@ -189,16 +189,7 @@ export async function POST(req: NextRequest) {
 
     const selectedCombo = COMBO_CONFIG[combo];
 
-    const orderDate = new Intl.DateTimeFormat("sv-SE", {
-      timeZone: "Asia/Ho_Chi_Minh",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hourCycle: "h23",
-    }).format(new Date());
+    const orderDate = new Date().toISOString();
 
     const updatePayload: Record<string, string> = {
       id: leadId,

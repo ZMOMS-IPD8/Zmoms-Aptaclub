@@ -39,7 +39,9 @@ export default function ConsultationMemberStep({
         <AttendanceChoice
           onAttended={onAttended}
           onNotAttended={onNotAttended}
+          hasPreSurvey={member.hasPreSurvey}
           hasPostSurvey={member.hasPostSurvey}
+          error={error}
         />
       )}
 

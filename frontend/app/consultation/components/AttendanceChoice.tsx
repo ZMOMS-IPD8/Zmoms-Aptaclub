@@ -3,13 +3,17 @@
 type Props = {
   onAttended: () => void;
   onNotAttended: () => void;
+  hasPreSurvey?: boolean;
   hasPostSurvey?: boolean;
+  error?: string;
 };
 
 export default function AttendanceChoice({
   onAttended,
   onNotAttended,
+  hasPreSurvey = false,
   hasPostSurvey = false,
+  error = "",
 }: Props) {
   return (
     <section className="rounded-3xl bg-white p-5 shadow-sm sm:p-7">
@@ -20,6 +24,12 @@ export default function AttendanceChoice({
       <p className="mt-1 text-sm leading-6 text-gray-500">
         Mẹ lựa chọn tình trạng tham dự để tiếp tục.
       </p>
+
+      {error && (
+        <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-5 text-red-600">
+          {error}
+        </div>
+      )}
 
       <div className="mt-5 space-y-3">
         <button
@@ -53,7 +63,9 @@ export default function AttendanceChoice({
               <p className="mt-1 text-xs leading-5 text-gray-500">
                 {hasPostSurvey
                   ? "Mẹ đã hoàn thành khảo sát sau buổi học và không cần thực hiện lại."
-                  : "Thực hiện khảo sát và bình chọn sau buổi học."}
+                  : hasPreSurvey
+                    ? "Thực hiện khảo sát và bình chọn sau buổi học."
+                    : "Mẹ cần hoàn thành khảo sát trước buổi học trước khi đánh giá sau."}
               </p>
             </div>
 
