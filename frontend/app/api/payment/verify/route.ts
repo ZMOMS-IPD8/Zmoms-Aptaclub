@@ -75,32 +75,6 @@ export async function POST(req: NextRequest) {
 
     const lead = member.lead;
 
-    const registeredReferralCode = String(lead.ma_gioi_thieu_dang_ky ?? "")
-      .trim()
-      .toUpperCase();
-
-    if (!registeredReferralCode) {
-      return NextResponse.json(
-        {
-          success: false,
-          verified: false,
-          message: "Chưa có mã giới thiệu trong thông tin đăng ký.",
-        },
-        { status: 403 },
-      );
-    }
-
-    if (registeredReferralCode !== referralCode) {
-      return NextResponse.json(
-        {
-          success: false,
-          verified: false,
-          message: "Mã giới thiệu không khớp với thông tin đăng ký.",
-        },
-        { status: 403 },
-      );
-    }
-
     const orderDate = String(lead.ngay_dat_hang ?? "").trim();
 
     if (orderDate) {
