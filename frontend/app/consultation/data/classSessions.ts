@@ -16,7 +16,7 @@ export const CLASS_SESSIONS: ClassSession[] = [
     title: "Lớp học cùng Nữ hộ sinh",
     date: "2026-09-07",
     time: "20:00",
-    meetUrl: "https://meet.google.com/xxx-xxxx-xxx",
+    meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
   },
   {
     id: "north-02",
@@ -24,7 +24,7 @@ export const CLASS_SESSIONS: ClassSession[] = [
     title: "Lớp học cùng Nữ hộ sinh",
     date: "2026-09-14",
     time: "20:00",
-    meetUrl: "https://meet.google.com/yyy-yyyy-yyy",
+    meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
   },
   {
     id: "north-03",
@@ -48,7 +48,7 @@ export const CLASS_SESSIONS: ClassSession[] = [
     title: "Lớp học cùng Nữ hộ sinh",
     date: "2026-09-09",
     time: "20:00",
-    meetUrl: "https://meet.google.com/xxx-xxxx-xxx",
+    meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
   },
   {
     id: "south-02",
@@ -56,7 +56,7 @@ export const CLASS_SESSIONS: ClassSession[] = [
     title: "Lớp học cùng Nữ hộ sinh",
     date: "2026-09-16",
     time: "20:00",
-    meetUrl: "https://meet.google.com/yyy-yyyy-yyy",
+    meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
   },
   {
     id: "south-03",
