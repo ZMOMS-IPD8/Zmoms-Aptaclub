@@ -148,30 +148,6 @@ export async function POST(req: NextRequest) {
     const lead = member.lead;
     const leadId = member.leadId;
 
-    const registeredReferralCode = String(lead.ma_gioi_thieu_dang_ky ?? "")
-      .trim()
-      .toUpperCase();
-
-    if (!registeredReferralCode) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Chưa có mã giới thiệu trong thông tin đăng ký.",
-        },
-        { status: 403 },
-      );
-    }
-
-    if (registeredReferralCode !== cleanMaNguoiBan) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Mã người bán không khớp với thông tin đăng ký.",
-        },
-        { status: 403 },
-      );
-    }
-
     const existingOrderDate = String(lead.ngay_dat_hang ?? "").trim();
 
     if (existingOrderDate) {
