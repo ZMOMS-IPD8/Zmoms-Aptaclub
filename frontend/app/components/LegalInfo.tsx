@@ -3,18 +3,7 @@ export default function LegalInfo() {
     <>
       <section className="mt-6 sm:mt-7">
         <h2 className="text-[15px] font-bold text-[#173b8f] sm:text-[16px]">
-          A. Dữ liệu thu thập
-        </h2>
-
-        <p className="mt-2 text-[13px] leading-5 text-[#333] sm:text-[14px] sm:leading-6">
-          Họ tên, số điện thoại, tỉnh/thành, mã giới thiệu (nếu có), ngày dự
-          sinh hoặc ngày sinh của bé và thông tin tương tác trong chương trình.
-        </p>
-      </section>
-
-      <section className="mt-5 sm:mt-6">
-        <h2 className="text-[15px] font-bold text-[#173b8f] sm:text-[16px]">
-          B. Mục đích sử dụng
+          A. Mục đích sử dụng
         </h2>
 
         <p className="mt-2 text-[13px] leading-5 text-[#333] sm:text-[14px] sm:leading-6">
@@ -27,7 +16,7 @@ export default function LegalInfo() {
 
       <section className="mt-5 sm:mt-6">
         <h2 className="text-[15px] font-bold leading-6 text-[#173b8f] sm:text-[16px]">
-          C. Quyền của mẹ{" "}
+          B. Quyền của mẹ{" "}
           <span className="font-normal">
             (
             <a

@@ -6,6 +6,7 @@ type Props = {
   error: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
+  onRegister: () => void;
 };
 
 export default function ConsultationPhoneCheck({
@@ -14,6 +15,7 @@ export default function ConsultationPhoneCheck({
   error,
   onChange,
   onSubmit,
+  onRegister,
 }: Props) {
   return (
     <section className="rounded-3xl bg-white p-5 shadow-sm sm:p-7">
@@ -62,6 +64,14 @@ export default function ConsultationPhoneCheck({
         className="mt-4 h-12 w-full rounded-xl bg-[#12335B] text-sm font-bold text-white transition hover:bg-[#0D2949] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? "ĐANG KIỂM TRA..." : "KIỂM TRA THÔNG TIN"}
+      </button>
+
+      <button
+        type="button"
+        onClick={onRegister}
+        className="mt-3 h-12 w-full rounded-xl border border-[#12335B] bg-white text-sm font-bold text-[#12335B] transition hover:bg-[#F5F9FC]"
+      >
+        ĐĂNG KÝ THÀNH VIÊN
       </button>
     </section>
   );

@@ -23,13 +23,8 @@ export default function ConsentSection({
   return (
     <section className="mt-6 sm:mt-7">
       <h2 className="text-[16px] font-bold text-[#ec0a7d] sm:text-[17px]">
-        D. Xác nhận của mẹ <span className="font-normal">(tick từng ô)</span>
+        C. Xác nhận của mẹ <span className="font-normal">(tick từng ô)</span>
       </h2>
-
-      <p className="mt-2 text-[12px] leading-5 text-[#666] sm:text-[13px]">
-        Nhân viên chương trình sẽ giải thích từng nội dung để mẹ chủ động lựa
-        chọn đồng ý hoặc không đồng ý.
-      </p>
 
       <div className="mt-4 space-y-5 sm:space-y-6">
         <label className="flex cursor-pointer items-start gap-3">
@@ -43,9 +38,6 @@ export default function ConsentSection({
           <span className="text-[13px] leading-5 text-[#222] sm:text-[14px] sm:leading-6">
             Tôi đồng ý đăng ký hội viên Zmoms & tham gia Cộng đồng Mẹ Nuôi Con
             Thông Minh 1.000 Ngày Vàng.
-            <span className="mt-1 block text-[12px] italic leading-5 text-[#666] sm:text-[13px]">
-              (Bắt buộc để tạo tài khoản)
-            </span>
           </span>
         </label>
 
@@ -60,9 +52,6 @@ export default function ConsentSection({
           <span className="text-[13px] leading-5 text-[#222] sm:text-[14px] sm:leading-6">
             Tôi đồng ý cho Zmoms chia sẻ họ tên, SĐT, tỉnh/thành & giai đoạn
             thai kỳ/tháng tuổi bé cho Danone Việt Nam để đăng ký Aptaclub.
-            <span className="mt-1 block text-[12px] italic leading-5 text-[#666] sm:text-[13px]">
-              (Tự nguyện — không tick vẫn là hội viên Zmoms)
-            </span>
           </span>
         </label>
 
@@ -77,9 +66,6 @@ export default function ConsentSection({
           <span className="text-[13px] leading-5 text-[#222] sm:text-[14px] sm:leading-6">
             Tôi đồng ý nhận thông tin chương trình, lịch tư vấn & ưu đãi qua
             Zalo/ĐT.
-            <span className="mt-1 block text-[12px] italic leading-5 text-[#666] sm:text-[13px]">
-              (Tự nguyện — hủy nhận tin bất kỳ lúc nào)
-            </span>
           </span>
         </label>
 
@@ -106,10 +92,6 @@ export default function ConsentSection({
             nhân của tôi để quản lý tài khoản, hỗ trợ và chăm sóc khách hàng,
             cũng như tư vấn về sản phẩm, khoa học và dinh dưỡng trong quá trình
             nuôi con.
-            <span className="mt-1 block text-[12px] italic leading-5 text-[#666] sm:text-[13px]">
-              (Tự nguyện — nếu không đồng ý, dữ liệu sẽ không được chuyển sang
-              CRM Danone)
-            </span>
           </span>
         </label>
       </div>

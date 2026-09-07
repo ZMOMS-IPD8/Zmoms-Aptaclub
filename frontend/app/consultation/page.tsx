@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import ClassSessionList from "./components/ClassSessionList";
 import ConsultationMemberStep from "./components/ConsultationMemberStep";
 import ConsultationPhoneCheck from "./components/ConsultationPhoneCheck";
@@ -41,6 +42,7 @@ type Step =
 type SuccessMode = "booking" | "review";
 
 export default function ConsultationPage() {
+  const router = useRouter();
   const [phone, setPhone] = useState("");
   const [member, setMember] = useState<Member | null>(null);
   const [step, setStep] = useState<Step>("phone");
@@ -306,7 +308,6 @@ export default function ConsultationPage() {
             Quyền lợi dành riêng cho hội viên ZMOMS
           </p>
         </div>
-
         {step === "phone" && (
           <ConsultationPhoneCheck
             phone={phone}
@@ -314,6 +315,7 @@ export default function ConsultationPage() {
             error={error}
             onChange={handlePhoneChange}
             onSubmit={handleCheckMember}
+            onRegister={() => router.push("/")}
           />
         )}
 

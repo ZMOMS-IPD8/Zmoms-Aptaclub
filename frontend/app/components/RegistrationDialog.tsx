@@ -21,8 +21,8 @@ export default function RegistrationDialog({
     return null;
   }
 
-  const isZaloAction =
-    Boolean(zaloUrl) && (status === "warning" || status === "error");
+  const isSuccess = status === "success";
+  const isZaloAction = Boolean(zaloUrl);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
@@ -86,11 +86,13 @@ export default function RegistrationDialog({
         </div>
 
         <h3 className="mt-4 text-center text-lg font-semibold text-gray-900">
-          {title}
+          {isSuccess ? "Chúc mừng mẹ đã đăng ký thành công!" : title}
         </h3>
 
         <p className="mt-2 text-center text-sm leading-6 text-gray-600">
-          {message}
+          {isSuccess
+            ? "Mẹ có thể quay lại Zalo OA để sử dụng các quyền lợi tương ứng khi trở thành hội viên nhé!"
+            : message}
         </p>
 
         <div className="mt-6 flex flex-col gap-2">
@@ -105,13 +107,15 @@ export default function RegistrationDialog({
             </a>
           )}
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-11 items-center justify-center rounded-xl border border-gray-200 px-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-          >
-            Đóng
-          </button>
+          {!isSuccess && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-11 items-center justify-center rounded-xl border border-gray-200 px-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+            >
+              Đóng
+            </button>
+          )}
         </div>
       </div>
     </div>

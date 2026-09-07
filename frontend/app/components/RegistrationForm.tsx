@@ -90,7 +90,7 @@ export default function RegistrationForm() {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Nhập số điện thoại zalo mẹ vừa nhập trong oa"
+                placeholder="Nhập số điện thoại zalo mẹ vừa nhập trong Zalo OA Zmoms"
                 inputMode="tel"
                 autoComplete="tel"
                 className="h-12 w-full rounded-xl border border-[#d9dce3] bg-white px-4 text-[15px] outline-none transition placeholder:text-[#999] focus:border-[#ec0a7d] focus:ring-2 focus:ring-[#ec0a7d]/10 sm:h-14 sm:text-[16px]"
