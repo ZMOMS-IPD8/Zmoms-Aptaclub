@@ -100,8 +100,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const tinhTrangMe = String(survey?.thongTinChung?.tinhTrangMe ?? "").trim();
-
     const thuTuCon = String(survey?.thongTinChung?.thuTuCon ?? "").trim();
 
     const duKienSinh = String(survey?.thongTinChung?.duKienSinh ?? "").trim();
@@ -112,7 +110,7 @@ export async function POST(req: NextRequest) {
       survey?.nhuCau?.uuTienPhatTrien ?? "",
     ).trim();
 
-    if (!tinhTrangMe || !thuTuCon || !duKienSinh) {
+    if (!thuTuCon || !duKienSinh) {
       return NextResponse.json(
         {
           success: false,
@@ -155,7 +153,6 @@ export async function POST(req: NextRequest) {
       `Số điện thoại: ${survey?.member?.phone ?? ""}`,
       "",
       "I. THÔNG TIN CHUNG",
-      `Mẹ đang mang thai / đã sinh: ${tinhTrangMe}`,
       `Mẹ đang mang thai con thứ mấy: ${thuTuCon}`,
       `Dự kiến sinh: ${duKienSinh}`,
       "",
@@ -180,7 +177,6 @@ export async function POST(req: NextRequest) {
 
     const updatePayload = {
       id: leadId,
-      tinh_trang_me: tinhTrangMe,
       thu_tu_con: thuTuCon,
       du_kien_sinh: duKienSinh,
       nhu_cau_ho_tro_ncbsme: nhuCauHoTro,

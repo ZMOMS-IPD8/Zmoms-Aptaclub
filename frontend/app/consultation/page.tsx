@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import ClassSessionList from "./components/ClassSessionList";
-import ConsultationMemberStep from "./components/ConsultationMemberStep";
 import ConsultationPhoneCheck from "./components/ConsultationPhoneCheck";
 import ConsultationSuccess from "./components/ConsultationSuccess";
+import MemberInfo from "./components/MemberInfo";
 import PostSurvey from "./components/PostSurvey";
 import PreSurvey from "./components/PreSurvey";
 import {
@@ -31,25 +31,17 @@ export type Member = {
   zaloUrl: string;
 };
 
-type Step =
-  | "phone"
-  | "member"
-  | "schedule"
-  | "preSurvey"
-  | "postSurvey"
-  | "success";
+type Step = "phone" | "schedule" | "preSurvey" | "postSurvey" | "success";
 
 type SuccessMode = "booking" | "review";
 
 export default function ConsultationPage() {
   const router = useRouter();
+
   const [phone, setPhone] = useState("");
   const [member, setMember] = useState<Member | null>(null);
   const [step, setStep] = useState<Step>("phone");
   const [selectedClass, setSelectedClass] = useState<ClassSession | null>(null);
-  const [memberAction, setMemberAction] = useState<
-    "attended" | "notAttended" | null
-  >(null);
   const [successMode, setSuccessMode] = useState<SuccessMode>("booking");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -77,6 +69,22 @@ export default function ConsultationPage() {
   const handlePhoneChange = (value: string) => {
     setPhone(value.replace(/\D/g, "").slice(0, 10));
     clearStatus();
+  };
+
+  const getExistingBookingClass = (
+    booking: Member["booking"],
+  ): ClassSession | null => {
+    if (!booking) {
+      return null;
+    }
+
+    return (
+      CLASS_SESSIONS.find(
+        (session) =>
+          session.meetUrl === booking.linkLopHoc &&
+          formatClassDateTime(session) === booking.thoiGianThamDu,
+      ) || null
+    );
   };
 
   const handleCheckMember = async () => {
@@ -110,11 +118,19 @@ export default function ConsultationPage() {
         return;
       }
 
-      setMember(data.member);
-      setSelectedClass(null);
-      setMemberAction(null);
+      const nextMember = data.member as Member;
+
+      setMember(nextMember);
+      setSelectedClass(getExistingBookingClass(nextMember.booking));
+
+      if (nextMember.booking && nextMember.hasPostSurvey) {
+        setSuccessMode("review");
+        setStep("success");
+        return;
+      }
+
       setSuccessMode("booking");
-      setStep("member");
+      setStep("schedule");
     } catch {
       setError("Không thể kiểm tra thông tin. Mẹ vui lòng thử lại.");
     } finally {
@@ -122,58 +138,18 @@ export default function ConsultationPage() {
     }
   };
 
-  const handleAttended = () => {
-    clearStatus();
-
-    if (!member) {
-      return;
-    }
-
-    if (member.hasPostSurvey) {
-      setError("Mẹ đã hoàn thành khảo sát sau buổi học rồi.");
-      return;
-    }
-
-    if (!member.hasPreSurvey) {
-      setError(
-        "Mẹ cần hoàn thành khảo sát trước buổi học trước khi thực hiện khảo sát sau.",
-      );
-      return;
-    }
-
-    setMemberAction("attended");
-    setStep("postSurvey");
-  };
-
-  const handleNotAttended = () => {
-    clearStatus();
-    setMemberAction("notAttended");
-  };
-
-  const handleAccept = () => {
-    clearStatus();
-    setSelectedClass(null);
-    setStep("schedule");
-  };
-
-  const handleDecline = () => {
-    clearStatus();
-  };
-
   const handleSelectClass = (session: ClassSession) => {
     setSelectedClass(session);
     clearStatus();
   };
 
-  const handleBackToMember = () => {
-    clearStatus();
-    setSelectedClass(null);
-    setMemberAction(null);
-    setStep("member");
-  };
-
   const handleBook = async () => {
     if (!member) {
+      return;
+    }
+
+    if (member.booking) {
+      setError("Mẹ đã đăng ký lớp học trước đó và không cần đăng ký lại.");
       return;
     }
 
@@ -202,12 +178,40 @@ export default function ConsultationPage() {
 
       const data = await response.json();
 
+      if (response.status === 409 && data?.booking) {
+        const existingBooking = {
+          linkLopHoc: data.booking.linkLopHoc,
+          thoiGianThamDu: data.booking.thoiGianThamDu,
+        };
+
+        setMember((current) => {
+          if (!current) {
+            return current;
+          }
+
+          return {
+            ...current,
+            booking: existingBooking,
+          };
+        });
+
+        setSelectedClass(getExistingBookingClass(existingBooking));
+        setError("Mẹ đã đăng ký lớp học trước đó và không cần đăng ký lại.");
+        setStep("schedule");
+        return;
+      }
+
       if (!response.ok) {
         setError(
           data?.message || "Không thể đăng ký lớp học. Mẹ vui lòng thử lại.",
         );
         return;
       }
+
+      const booking = {
+        linkLopHoc: selectedClass.meetUrl,
+        thoiGianThamDu,
+      };
 
       setMember((current) => {
         if (!current) {
@@ -216,10 +220,7 @@ export default function ConsultationPage() {
 
         return {
           ...current,
-          booking: {
-            linkLopHoc: selectedClass.meetUrl,
-            thoiGianThamDu,
-          },
+          booking,
         };
       });
 
@@ -281,8 +282,13 @@ export default function ConsultationPage() {
 
   const handlePostSurveyBack = () => {
     clearStatus();
-    setMemberAction(null);
-    setStep("member");
+
+    if (member?.booking) {
+      setStep("schedule");
+      return;
+    }
+
+    setStep("phone");
   };
 
   const reset = () => {
@@ -290,11 +296,12 @@ export default function ConsultationPage() {
     setMember(null);
     setStep("phone");
     setSelectedClass(null);
-    setMemberAction(null);
     setSuccessMode("booking");
     setLoading(false);
     setError("");
   };
+
+  const existingBooking = member?.booking || null;
 
   return (
     <main className="min-h-screen bg-[#F5F9FC] px-4 py-8 sm:px-6 sm:py-12">
@@ -308,6 +315,7 @@ export default function ConsultationPage() {
             Quyền lợi dành riêng cho hội viên ZMOMS
           </p>
         </div>
+
         {step === "phone" && (
           <ConsultationPhoneCheck
             phone={phone}
@@ -319,35 +327,93 @@ export default function ConsultationPage() {
           />
         )}
 
-        {step === "member" && member && (
-          <ConsultationMemberStep
-            member={member}
-            region={region}
-            memberAction={memberAction}
-            error={error}
-            loading={loading}
-            onAttended={handleAttended}
-            onNotAttended={handleNotAttended}
-            onAccept={handleAccept}
-            onDecline={handleDecline}
-            onBack={() => {
-              setMemberAction(null);
-              clearStatus();
-            }}
-          />
-        )}
-
         {step === "schedule" && member && region && (
-          <ClassSessionList
-            sessions={availableClasses}
-            region={region}
-            selectedId={selectedClass?.id || ""}
-            onSelect={handleSelectClass}
-            onConfirm={handleBook}
-            onBack={handleBackToMember}
-            loading={loading}
-            error={error}
-          />
+          <div className="space-y-4">
+            <MemberInfo member={member} region={region} />
+
+            {existingBooking ? (
+              <section className="rounded-3xl border border-[#BFE7F5] bg-white p-5 shadow-sm sm:p-7">
+                <p className="text-xs font-bold uppercase tracking-wide text-[#18A8DC]">
+                  Thông tin đăng ký
+                </p>
+
+                <h2 className="mt-1 text-xl font-extrabold text-[#12335B]">
+                  Mẹ đã đăng ký lớp học
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-gray-600">
+                  Mẹ không cần đăng ký lại. Thông tin buổi học của mẹ:
+                </p>
+
+                <div className="mt-5 rounded-2xl bg-[#F5F9FC] p-4">
+                  <p className="text-xs text-gray-500">Thời gian tham dự</p>
+
+                  <p className="mt-1 text-sm font-bold text-[#12335B]">
+                    {formatBookingDateTime(existingBooking.thoiGianThamDu)}
+                  </p>
+                </div>
+
+                <a
+                  href={existingBooking.linkLopHoc}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-5 flex h-12 w-full items-center justify-center rounded-xl bg-[#18A8DC] text-sm font-bold text-white hover:bg-[#1297C8]"
+                >
+                  THAM GIA LỚP HỌC
+                </a>
+
+                {!member.hasPostSurvey && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearStatus();
+                      setStep("postSurvey");
+                    }}
+                    className="mt-3 h-12 w-full rounded-xl border border-[#12335B] text-sm font-bold text-[#12335B] hover:bg-[#F5F9FC]"
+                  >
+                    ĐÁNH GIÁ SAU BUỔI HỌC
+                  </button>
+                )}
+
+                {member.hasPostSurvey && (
+                  <div className="mt-3 rounded-xl bg-[#E8F8FD] px-4 py-3 text-center text-sm font-bold text-[#18A8DC]">
+                    MẸ ĐÃ HOÀN THÀNH ĐÁNH GIÁ
+                  </div>
+                )}
+
+                {error && (
+                  <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-xs font-medium text-red-600">
+                    {error}
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearStatus();
+                    setStep("phone");
+                  }}
+                  className="mt-3 h-10 w-full text-sm font-bold text-gray-500 hover:text-[#12335B]"
+                >
+                  ← Kiểm tra số điện thoại khác
+                </button>
+              </section>
+            ) : (
+              <ClassSessionList
+                sessions={availableClasses}
+                region={region}
+                selectedId={selectedClass?.id || ""}
+                onSelect={handleSelectClass}
+                onConfirm={handleBook}
+                onBack={() => {
+                  clearStatus();
+                  setStep("phone");
+                }}
+                loading={loading}
+                error={error}
+              />
+            )}
+          </div>
         )}
 
         {step === "preSurvey" && member && selectedClass && (
@@ -359,16 +425,13 @@ export default function ConsultationPage() {
           />
         )}
 
-        {step === "postSurvey" &&
-          member &&
-          member.hasPreSurvey &&
-          !member.hasPostSurvey && (
-            <PostSurvey
-              member={member}
-              onComplete={handlePostSurveyComplete}
-              onBack={handlePostSurveyBack}
-            />
-          )}
+        {step === "postSurvey" && member && (
+          <PostSurvey
+            member={member}
+            onComplete={handlePostSurveyComplete}
+            onBack={handlePostSurveyBack}
+          />
+        )}
 
         {step === "success" && member && (
           <ConsultationSuccess
@@ -381,4 +444,16 @@ export default function ConsultationPage() {
       </div>
     </main>
   );
+}
+
+function formatBookingDateTime(value: string) {
+  const match = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/,
+  );
+
+  if (!match) {
+    return value;
+  }
+
+  return `${match[3]}/${match[2]}/${match[1]} · ${match[4]}:${match[5]}`;
 }

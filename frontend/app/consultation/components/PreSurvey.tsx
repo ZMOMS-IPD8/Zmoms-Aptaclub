@@ -17,7 +17,6 @@ export default function PreSurvey({
   onComplete,
   onSkip,
 }: Props) {
-  const [tinhTrangMe, setTinhTrangMe] = useState("");
   const [thuTuCon, setThuTuCon] = useState("");
   const [duKienSinh, setDuKienSinh] = useState("");
 
@@ -51,7 +50,7 @@ export default function PreSurvey({
   const handleSubmit = async () => {
     setError("");
 
-    if (!tinhTrangMe || !thuTuCon || !duKienSinh) {
+    if (!thuTuCon || !duKienSinh) {
       setError("Mẹ vui lòng hoàn thành các thông tin cơ bản.");
       return;
     }
@@ -80,7 +79,6 @@ export default function PreSurvey({
       },
 
       thongTinChung: {
-        tinhTrangMe,
         thuTuCon,
         duKienSinh,
       },
@@ -175,13 +173,6 @@ export default function PreSurvey({
       </p>
 
       <div className="mt-6 space-y-6">
-        <RadioGroup
-          label="Mẹ đang mang thai hay đã sinh?"
-          value={tinhTrangMe}
-          options={["Đang mang thai", "Đã sinh"]}
-          onChange={setTinhTrangMe}
-        />
-
         <RadioGroup
           label="Mẹ đang mang thai con thứ mấy?"
           value={thuTuCon}
@@ -306,7 +297,6 @@ export default function PreSurvey({
             "Miễn dịch",
             "Đường ruột",
             "Trí não",
-            "Toàn bộ ý trên",
           ]}
           onChange={setUuTienPhatTrien}
         />
@@ -437,7 +427,7 @@ function TextInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="mt-3 h-12 w-full rounded-xl border border-[#D8E1EB] px-4 text-sm text-[#12335B] outline-none placeholder:text-gray-400 focus:border-[#18A8DC] focus:ring-2 focus:ring-[#18A8DC]/10"
+          className="mt-3 h-12 w-full rounded-xl border border-[#D8E1EB] px-4 py-3 text-sm text-[#12335B] outline-none placeholder:text-gray-400 focus:border-[#18A8DC] focus:ring-2 focus:ring-[#18A8DC]/10"
         />
       )}
     </div>
