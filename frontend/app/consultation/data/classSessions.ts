@@ -3,7 +3,6 @@ export type Region = "north" | "south";
 export type ClassSession = {
   id: string;
   region: Region;
-  title: string;
   date: string;
   time: string;
   meetUrl: string;
@@ -13,7 +12,6 @@ export const CLASS_SESSIONS: ClassSession[] = [
   {
     id: "north-01",
     region: "north",
-    title: "Lớp học cùng Nữ hộ sinh",
     date: "2026-09-07",
     time: "20:00",
     meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
@@ -21,7 +19,6 @@ export const CLASS_SESSIONS: ClassSession[] = [
   {
     id: "north-02",
     region: "north",
-    title: "Lớp học cùng Nữ hộ sinh",
     date: "2026-09-14",
     time: "20:00",
     meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
@@ -29,7 +26,6 @@ export const CLASS_SESSIONS: ClassSession[] = [
   {
     id: "north-03",
     region: "north",
-    title: "Lớp học cùng Nữ hộ sinh",
     date: "2026-09-21",
     time: "20:00",
     meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
@@ -37,7 +33,6 @@ export const CLASS_SESSIONS: ClassSession[] = [
   {
     id: "north-04",
     region: "north",
-    title: "Lớp học cùng Nữ hộ sinh",
     date: "2026-09-28",
     time: "20:00",
     meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
@@ -45,7 +40,6 @@ export const CLASS_SESSIONS: ClassSession[] = [
   {
     id: "south-01",
     region: "south",
-    title: "Lớp học cùng Nữ hộ sinh",
     date: "2026-09-09",
     time: "20:00",
     meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
@@ -53,7 +47,6 @@ export const CLASS_SESSIONS: ClassSession[] = [
   {
     id: "south-02",
     region: "south",
-    title: "Lớp học cùng Nữ hộ sinh",
     date: "2026-09-16",
     time: "20:00",
     meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
@@ -61,7 +54,6 @@ export const CLASS_SESSIONS: ClassSession[] = [
   {
     id: "south-03",
     region: "south",
-    title: "Lớp học cùng Nữ hộ sinh",
     date: "2026-09-23",
     time: "20:00",
     meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
@@ -69,7 +61,6 @@ export const CLASS_SESSIONS: ClassSession[] = [
   {
     id: "south-04",
     region: "south",
-    title: "Lớp học cùng Nữ hộ sinh",
     date: "2026-09-30",
     time: "20:00",
     meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
@@ -121,7 +112,9 @@ export function getRegion(province: string): Region {
 export function formatClassDate(value: string) {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 
-  if (!match) return value;
+  if (!match) {
+    return value;
+  }
 
   return `${match[3]}/${match[2]}/${match[1]}`;
 }

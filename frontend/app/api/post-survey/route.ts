@@ -49,13 +49,8 @@ export async function POST(req: NextRequest) {
     }
 
     const rating = String(survey?.danhGia?.rating ?? "").trim();
-
     const group = String(survey?.danhGia?.group ?? "").trim();
-
     const careAtHome = String(survey?.danhGia?.careAtHome ?? "").trim();
-
-    const votingName = String(survey?.voting?.name ?? "").trim();
-
     const feedback = String(survey?.danhGia?.feedback ?? "").trim();
 
     if (!rating) {
@@ -91,19 +86,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!votingName) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "INVALID_VOTING_NAME",
-          message: "Chưa có tên bác sĩ/chuyên gia được bình chọn.",
-        },
-        { status: 400 },
-      );
-    }
-
     const phone = String(survey?.member?.phone ?? "").trim();
-
     const cleanPhone = phone.replace(/\D/g, "");
 
     if (!/^0\d{9}$/.test(cleanPhone)) {
@@ -180,13 +163,10 @@ export async function POST(req: NextRequest) {
       `Phân loại: ${group}`,
       `Nhu cầu chăm sóc/hỗ trợ tại nhà: ${careAtHome}`,
       "",
-      "II. BÌNH CHỌN",
-      `Bác sĩ/chuyên gia được bình chọn: ${votingName}`,
-      "",
-      "III. GÓP Ý",
+      "II. GÓP Ý",
       feedback || "Không có",
       "",
-      "IV. THÔNG TIN BUỔI HỌC",
+      "III. THÔNG TIN BUỔI HỌC",
       `Thời gian tham dự: ${
         survey?.booking?.thoiGianThamDu || "Không có thông tin"
       }`,

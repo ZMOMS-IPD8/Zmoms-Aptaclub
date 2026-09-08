@@ -14,7 +14,6 @@ export default function PostSurvey({ member, onComplete, onBack }: Props) {
   const [rating, setRating] = useState("");
   const [group, setGroup] = useState("");
   const [careAtHome, setCareAtHome] = useState("");
-  const [votingName, setVotingName] = useState("");
   const [feedback, setFeedback] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -24,7 +23,7 @@ export default function PostSurvey({ member, onComplete, onBack }: Props) {
     setError("");
 
     if (!rating) {
-      setError("Mẹ vui lòng đánh giá buổi học.");
+      setError("Mẹ vui lòng đánh giá buổi tư vấn.");
       return;
     }
 
@@ -37,11 +36,6 @@ export default function PostSurvey({ member, onComplete, onBack }: Props) {
       setError(
         "Mẹ vui lòng cho biết mẹ có nhu cầu được hỗ trợ chăm sóc tại nhà không.",
       );
-      return;
-    }
-
-    if (!votingName.trim()) {
-      setError("Mẹ vui lòng nhập tên bác sĩ/chuyên gia mẹ muốn bình chọn.");
       return;
     }
 
@@ -69,10 +63,6 @@ export default function PostSurvey({ member, onComplete, onBack }: Props) {
         careAtHome,
         feedback: feedback.trim(),
       },
-
-      voting: {
-        name: votingName.trim(),
-      },
     };
 
     try {
@@ -91,7 +81,6 @@ export default function PostSurvey({ member, onComplete, onBack }: Props) {
 
       if (response.status === 409) {
         setError(data?.message || "Mẹ đã hoàn thành khảo sát trước đó.");
-
         return;
       }
 
@@ -113,11 +102,11 @@ export default function PostSurvey({ member, onComplete, onBack }: Props) {
   return (
     <section className="rounded-3xl bg-white p-5 shadow-sm sm:p-7">
       <p className="text-xs font-bold uppercase tracking-wide text-[#18A8DC]">
-        Khảo sát sau buổi học
+        Khảo sát sau buổi tư vấn
       </p>
 
       <h2 className="mt-1 text-xl font-extrabold text-[#12335B]">
-        Mẹ chia sẻ cảm nhận sau buổi học
+        Mẹ chia sẻ cảm nhận sau buổi tư vấn
       </h2>
 
       <p className="mt-2 text-sm leading-6 text-gray-500">
@@ -127,7 +116,7 @@ export default function PostSurvey({ member, onComplete, onBack }: Props) {
 
       <div className="mt-6 space-y-6">
         <RadioGroup
-          label="Mẹ đánh giá buổi học hôm nay như thế nào?"
+          label="Mẹ đánh giá buổi tư vấn hôm nay như thế nào?"
           value={rating}
           options={[
             "1 - Chưa hài lòng",
@@ -142,21 +131,14 @@ export default function PostSurvey({ member, onComplete, onBack }: Props) {
         <PostSurveyGroupChoice value={group} onChange={setGroup} />
 
         <RadioGroup
-          label="Sau buổi học, mẹ có nhu cầu được hỗ trợ chăm sóc tại nhà không?"
+          label="Sau buổi tư vấn, mẹ có nhu cầu được hỗ trợ chăm sóc tại nhà không?"
           value={careAtHome}
           options={["Có", "Không"]}
           onChange={setCareAtHome}
         />
 
         <TextInput
-          label="Mẹ muốn bình chọn bác sĩ/chuyên gia nào?"
-          value={votingName}
-          onChange={setVotingName}
-          placeholder="Mẹ nhập tên bác sĩ/chuyên gia"
-        />
-
-        <TextInput
-          label="Mẹ có muốn chia sẻ thêm điều gì sau buổi học không?"
+          label="Mẹ có muốn chia sẻ thêm điều gì sau buổi tư vấn không?"
           value={feedback}
           onChange={setFeedback}
           placeholder="Mẹ có thể chia sẻ cảm nhận, góp ý hoặc điều mẹ mong muốn được hỗ trợ thêm"

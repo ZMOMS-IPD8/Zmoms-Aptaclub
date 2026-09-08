@@ -73,7 +73,8 @@ export default function PreSurvey({
 
       booking: {
         classId: selectedClass.id,
-        classTitle: selectedClass.title,
+        classTitle:
+          'Buổi tư vấn online: "CÁCH XỬ TRÍ CÁC TÌNH HUỐNG THƯỜNG GẶP KHI NUÔI CON BẰNG SỮA MẸ"',
         date: selectedClass.date,
         time: selectedClass.time,
       },

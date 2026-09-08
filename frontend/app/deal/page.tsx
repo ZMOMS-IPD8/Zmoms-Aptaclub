@@ -80,11 +80,11 @@ export default function SuccessPage() {
             <br />
             săn deal chưa?
           </p>
-          <div className="mx-auto mt-6 w-full max-w-[720px] overflow-hidden rounded-2xl bg-[#4F83C1] px-6 py-6 shadow-[0_8px_24px_rgba(79,131,193,0.2)] sm:px-10 sm:py-7">
-            <p className="text-center text-[24px] font-extrabold leading-[1.25] tracking-[-0.02em] text-white sm:text-[32px]">
+          <div className="mx-auto mt-6 w-full max-w-[720px] overflow-hidden rounded-2xl bg-[#4F83C1] px-6 py-5 shadow-[0_8px_24px_rgba(79,131,193,0.2)] sm:px-10 sm:py-6">
+            <p className="text-center text-[20px] font-extrabold leading-[1.3] tracking-[-0.01em] text-white sm:text-[26px]">
               Combo: “Em Bé Thông Minh”
               <br />
-              <span className="inline-block mt-1">độc quyền</span>
+              <span className="mt-1 inline-block">độc quyền</span>
               <br />
               <span className="mt-1 inline-block text-[#FFE6A7]">
                 chỉ có tại Z-moms

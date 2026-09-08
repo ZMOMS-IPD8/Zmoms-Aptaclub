@@ -55,6 +55,15 @@ function isValidReferralCode(code: string) {
   return number >= 1 && number <= 999;
 }
 
+function getMotherStatus(babyDate: string) {
+  const dueDate = new Date(`${babyDate}T00:00:00`);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return dueDate >= today ? "Đang mang thai" : "Đã sinh";
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -140,6 +149,8 @@ export async function POST(req: NextRequest) {
     const [, year, month, day] = dateMatch;
 
     const cleanBabyDate = `${year}-${month}-${day} 00:00:00`;
+
+    const motherStatus = getMotherStatus(babyDate);
 
     const registrationTime = new Date().toISOString();
 
@@ -246,6 +257,7 @@ export async function POST(req: NextRequest) {
       phone_number: cleanPhone,
       ho_va_ten_lien_he: cleanFullName,
       ngay_du_sinh_hoac_ngay_sinh_cua_be: cleanBabyDate,
+      tinh_trang_me: motherStatus,
       thoi_gian_dang_ky: registrationTime,
       thanh_pho: cleanProvince,
       ma_gioi_thieu_dang_ky: referralCode,

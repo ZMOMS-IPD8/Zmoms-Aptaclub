@@ -15,6 +15,9 @@ type Props = {
   error: string;
 };
 
+const CLASS_TITLE =
+  'Buổi tư vấn online: "CÁCH XỬ TRÍ CÁC TÌNH HUỐNG THƯỜNG GẶP KHI NUÔI CON BẰNG SỮA MẸ"';
+
 export default function ClassSessionList({
   sessions,
   region,
@@ -30,15 +33,16 @@ export default function ClassSessionList({
   return (
     <section className="rounded-3xl bg-white p-5 shadow-sm sm:p-7">
       <p className="text-xs font-bold uppercase tracking-wide text-[#18A8DC]">
-        Lớp học online
+        Tư vấn trực tuyến online
       </p>
 
-      <h2 className="mt-1 text-xl font-extrabold text-[#12335B]">
-        Chọn buổi học
+      <h2 className="mt-1 text-xl font-extrabold leading-7 text-[#12335B]">
+        {CLASS_TITLE}
       </h2>
 
       <p className="mt-2 text-sm leading-6 text-gray-500">
-        Các lớp học dành cho hội viên {regionName}.
+        Các buổi tư vấn dành cho hội viên {regionName}. Mẹ vui lòng chọn thời
+        gian phù hợp.
       </p>
 
       {sessions.length === 0 ? (
@@ -58,34 +62,34 @@ export default function ClassSessionList({
                 type="button"
                 onClick={() => onSelect(session)}
                 disabled={loading}
-                className={`w-full rounded-2xl border p-4 text-left transition ${
+                className={`flex w-full items-center justify-between rounded-2xl border p-4 text-left transition ${
                   selected
                     ? "border-[#12335B] bg-[#F5F9FC]"
                     : "border-[#D8E1EB] bg-white hover:border-[#18A8DC]"
                 } disabled:cursor-not-allowed disabled:opacity-60`}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-bold text-[#12335B]">
-                      {session.title}
-                    </p>
+                <div>
+                  <p className="text-xs font-medium text-gray-500">
+                    Thời gian tham dự
+                  </p>
 
-                    <p className="mt-2 text-sm text-gray-500">
-                      {formatClassDate(session.date)} · {session.time}
-                    </p>
-                  </div>
+                  <p className="mt-1 text-base font-extrabold text-[#12335B]">
+                    {formatClassDate(session.date)}
+                    <span className="mx-2 text-gray-300">·</span>
+                    {session.time}
+                  </p>
+                </div>
 
-                  <div
-                    className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                      selected
-                        ? "border-[#12335B] bg-[#12335B]"
-                        : "border-[#C9D4DF]"
-                    }`}
-                  >
-                    {selected && (
-                      <span className="h-2 w-2 rounded-full bg-white" />
-                    )}
-                  </div>
+                <div
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                    selected
+                      ? "border-[#12335B] bg-[#12335B]"
+                      : "border-[#C9D4DF]"
+                  }`}
+                >
+                  {selected && (
+                    <span className="h-2 w-2 rounded-full bg-white" />
+                  )}
                 </div>
               </button>
             );

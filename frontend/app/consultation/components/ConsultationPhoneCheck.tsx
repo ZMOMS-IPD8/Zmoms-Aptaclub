@@ -24,7 +24,7 @@ export default function ConsultationPhoneCheck({
       </h2>
 
       <p className="mt-1 text-sm leading-6 text-gray-500">
-        Mẹ nhập số điện thoại đã đăng ký hội viên để kiểm tra quyền lợi.
+        Mẹ nhập số điện thoại đã đăng ký để nhận quyền lợi hội viên
       </p>
 
       <label
@@ -63,7 +63,7 @@ export default function ConsultationPhoneCheck({
         disabled={loading}
         className="mt-4 h-12 w-full rounded-xl bg-[#12335B] text-sm font-bold text-white transition hover:bg-[#0D2949] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {loading ? "ĐANG KIỂM TRA..." : "KIỂM TRA THÔNG TIN"}
+        {loading ? "ĐANG KIỂM TRA..." : "Nhấn vào nếu mẹ đã là hội viên"}
       </button>
 
       <button
@@ -71,7 +71,7 @@ export default function ConsultationPhoneCheck({
         onClick={onRegister}
         className="mt-3 h-12 w-full rounded-xl border border-[#12335B] bg-white text-sm font-bold text-[#12335B] transition hover:bg-[#F5F9FC]"
       >
-        ĐĂNG KÝ THÀNH VIÊN
+        Nhấn vào nếu mẹ chưa là hội viên
       </button>
     </section>
   );

@@ -41,7 +41,7 @@ export default function MemberInfo({ member, region }: Props) {
 
       {region && (
         <div className="mt-4 rounded-2xl bg-[#F5F9FC] px-4 py-3">
-          <p className="text-xs text-gray-500">Khu vực lớp học</p>
+          <p className="text-xs text-gray-500">Khu vực buổi tư vấn</p>
 
           <p className="mt-1 text-sm font-bold text-[#12335B]">
             {region === "north" ? "Miền Bắc" : "Miền Nam"}

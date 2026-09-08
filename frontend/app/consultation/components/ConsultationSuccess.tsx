@@ -29,7 +29,7 @@ export default function ConsultationSuccess({
           </h2>
 
           <p className="mt-2 text-sm leading-6 text-gray-600">
-            Mẹ đã đăng ký thành công lớp học online cùng Nữ hộ sinh.
+            Mẹ đã đăng ký thành công buổi tư vấn online.
           </p>
 
           {selectedClass && (
@@ -44,10 +44,11 @@ export default function ConsultationSuccess({
                 </div>
 
                 <div className="border-b border-[#E3EAF0] py-3">
-                  <p className="text-xs text-gray-500">Lớp học</p>
+                  <p className="text-xs text-gray-500">Buổi tư vấn</p>
 
-                  <p className="mt-1 text-sm font-bold text-[#12335B]">
-                    {selectedClass.title}
+                  <p className="mt-1 text-sm font-bold leading-6 text-[#12335B]">
+                    Buổi tư vấn online: &quot;CÁCH XỬ TRÍ CÁC TÌNH HUỐNG THƯỜNG
+                    GẶP KHI NUÔI CON BẰNG SỮA MẸ&quot;
                   </p>
                 </div>
 
@@ -66,14 +67,14 @@ export default function ConsultationSuccess({
                 rel="noopener noreferrer"
                 className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-[#18A8DC] text-sm font-bold text-white hover:bg-[#1297C8]"
               >
-                THAM GIA LỚP HỌC
+                THAM GIA BUỔI TƯ VẤN
               </a>
             </>
           )}
 
           <p className="mt-4 text-xs leading-5 text-gray-500">
-            Mẹ có thể lưu lại thông tin buổi học và sử dụng nút trên để tham gia
-            khi đến giờ.
+            Mẹ có thể lưu lại thông tin buổi tư vấn và sử dụng nút trên để tham
+            gia khi đến giờ.
           </p>
         </>
       ) : (
@@ -88,7 +89,7 @@ export default function ConsultationSuccess({
 
           <div className="mt-5 rounded-2xl bg-[#F5F9FC] p-4 text-left">
             <p className="text-sm font-bold text-[#12335B]">
-              Cảm ơn mẹ đã đồng hành cùng lớp học.
+              Cảm ơn mẹ đã đồng hành cùng buổi tư vấn.
             </p>
 
             <p className="mt-2 text-sm leading-6 text-gray-600">

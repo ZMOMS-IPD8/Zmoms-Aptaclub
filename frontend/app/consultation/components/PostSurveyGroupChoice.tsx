@@ -25,7 +25,7 @@ const OPTIONS: {
     letter: "B",
     title: "Đã hiểu nhưng vẫn cần được hỗ trợ",
     description:
-      "Mẹ đã có thêm kiến thức sau buổi học nhưng vẫn còn một số vấn đề muốn được hướng dẫn thêm.",
+      "Mẹ đã có thêm kiến thức sau buổi tư vấn nhưng vẫn còn một số vấn đề muốn được hướng dẫn thêm.",
   },
   {
     value: "Nhóm C",
@@ -40,7 +40,7 @@ export default function PostSurveyGroupChoice({ value, onChange }: Props) {
   return (
     <div>
       <p className="text-sm font-semibold leading-6 text-[#12335B]">
-        Sau buổi học, mẹ cảm thấy mình đang ở mức độ nào?
+        Sau buổi tư vấn, mẹ cảm thấy mình đang ở mức độ nào?
       </p>
 
       <p className="mt-1 text-xs leading-5 text-gray-500">
