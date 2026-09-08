@@ -27,39 +27,49 @@ export const OFFERS: ComboOffer[] = [
 
 export const FIXED_GIFTS = [
   {
-    name: "1 chai Lactacyd Baby 250ml",
-    value: 100000,
+    name: "Lactacyd sữa tắm",
+    value: 105000,
   },
   {
-    name: "1 chai Green Cross 60ml",
-    value: 29000,
-  },
-  {
-    name: "1 chai Lifebuoy 180ml",
+    name: "Lifebuoy nước rửa tay",
     value: 35000,
   },
   {
-    name: "Sách Làm mẹ",
-    value: 65000,
+    name: "Lifebuoy sữa tắm",
+    value: 85000,
   },
   {
-    name: "1 hộp tã Molfix gồm 4 miếng tã và 1 miếng lót",
+    name: "GreenCross rửa tay khô",
+    value: 30000,
+  },
+  {
+    name: "Kem đánh răng Denti Whoo Hàn Quốc",
     value: 50000,
   },
   {
-    name: "1 hộp kem đánh răng Denti-Clean của Thomastone",
-    value: 50000,
+    name: "Sách 100 kỹ năng đầu đời trong 1.000 ngày",
+    value: 199000,
   },
 ];
 
+export const SMALL_COMBO_GIFT = {
+  name: "Quà tặng đầy tháng",
+  value: 300000,
+};
+
 export const LARGE_COMBO_GIFT = {
-  name: "1 gấu bông trái cây",
+  name: "Quà tặng đầy tháng",
+  value: 500000,
+};
+
+export const LARGE_COMBO_DIAPER_GIFT = {
+  name: "Hộp tã Molfix (10 miếng)",
   value: 50000,
 };
 
-export const COMBO_TOTAL_VALUES = {
-  small: 675000,
-  large: 1143000,
+export const ORDER_TOTAL_VALUES = {
+  small: 1150000,
+  large: 1818000,
 } as const;
 
 export const DISCOUNT_VALUE = 300000;
