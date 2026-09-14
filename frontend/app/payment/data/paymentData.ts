@@ -2,7 +2,7 @@ export const PAYMENT_CONFIG = {
   bank: {
     bankName: "TECHCOMBANK",
     bankCode: "TCB",
-    accountNumber: "13111978",
+    accountNumber: "151103240704",
     accountName: "ZMOMS VIETNAM",
   },
   small: {
