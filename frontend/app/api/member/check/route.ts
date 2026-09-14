@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       member: {
         leadId: result.leadId,
         name: result.fullName,
-        phone: result.phone,
+        phone: result.phone || cleanPhone,
       },
     });
   } catch (error) {

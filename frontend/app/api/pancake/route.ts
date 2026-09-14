@@ -4,13 +4,10 @@ type PancakeLead = {
   id?: string;
   lead_id?: string;
   record_id?: string;
-
   name?: string | null;
   phone_number?: string | null;
   source?: string | number | null;
-
   ho_va_ten_lien_he?: string | null | { value?: string | null };
-
   [key: string]: unknown;
 };
 
@@ -22,6 +19,7 @@ type PancakeResponse = {
     [key: string]: unknown;
   };
   message?: string;
+  error?: string;
   [key: string]: unknown;
 };
 
@@ -39,7 +37,7 @@ function getFieldValue(value: unknown): string {
   return "";
 }
 
-function isValidReferralCode(code: string) {
+function isValidReferralCode(code: string): boolean {
   if (!code) {
     return true;
   }
@@ -55,13 +53,165 @@ function isValidReferralCode(code: string) {
   return number >= 1 && number <= 999;
 }
 
-function getMotherStatus(babyDate: string) {
-  const dueDate = new Date(`${babyDate}T00:00:00`);
+function parseDate(value: string): Date | null {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  date.setHours(0, 0, 0, 0);
+
+  return date;
+}
+
+function getToday(): Date {
   const today = new Date();
+
   today.setHours(0, 0, 0, 0);
 
-  return dueDate >= today ? "Đang mang thai" : "Đã sinh";
+  return today;
+}
+
+function getMotherStatus(babyDate: string): string | null {
+  const date = parseDate(babyDate);
+  const today = getToday();
+
+  if (!date) {
+    return null;
+  }
+
+  return date > today ? "Đang mang thai" : "Đã sinh";
+}
+
+function isEligible(babyDate: string) {
+  const selectedDate = parseDate(babyDate);
+  const today = getToday();
+
+  if (!selectedDate) {
+    return {
+      valid: false,
+      eligible: false,
+      status: null,
+      message: "Ngày dự sinh hoặc ngày sinh của bé không hợp lệ.",
+    };
+  }
+
+  if (selectedDate > today) {
+    const oneDay = 1000 * 60 * 60 * 24;
+
+    const daysUntilDue = Math.floor(
+      (selectedDate.getTime() - today.getTime()) / oneDay,
+    );
+
+    const pregnancyDays = 280 - daysUntilDue;
+
+    if (pregnancyDays < 0 || pregnancyDays > 280) {
+      return {
+        valid: false,
+        eligible: false,
+        status: "Đang mang thai",
+        message:
+          "Ngày dự sinh không hợp lệ. Vui lòng kiểm tra lại ngày dự sinh.",
+      };
+    }
+
+    if (pregnancyDays < 210) {
+      const weeks = Math.floor(pregnancyDays / 7);
+      const days = pregnancyDays % 7;
+
+      return {
+        valid: true,
+        eligible: false,
+        status: "Đang mang thai",
+        message: `Hiện tại tuổi thai của mẹ khoảng ${weeks} tuần ${days} ngày. Chương trình dành cho mẹ từ 30 tuần thai trở lên.`,
+      };
+    }
+
+    return {
+      valid: true,
+      eligible: true,
+      status: "Đang mang thai",
+      message: "",
+    };
+  }
+
+  const sixMonthsLater = new Date(
+    selectedDate.getFullYear(),
+    selectedDate.getMonth() + 6,
+    selectedDate.getDate(),
+  );
+
+  if (today >= sixMonthsLater) {
+    let months =
+      (today.getFullYear() - selectedDate.getFullYear()) * 12 +
+      (today.getMonth() - selectedDate.getMonth());
+
+    if (today.getDate() < selectedDate.getDate()) {
+      months--;
+    }
+
+    return {
+      valid: true,
+      eligible: false,
+      status: "Đã sinh",
+      message: `Bé hiện đã khoảng ${months} tháng tuổi. Chương trình dành cho bé dưới 6 tháng tuổi.`,
+    };
+  }
+
+  return {
+    valid: true,
+    eligible: true,
+    status: "Đã sinh",
+    message: "",
+  };
+}
+
+async function parsePancakeResponse(
+  response: Response,
+): Promise<PancakeResponse> {
+  const text = await response.text();
+
+  if (!text.trim()) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text) as PancakeResponse;
+  } catch {
+    return {
+      message: text.slice(0, 500),
+    };
+  }
+}
+
+function getPancakeErrorMessage(
+  result: PancakeResponse,
+  response: Response,
+): string {
+  if (typeof result.message === "string" && result.message.trim()) {
+    return result.message.trim();
+  }
+
+  if (typeof result.error === "string" && result.error.trim()) {
+    return result.error.trim();
+  }
+
+  return `Pancake CRM trả lỗi HTTP ${response.status}.`;
 }
 
 export async function POST(req: NextRequest) {
@@ -93,7 +243,7 @@ export async function POST(req: NextRequest) {
     }
 
     const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
-    const apiKey = process.env.PANCAKE_API_KEY;
+    const apiKey = process.env.PANCAKE_CRM_API_KEY;
     const zaloUrl = process.env.ZMOMS_ZALO_OA_URL || "";
 
     if (!workspaceId || !apiKey) {
@@ -133,25 +283,45 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const dateMatch = babyDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const selectedDate = parseDate(babyDate);
 
-    if (!dateMatch) {
+    if (!selectedDate) {
       return NextResponse.json(
         {
           success: false,
           status: "INVALID_DATE",
-          message: "Định dạng ngày không hợp lệ.",
+          message: "Ngày dự sinh hoặc ngày sinh của bé không hợp lệ.",
         },
         { status: 400 },
       );
     }
 
-    const [, year, month, day] = dateMatch;
+    const eligibility = isEligible(babyDate);
 
-    const cleanBabyDate = `${year}-${month}-${day} 00:00:00`;
+    if (!eligibility.valid) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "INVALID_DATE",
+          message: eligibility.message,
+        },
+        { status: 400 },
+      );
+    }
 
+    if (!eligibility.eligible) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "NOT_ELIGIBLE",
+          message: eligibility.message,
+        },
+        { status: 403 },
+      );
+    }
+
+    const cleanBabyDate = `${babyDate} 00:00:00`;
     const motherStatus = getMotherStatus(babyDate);
-
     const registrationTime = new Date().toISOString();
 
     const zmomsSourceId = "zl_626069465683660973";
@@ -188,15 +358,14 @@ export async function POST(req: NextRequest) {
       cache: "no-store",
     });
 
-    const checkResult = (await checkResponse.json()) as PancakeResponse;
+    const checkResult = await parsePancakeResponse(checkResponse);
 
     if (!checkResponse.ok) {
       return NextResponse.json(
         {
           success: false,
           status: "SEARCH_FAILED",
-          message:
-            "Không thể kiểm tra thông tin trên Pancake. Vui lòng thử lại.",
+          message: getPancakeErrorMessage(checkResult, checkResponse),
         },
         { status: checkResponse.status },
       );
@@ -255,6 +424,7 @@ export async function POST(req: NextRequest) {
       id: String(leadId),
       name: String(lead.name ?? "").trim() || cleanFullName,
       phone_number: cleanPhone,
+      so_dien_thoai_dang_ky: cleanPhone,
       ho_va_ten_lien_he: cleanFullName,
       ngay_du_sinh_hoac_ngay_sinh_cua_be: cleanBabyDate,
       tinh_trang_me: motherStatus,
@@ -280,16 +450,14 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(pancakePayload),
     });
 
-    const updateResult = (await updateResponse.json()) as PancakeResponse;
+    const updateResult = await parsePancakeResponse(updateResponse);
 
     if (!updateResponse.ok) {
       return NextResponse.json(
         {
           success: false,
           status: "UPDATE_FAILED",
-          message:
-            updateResult?.message ||
-            "Cập nhật thông tin thất bại. Vui lòng thử lại hoặc liên hệ ZMoms để được hỗ trợ.",
+          message: getPancakeErrorMessage(updateResult, updateResponse),
           zaloUrl,
         },
         { status: updateResponse.status },
@@ -304,12 +472,15 @@ export async function POST(req: NextRequest) {
       zaloUrl,
       pancake: updateResult,
     });
-  } catch {
+  } catch (error) {
     return NextResponse.json(
       {
         success: false,
         status: "SERVER_ERROR",
-        message: "Có lỗi xảy ra khi cập nhật thông tin. Vui lòng thử lại.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Có lỗi xảy ra khi cập nhật thông tin. Vui lòng thử lại.",
       },
       { status: 500 },
     );

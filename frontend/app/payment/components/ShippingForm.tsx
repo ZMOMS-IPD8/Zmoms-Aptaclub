@@ -16,7 +16,7 @@ type ShippingData = {
   fullName: string;
   phone: string;
   province: string;
-  ward: string;
+  commune: string;
   address: string;
 };
 
@@ -41,7 +41,7 @@ export default function ShippingForm({
   const [province, setProvince] = useState("");
 
   const [wardCode, setWardCode] = useState("");
-  const [ward, setWard] = useState("");
+  const [commune, setCommune] = useState("");
 
   const [address, setAddress] = useState("");
 
@@ -147,7 +147,7 @@ export default function ShippingForm({
     setProvince(selectedProvince?.name || "");
 
     setWardCode("");
-    setWard("");
+    setCommune("");
     setWards([]);
 
     setError("");
@@ -159,7 +159,7 @@ export default function ShippingForm({
     const selectedWard = wards.find((item) => String(item.code) === code);
 
     setWardCode(code);
-    setWard(selectedWard?.name || "");
+    setCommune(selectedWard?.name || "");
 
     setError("");
   };
@@ -188,7 +188,7 @@ export default function ShippingForm({
       return;
     }
 
-    if (!wardCode || !ward) {
+    if (!wardCode || !commune) {
       setError("Mẹ vui lòng chọn Phường / Xã.");
       return;
     }
@@ -202,7 +202,7 @@ export default function ShippingForm({
       fullName: fullName.trim(),
       phone: phone.trim(),
       province,
-      ward,
+      commune,
       address: address.trim(),
     });
   };
@@ -346,14 +346,14 @@ export default function ShippingForm({
           />
         </div>
 
-        {province && ward && address && (
+        {province && commune && address && (
           <div className="rounded-xl bg-[#F8FAFC] px-4 py-3">
             <p className="text-[11px] font-bold text-gray-500">
               ĐỊA CHỈ NHẬN HÀNG
             </p>
 
             <p className="mt-1 text-sm leading-5 text-[#12335B]">
-              {address}, {ward}, {province}
+              {address}, {commune}, {province}
             </p>
           </div>
         )}

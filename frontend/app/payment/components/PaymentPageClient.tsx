@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import PaymentQR from "./PaymentQR";
 import PaymentGuide from "./PaymentGuide";
 import ShippingForm from "./ShippingForm";
 import PaymentStatus from "./PaymentStatus";
 import { OFFERS } from "../../deal/data/offerData";
-import { getPaymentConfig } from "../data/paymentData";
+import type { PaymentInfo } from "./PaymentQR";
 
 function formatPrice(value: number) {
   return `${value.toLocaleString("vi-VN")}đ`;
@@ -17,7 +17,7 @@ type ShippingData = {
   fullName: string;
   phone: string;
   province: string;
-  ward: string;
+  commune: string;
   address: string;
 };
 
@@ -25,17 +25,87 @@ type ComboType = "small" | "large";
 
 type AccessStatus = "checking" | "granted" | "alreadyPurchased" | "denied";
 
+type PaymentState = "checking" | "pending" | "paid";
+
+const PAYMENT_STORAGE_KEY = "zmoms_payment_info";
+
+let paymentSnapshotRaw: string | null = null;
+let paymentSnapshot: PaymentInfo | null = null;
+
+function getStoredPaymentSnapshot(): PaymentInfo | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const storedPayment = window.sessionStorage.getItem(PAYMENT_STORAGE_KEY);
+
+  if (storedPayment === paymentSnapshotRaw) {
+    return paymentSnapshot;
+  }
+
+  paymentSnapshotRaw = storedPayment;
+
+  if (!storedPayment) {
+    paymentSnapshot = null;
+    return null;
+  }
+
+  try {
+    const parsedPayment = JSON.parse(storedPayment) as PaymentInfo;
+
+    if (
+      !parsedPayment ||
+      !parsedPayment.paymentId ||
+      !parsedPayment.bankCode ||
+      !parsedPayment.bankName ||
+      !parsedPayment.accountNumber ||
+      !parsedPayment.accountName ||
+      parsedPayment.amount <= 0 ||
+      !parsedPayment.transferContent
+    ) {
+      paymentSnapshot = null;
+      return null;
+    }
+
+    paymentSnapshot = parsedPayment;
+    return paymentSnapshot;
+  } catch {
+    paymentSnapshot = null;
+    return null;
+  }
+}
+
+function subscribeToPaymentStorage(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  window.addEventListener("storage", onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+  };
+}
+
 export default function PaymentPageClient() {
   const searchParams = useSearchParams();
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("checking");
+  const [paymentState, setPaymentState] = useState<PaymentState>("checking");
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [zaloUrl, setZaloUrl] = useState("");
 
+  const payment = useSyncExternalStore(
+    subscribeToPaymentStorage,
+    getStoredPaymentSnapshot,
+    () => null,
+  );
+
   const registrationPhone = searchParams.get("phone") || "";
   const referralCode = searchParams.get("referralCode") || "";
+  const orderCode = searchParams.get("orderCode") || "";
   const comboParam = searchParams.get("combo");
 
   const combo: ComboType | null =
@@ -46,18 +116,20 @@ export default function PaymentPageClient() {
     [combo],
   );
 
+  const hasAccessParams =
+    Boolean(registrationPhone) &&
+    Boolean(referralCode) &&
+    Boolean(combo) &&
+    Boolean(orderCode);
+
   useEffect(() => {
+    if (!hasAccessParams) {
+      return;
+    }
+
     let cancelled = false;
 
     const verifyPaymentAccess = async () => {
-      if (!registrationPhone || !referralCode || !combo) {
-        if (!cancelled) {
-          setAccessStatus("denied");
-        }
-
-        return;
-      }
-
       try {
         const response = await fetch("/api/payment/verify", {
           method: "POST",
@@ -69,6 +141,7 @@ export default function PaymentPageClient() {
             phone: registrationPhone,
             referralCode,
             combo,
+            orderCode,
           }),
         });
 
@@ -84,18 +157,33 @@ export default function PaymentPageClient() {
 
         if (result.alreadyPurchased) {
           setAccessStatus("alreadyPurchased");
+          setPaymentState("paid");
           return;
         }
 
         if (!response.ok || !result.success || !result.verified) {
           setAccessStatus("denied");
+          setPaymentState("pending");
           return;
         }
 
         setAccessStatus("granted");
+
+        const isPaid =
+          result.paid === true ||
+          result.paymentStatus === "paid" ||
+          result.payment_status === "paid" ||
+          result.status === "paid" ||
+          result.data?.paid === true ||
+          result.data?.paymentStatus === "paid" ||
+          result.data?.payment_status === "paid" ||
+          result.data?.status === "paid";
+
+        setPaymentState(isPaid ? "paid" : "pending");
       } catch {
         if (!cancelled) {
           setAccessStatus("denied");
+          setPaymentState("pending");
         }
       }
     };
@@ -105,19 +193,15 @@ export default function PaymentPageClient() {
     return () => {
       cancelled = true;
     };
-  }, [registrationPhone, referralCode, combo]);
+  }, [hasAccessParams, registrationPhone, referralCode, combo, orderCode]);
 
   const handleShippingSubmit = async (data: ShippingData) => {
-    if (submitting || !combo) {
+    if (submitting || !combo || paymentState !== "paid") {
       return;
     }
 
     setSubmitError("");
     setSubmitting(true);
-
-    const fullAddress = [data.address, data.ward, data.province]
-      .filter(Boolean)
-      .join(", ");
 
     try {
       const response = await fetch("/api/payment/update-lead", {
@@ -128,9 +212,14 @@ export default function PaymentPageClient() {
         body: JSON.stringify({
           registrationPhone,
           shippingPhone: data.phone,
-          fullAddress,
+          fullName: data.fullName,
+          Address: data.address,
+          province: data.province,
+          commune: data.commune,
+          country: "Việt Nam",
           maNguoiBan: referralCode,
           combo,
+          orderCode,
         }),
       });
 
@@ -165,15 +254,17 @@ export default function PaymentPageClient() {
     }
   };
 
-  if (accessStatus === "checking") {
+  const effectiveAccessStatus = hasAccessParams ? accessStatus : "denied";
+
+  if (effectiveAccessStatus === "checking") {
     return <PaymentStatus status="checking" />;
   }
 
-  if (accessStatus === "alreadyPurchased") {
+  if (effectiveAccessStatus === "alreadyPurchased") {
     return <PaymentStatus status="alreadyPurchased" zaloUrl={zaloUrl} />;
   }
 
-  if (accessStatus === "denied") {
+  if (effectiveAccessStatus === "denied") {
     return <PaymentStatus status="denied" />;
   }
 
@@ -181,11 +272,38 @@ export default function PaymentPageClient() {
     return null;
   }
 
+  if (!payment) {
+    return (
+      <main className="min-h-screen bg-[#FFFAF5] px-4 py-6 sm:py-10">
+        <div className="mx-auto w-full max-w-[650px]">
+          <div className="rounded-2xl bg-white p-6 text-center shadow-sm sm:p-8">
+            <p className="text-base font-extrabold text-[#12335B]">
+              Không thể tải thông tin thanh toán
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-gray-600">
+              Không tìm thấy thông tin thanh toán. Mẹ vui lòng quay lại và tạo
+              đơn hàng lại.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = "/success";
+              }}
+              className="mt-5 rounded-full bg-[#12335B] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#0D2949]"
+            >
+              QUAY LẠI
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   if (orderSuccess) {
     return <PaymentStatus status="success" zaloUrl={zaloUrl} />;
   }
-
-  const payment = getPaymentConfig(combo);
 
   return (
     <main className="min-h-screen bg-[#FFFAF5] px-4 py-6 sm:py-10">
@@ -215,8 +333,8 @@ export default function PaymentPageClient() {
           </h1>
 
           <p className="mx-auto mt-2 max-w-[650px] text-sm leading-6 text-gray-600">
-            Mẹ vui lòng hoàn tất chuyển khoản và điền thông tin nhận hàng để
-            Zmoms tiếp tục xử lý đơn.
+            Mẹ vui lòng hoàn tất chuyển khoản và nhập đầy đủ thông tin nhận hàng
+            để Zmoms xử lý đơn hàng.
           </p>
         </section>
 
@@ -261,25 +379,108 @@ export default function PaymentPageClient() {
         </section>
 
         <div className="mt-5">
-          <PaymentQR combo={combo} phone={registrationPhone} />
+          <PaymentQR payment={payment} combo={combo} />
         </div>
 
         <div className="mt-5">
           <PaymentGuide />
         </div>
 
-        <div className="mt-5">
-          <ShippingForm
-            initialPhone={registrationPhone}
-            onSubmit={handleShippingSubmit}
-            submitting={submitting}
-          />
-        </div>
-
-        {submitError && (
-          <div className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-center text-sm font-medium leading-5 text-red-600">
-            {submitError}
+        {paymentState === "checking" && (
+          <div className="mt-5 rounded-2xl bg-gray-50 px-5 py-4 text-center">
+            <p className="text-sm font-bold text-gray-600">
+              Đang kiểm tra trạng thái thanh toán...
+            </p>
           </div>
+        )}
+
+        {paymentState === "pending" && (
+          <div className="mt-5 rounded-2xl bg-amber-50 px-5 py-4 text-center">
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-amber-100">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M12 7V12L15 14"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-amber-600"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="8.5"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="text-amber-600"
+                />
+              </svg>
+            </div>
+
+            <p className="mt-3 text-base font-extrabold text-amber-700">
+              ĐANG CHỜ THANH TOÁN
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-gray-600">
+              Mẹ vui lòng hoàn tất chuyển khoản theo thông tin bên trên. Sau khi
+              thanh toán được xác nhận, phần nhập thông tin nhận hàng sẽ được
+              hiển thị.
+            </p>
+          </div>
+        )}
+
+        {paymentState === "paid" && (
+          <>
+            <div className="mt-5 rounded-2xl bg-green-50 px-5 py-4 text-center">
+              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-green-100">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M5 12.5L9.5 17L19 7.5"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-green-600"
+                  />
+                </svg>
+              </div>
+
+              <p className="mt-3 text-base font-extrabold text-green-700">
+                🎉 CẢM ƠN MẸ!
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-gray-600">
+                Thanh toán đã được xác nhận. Mẹ vui lòng nhập thông tin nhận
+                hàng bên dưới để Zmoms xử lý đơn.
+              </p>
+            </div>
+
+            <div className="mt-5">
+              <ShippingForm
+                initialPhone={registrationPhone}
+                onSubmit={handleShippingSubmit}
+                submitting={submitting}
+              />
+            </div>
+
+            {submitError && (
+              <div className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-center text-sm font-medium leading-5 text-red-600">
+                {submitError}
+              </div>
+            )}
+          </>
         )}
 
         <p className="mx-auto mt-5 max-w-[650px] text-center text-[11px] leading-5 text-gray-400">

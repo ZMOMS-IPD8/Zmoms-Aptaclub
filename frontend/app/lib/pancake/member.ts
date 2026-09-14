@@ -5,6 +5,7 @@ type PancakeLead = {
 
   name?: string | null;
   phone_number?: string | null;
+  so_dien_thoai_dang_ky?: string | null;
 
   ho_va_ten_lien_he?: string | null | { value?: string | null };
 
@@ -19,6 +20,8 @@ type PancakeResponse = {
     [key: string]: unknown;
   };
   message?: string;
+  error?: string;
+
   [key: string]: unknown;
 };
 
@@ -45,11 +48,48 @@ function getFieldValue(value: unknown): string {
     return value.trim();
   }
 
+  if (typeof value === "number") {
+    return String(value).trim();
+  }
+
   if (value && typeof value === "object" && "value" in value) {
     return String((value as { value?: unknown }).value ?? "").trim();
   }
 
   return "";
+}
+
+async function parsePancakeResponse(
+  response: Response,
+): Promise<PancakeResponse> {
+  const text = await response.text();
+
+  if (!text.trim()) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text) as PancakeResponse;
+  } catch {
+    return {
+      message: text.slice(0, 500),
+    };
+  }
+}
+
+function getPancakeErrorMessage(
+  result: PancakeResponse,
+  response: Response,
+): string {
+  if (typeof result.message === "string" && result.message.trim()) {
+    return result.message.trim();
+  }
+
+  if (typeof result.error === "string" && result.error.trim()) {
+    return result.error.trim();
+  }
+
+  return `Pancake CRM trả lỗi HTTP ${response.status}.`;
 }
 
 export async function checkMemberByPhone(
@@ -62,17 +102,18 @@ export async function checkMemberByPhone(
   }
 
   const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
-  const apiKey = process.env.PANCAKE_API_KEY;
+
+  const apiKey = process.env.PANCAKE_CRM_API_KEY;
 
   if (!workspaceId || !apiKey) {
-    throw new Error("Chưa cấu hình Pancake API.");
+    throw new Error("Chưa cấu hình Pancake CRM API.");
   }
 
   const filter = {
     is_group: false,
     fields: [
       {
-        field_name: "phone_number",
+        field_name: "so_dien_thoai_dang_ky",
         type: "$enter_value",
         value: cleanPhone,
         is_filter_exclude: false,
@@ -94,10 +135,10 @@ export async function checkMemberByPhone(
     cache: "no-store",
   });
 
-  const result = (await response.json()) as PancakeResponse;
+  const result = await parsePancakeResponse(response);
 
   if (!response.ok) {
-    throw new Error("Không thể kiểm tra thông tin trên Pancake.");
+    throw new Error(getPancakeErrorMessage(result, response));
   }
 
   const leads = Array.isArray(result?.data?.entries) ? result.data.entries : [];
@@ -117,6 +158,11 @@ export async function checkMemberByPhone(
 
   const leadId = lead?.id || lead?.lead_id || lead?.record_id || "";
 
+  const registeredPhone =
+    getFieldValue(lead?.so_dien_thoai_dang_ky) ||
+    getFieldValue(lead?.phone_number) ||
+    cleanPhone;
+
   const fullName = getFieldValue(lead?.ho_va_ten_lien_he);
 
   if (!fullName || !leadId) {
@@ -125,7 +171,7 @@ export async function checkMemberByPhone(
       registered: false,
       lead: null,
       leadId: null,
-      phone: cleanPhone,
+      phone: registeredPhone,
       fullName: "",
     };
   }
@@ -135,7 +181,7 @@ export async function checkMemberByPhone(
     registered: true,
     lead,
     leadId: String(leadId),
-    phone: cleanPhone,
+    phone: registeredPhone,
     fullName,
   };
 }

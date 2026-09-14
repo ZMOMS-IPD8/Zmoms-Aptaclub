@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     const address = getFieldValue(result.lead.dia_chi_tam_be);
     const bathTime = getFieldValue(result.lead.thoi_gian_tam_be);
 
-    const hasBathBooking = Boolean(address && bathTime);
+    const hasBathBooking = Boolean(address || bathTime);
     const parsedTime = parseBathTime(bathTime);
 
     return NextResponse.json({

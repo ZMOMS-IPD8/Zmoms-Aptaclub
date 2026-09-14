@@ -1,25 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { getPaymentConfig } from "../data/paymentData";
+import type { PancakePaymentInfo } from "../../lib/pancake/payment";
+
+export type PaymentInfo = PancakePaymentInfo;
 
 type Props = {
+  payment: PaymentInfo;
   combo: "small" | "large";
-  phone: string;
 };
 
-export default function PaymentQR({ combo, phone }: Props) {
+export default function PaymentQR({ payment, combo }: Props) {
   const [downloadLoading, setDownloadLoading] = useState(false);
-
-  const payment = getPaymentConfig(combo);
-
-  const transferContent = `${payment.transferContent} ${phone}`.trim();
 
   const qrUrl =
     `https://vietqr.app/img?acc=${encodeURIComponent(payment.accountNumber)}` +
     `&bank=${encodeURIComponent(payment.bankCode)}` +
     `&amount=${payment.amount}` +
-    `&des=${encodeURIComponent(transferContent)}`;
+    `&des=${encodeURIComponent(payment.transferContent)}`;
 
   const formatPrice = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
 
@@ -127,11 +125,11 @@ export default function PaymentQR({ combo, phone }: Props) {
 
           <button
             type="button"
-            onClick={() => handleCopy(transferContent)}
+            onClick={() => handleCopy(payment.transferContent)}
             className="mt-1 w-full rounded-lg bg-white px-3 py-2 text-left text-sm font-extrabold text-[#12335B]"
             title="Bấm để sao chép"
           >
-            {transferContent}
+            {payment.transferContent}
           </button>
 
           <p className="mt-1.5 text-[11px] text-gray-400">

@@ -12,20 +12,28 @@ export default function SuccessPage() {
   const [discountApplied, setDiscountApplied] = useState(false);
   const [verifiedPhone, setVerifiedPhone] = useState("");
   const [verifiedReferralCode, setVerifiedReferralCode] = useState("");
+  const [creatingOrder, setCreatingOrder] = useState(false);
+  const [orderError, setOrderError] = useState("");
 
   const selectedOffer = OFFERS.find((offer) => offer.type === selected);
 
   const handleSelectOffer = (type: OfferType) => {
+    if (creatingOrder) {
+      return;
+    }
+
     setSelected(type);
+    setOrderError("");
   };
 
   const handleVerified = (phone: string, referralCode: string) => {
     setVerifiedPhone(phone);
     setVerifiedReferralCode(referralCode);
     setDiscountApplied(true);
+    setOrderError("");
   };
 
-  const handleAction = () => {
+  const handleAction = async () => {
     if (!selectedOffer) {
       return;
     }
@@ -39,13 +47,65 @@ export default function SuccessPage() {
       return;
     }
 
-    const params = new URLSearchParams({
-      phone: verifiedPhone,
-      referralCode: verifiedReferralCode,
-      combo: selected,
-    });
+    if (creatingOrder) {
+      return;
+    }
 
-    window.location.href = `/payment?${params.toString()}`;
+    setCreatingOrder(true);
+    setOrderError("");
+
+    try {
+      const response = await fetch("/api/payment/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: verifiedPhone,
+          referralCode: verifiedReferralCode,
+          combo: selected,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setOrderError(
+          data?.message || "Không thể tạo đơn hàng. Vui lòng thử lại.",
+        );
+        return;
+      }
+
+      if (!data.orderCode) {
+        setOrderError("Đã tạo đơn hàng nhưng không nhận được mã đơn hàng.");
+        return;
+      }
+
+      if (!data.payment) {
+        setOrderError(
+          "Đã tạo đơn hàng nhưng chưa lấy được thông tin thanh toán. Vui lòng thử lại.",
+        );
+        return;
+      }
+
+      sessionStorage.setItem(
+        "zmoms_payment_info",
+        JSON.stringify(data.payment),
+      );
+
+      const params = new URLSearchParams({
+        orderCode: data.orderCode,
+        phone: verifiedPhone,
+        referralCode: verifiedReferralCode,
+        combo: selected,
+      });
+
+      window.location.href = `/payment?${params.toString()}`;
+    } catch {
+      setOrderError("Không thể kết nối hệ thống. Vui lòng thử lại.");
+    } finally {
+      setCreatingOrder(false);
+    }
   };
 
   return (
@@ -70,16 +130,19 @@ export default function SuccessPage() {
               />
             </svg>
           </div>
+
           <h1 className="mt-5 px-3 text-[27px] font-extrabold leading-[1.2] text-[#12335B] sm:text-[34px]">
             🎉 CHÚC MỪNG MẸ ĐÃ TRỞ
             <br />
             THÀNH HỘI VIÊN ZMOMS!
           </h1>
+
           <p className="mx-auto mt-5 max-w-[650px] px-4 text-[15px] font-medium leading-7 text-gray-600 sm:text-[17px]">
             Đặc quyền hội viên mới đã được mở — mẹ sẵn sàng
             <br />
             săn deal chưa?
           </p>
+
           <div className="mx-auto mt-6 w-full max-w-[720px] overflow-hidden rounded-2xl bg-[#4F83C1] px-6 py-5 shadow-[0_8px_24px_rgba(79,131,193,0.2)] sm:px-10 sm:py-6">
             <p className="text-center text-[20px] font-extrabold leading-[1.3] tracking-[-0.01em] text-white sm:text-[26px]">
               Combo: “Em Bé Thông Minh”
@@ -132,22 +195,30 @@ export default function SuccessPage() {
           <ReferralVerification onVerified={handleVerified} />
         </div>
 
+        {orderError && (
+          <div className="mx-auto mt-5 max-w-[650px] rounded-xl bg-red-50 px-4 py-3 text-center text-sm font-medium text-red-600">
+            {orderError}
+          </div>
+        )}
+
         <section className="mx-auto mt-5 max-w-[650px]">
           <button
             type="button"
             onClick={handleAction}
-            disabled={!discountApplied}
+            disabled={!discountApplied || creatingOrder}
             className={`flex w-full items-center justify-center rounded-full px-6 py-3.5 text-sm font-bold text-white shadow-sm transition active:scale-[0.99] ${
-              discountApplied
+              discountApplied && !creatingOrder
                 ? "bg-[#12335B] hover:bg-[#0D2949]"
                 : "cursor-not-allowed bg-gray-300"
             }`}
           >
-            {discountApplied
-              ? selectedOffer?.type === "small"
-                ? "MUA COMBO NHỎ"
-                : "MUA COMBO LỚN"
-              : "KIỂM TRA ƯU ĐÃI ĐỂ TIẾP TỤC"}
+            {creatingOrder
+              ? "ĐANG TẠO ĐƠN..."
+              : discountApplied
+                ? selectedOffer?.type === "small"
+                  ? "MUA COMBO NHỎ"
+                  : "MUA COMBO LỚN"
+                : "KIỂM TRA ƯU ĐÃI ĐỂ TIẾP TỤC"}
           </button>
         </section>
 

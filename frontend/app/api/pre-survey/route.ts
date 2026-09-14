@@ -133,14 +133,14 @@ export async function POST(req: NextRequest) {
     }
 
     const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
-    const apiKey = process.env.PANCAKE_API_KEY;
+    const apiKey = process.env.PANCAKE_CRM_API_KEY;
 
     if (!workspaceId || !apiKey) {
       return NextResponse.json(
         {
           success: false,
           status: "CONFIG_ERROR",
-          message: "Chưa cấu hình Pancake API.",
+          message: "Chưa cấu hình Pancake CRM API.",
         },
         { status: 500 },
       );

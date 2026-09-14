@@ -20,7 +20,7 @@ export default function PaymentGuide() {
       number: "04",
       title: "Nhập thông tin nhận hàng",
       description:
-        "Sau khi chuyển khoản, mẹ điền thông tin nhận hàng bên dưới.",
+        "Sau khi hệ thống xác nhận thanh toán thành công, mẹ nhập thông tin nhận hàng bên dưới.",
     },
   ];
 
@@ -51,7 +51,8 @@ export default function PaymentGuide() {
       <div className="mt-5 rounded-xl bg-[#FFF5E3] px-4 py-3">
         <p className="text-xs leading-5 text-gray-600">
           <span className="font-bold text-[#E89512]">Lưu ý:</span> Mẹ vui lòng
-          chuyển khoản đúng số tiền và giữ lại thông báo giao dịch thành công.
+          chuyển khoản đúng số tiền và nội dung hiển thị, đồng thời giữ lại
+          thông báo giao dịch thành công.
         </p>
       </div>
     </section>

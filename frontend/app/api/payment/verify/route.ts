@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateReferralCode } from "../../../deal/data/referralCodes";
 import { checkMemberByPhone } from "../../../lib/pancake/member";
 
 type ComboType = "small" | "large";
@@ -8,6 +7,7 @@ type VerifyPaymentBody = {
   phone: string;
   referralCode: string;
   combo: ComboType;
+  orderCode: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
       .toUpperCase();
 
     const combo = body?.combo;
+    const orderCode = String(body?.orderCode ?? "").trim();
 
     if (!/^0\d{9}$/.test(phone)) {
       return NextResponse.json(
@@ -35,23 +36,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!validateReferralCode(referralCode)) {
-      return NextResponse.json(
-        {
-          success: false,
-          verified: false,
-          message: "Mã giới thiệu không hợp lệ.",
-        },
-        { status: 400 },
-      );
-    }
-
     if (combo !== "small" && combo !== "large") {
       return NextResponse.json(
         {
           success: false,
           verified: false,
           message: "Combo không hợp lệ.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!orderCode || !/^ZMOMS-\d+$/.test(orderCode)) {
+      return NextResponse.json(
+        {
+          success: false,
+          verified: false,
+          message: "Mã đơn hàng không hợp lệ.",
         },
         { status: 400 },
       );
@@ -75,28 +76,70 @@ export async function POST(req: NextRequest) {
 
     const lead = member.lead;
 
-    const orderDate = String(lead.ngay_dat_hang ?? "").trim();
+    const leadOrderCode = String(lead.ma_don_hang ?? "").trim();
 
-    if (orderDate) {
+    if (!leadOrderCode || leadOrderCode !== orderCode) {
       return NextResponse.json(
         {
           success: false,
           verified: false,
-          alreadyPurchased: true,
-          zaloUrl,
-          message: "Số điện thoại này đã đặt hàng.",
+          orderMatched: false,
+          message: "Mã đơn hàng không khớp với số điện thoại.",
         },
-        { status: 403 },
+        { status: 409 },
+      );
+    }
+
+    const paymentStatus = String(lead.trang_thai_thanh_toan ?? "").trim();
+
+    if (paymentStatus === "Đã thanh toán") {
+      return NextResponse.json({
+        success: true,
+        verified: true,
+        orderMatched: true,
+        alreadyPurchased: false,
+        paymentStatus,
+        phone,
+        fullName: member.fullName,
+        referralCode,
+        combo,
+        orderCode,
+        zaloUrl,
+      });
+    }
+
+    if (paymentStatus === "Hoàn tiền") {
+      return NextResponse.json(
+        {
+          success: false,
+          verified: false,
+          orderMatched: true,
+          alreadyPurchased: false,
+          paymentStatus,
+          phone,
+          fullName: member.fullName,
+          referralCode,
+          combo,
+          orderCode,
+          zaloUrl,
+          message:
+            "Đơn hàng trước đó đã được hoàn tiền. Mẹ vui lòng liên hệ Zalo OA để được hỗ trợ.",
+        },
+        { status: 409 },
       );
     }
 
     return NextResponse.json({
       success: true,
       verified: true,
+      orderMatched: true,
       alreadyPurchased: false,
+      paymentStatus: paymentStatus || "Chưa thanh toán",
       phone,
+      fullName: member.fullName,
       referralCode,
       combo,
+      orderCode,
       zaloUrl,
     });
   } catch (error) {

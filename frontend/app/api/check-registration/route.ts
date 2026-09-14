@@ -43,25 +43,26 @@ export async function POST(req: NextRequest) {
         success: true,
         registered: false,
         purchased: false,
+        paymentStatus: null,
         zaloUrl,
       });
     }
 
-    const tenCombo = member.lead.ten_combo;
+    const paymentStatus = String(
+      member.lead.trang_thai_thanh_toan ?? "",
+    ).trim();
 
-    const purchased =
-      tenCombo !== null &&
-      tenCombo !== undefined &&
-      String(tenCombo).trim() !== "";
+    const purchased = paymentStatus === "Đã thanh toán";
 
     return NextResponse.json({
       success: true,
       registered: true,
       purchased,
+      paymentStatus: paymentStatus || "Chưa thanh toán",
       member: {
         leadId: member.leadId,
         name: member.fullName,
-        phone: member.phone,
+        phone: member.phone || cleanPhone,
       },
       zaloUrl,
     });
@@ -71,6 +72,7 @@ export async function POST(req: NextRequest) {
         success: false,
         registered: false,
         purchased: false,
+        paymentStatus: null,
         message:
           error instanceof Error
             ? error.message

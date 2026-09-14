@@ -17,6 +17,32 @@ function getFieldValue(value: unknown): string {
   return "";
 }
 
+async function parsePancakeResponse(response: Response): Promise<{
+  success?: boolean;
+  message?: string;
+  error?: string;
+  [key: string]: unknown;
+}> {
+  const text = await response.text();
+
+  if (!text.trim()) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text) as {
+      success?: boolean;
+      message?: string;
+      error?: string;
+      [key: string]: unknown;
+    };
+  } catch {
+    return {
+      message: text.slice(0, 500),
+    };
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -86,7 +112,9 @@ export async function POST(req: NextRequest) {
     }
 
     const existingLink = getFieldValue(member.lead.link_lop_hoc);
+
     const existingTime = getFieldValue(member.lead.thoi_gian_tham_du);
+
     const existingConsent = getFieldValue(member.lead.dong_y_tham_du_lop_hoc);
 
     const hasExistingBooking =
@@ -110,14 +138,15 @@ export async function POST(req: NextRequest) {
     }
 
     const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
-    const apiKey = process.env.PANCAKE_API_KEY;
+
+    const apiKey = process.env.PANCAKE_CRM_API_KEY;
 
     if (!workspaceId || !apiKey) {
       return NextResponse.json(
         {
           success: false,
           status: "CONFIG_ERROR",
-          message: "Chưa cấu hình Pancake API.",
+          message: "Chưa cấu hình Pancake CRM API.",
         },
         { status: 500 },
       );
@@ -144,7 +173,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(updatePayload),
     });
 
-    const updateResult = await updateResponse.json();
+    const updateResult = await parsePancakeResponse(updateResponse);
 
     if (!updateResponse.ok) {
       return NextResponse.json(
@@ -153,6 +182,7 @@ export async function POST(req: NextRequest) {
           status: "UPDATE_FAILED",
           message:
             updateResult?.message ||
+            updateResult?.error ||
             "Pancake không thể cập nhật thông tin lớp học.",
         },
         { status: updateResponse.status },
