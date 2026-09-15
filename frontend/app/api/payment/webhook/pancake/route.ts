@@ -61,7 +61,7 @@ function getAmount(value: unknown): number {
   return Number.isFinite(amount) && amount >= 0 ? amount : 0;
 }
 
-function getSuccessfulHistory(
+function getSuccessfulPayment(
   histories: PancakePaymentHistory[],
 ): PancakePaymentHistory | null {
   return (
@@ -72,15 +72,11 @@ function getSuccessfulHistory(
         return false;
       }
 
-      if (
-        payment.result_code !== undefined &&
-        payment.result_code !== null &&
-        String(payment.result_code) !== "0"
-      ) {
+      if (String(payment.result_code ?? "") !== "0") {
         return false;
       }
 
-      if (payment.ipn_reply === false) {
+      if (payment.ipn_reply !== true) {
         return false;
       }
 
@@ -96,9 +92,7 @@ function getVerifiedTransfer(
     [...transferProofs].reverse().find((proof) => {
       const amount = getAmount(proof.amount);
 
-      return (
-        amount > 0 && proof.is_income !== false && proof.is_verify === true
-      );
+      return amount > 0 && proof.is_income === true && proof.is_verify === true;
     }) ?? null
   );
 }
@@ -114,23 +108,17 @@ function getPaymentInfo(order: PancakeOrder) {
 
   const amountDue = getAmount(order.money_to_collect);
 
-  const successfulHistory = getSuccessfulHistory(histories);
+  const successfulPayment = getSuccessfulPayment(histories);
   const verifiedTransfer = getVerifiedTransfer(transferProofs);
 
-  const historyAmount = getAmount(successfulHistory?.amount);
-  const transferMoney = getAmount(order.transfer_money);
+  const paymentAmount = getAmount(successfulPayment?.amount);
   const proofAmount = getAmount(verifiedTransfer?.amount);
 
-  const receivedAmount =
-    historyAmount > 0
-      ? historyAmount
-      : transferMoney > 0
-        ? transferMoney
-        : proofAmount;
+  const receivedAmount = paymentAmount > 0 ? paymentAmount : proofAmount;
 
   let paymentStatus: PaymentStatus;
 
-  if (receivedAmount <= 0) {
+  if (!successfulPayment && !verifiedTransfer) {
     paymentStatus = "Chưa thanh toán";
   } else if (amountDue > 0 && receivedAmount < amountDue) {
     paymentStatus = "Thanh toán thiếu";
@@ -139,10 +127,10 @@ function getPaymentInfo(order: PancakeOrder) {
   }
 
   const paymentDate =
-    successfulHistory?.date ??
-    successfulHistory?.inserted_at ??
-    successfulHistory?.created_at ??
-    successfulHistory?.updated_at ??
+    successfulPayment?.date ??
+    successfulPayment?.inserted_at ??
+    successfulPayment?.created_at ??
+    successfulPayment?.updated_at ??
     verifiedTransfer?.created_at ??
     verifiedTransfer?.updated_at ??
     order.updated_at ??
@@ -150,8 +138,8 @@ function getPaymentInfo(order: PancakeOrder) {
     new Date().toISOString();
 
   const transactionId =
-    successfulHistory?.transaction_id ??
-    successfulHistory?.payment_id ??
+    successfulPayment?.transaction_id ??
+    successfulPayment?.payment_id ??
     verifiedTransfer?.transaction_id ??
     verifiedTransfer?.payment_id;
 
@@ -276,14 +264,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         updated: false,
-        message: "Webhook không chứa mã đơn ZMOMS hợp lệ.",
-        orderCode,
+        orderCode: orderCode || null,
       });
     }
 
     const payment = getPaymentInfo(order);
 
-    if (payment.paymentStatus === "Chưa thanh toán") {
+    if (payment.paymentStatus !== "Đã thanh toán") {
       return NextResponse.json({
         success: true,
         updated: false,
@@ -304,12 +291,13 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           updated: false,
-          paid: payment.paymentStatus === "Đã thanh toán",
+          paid: true,
           orderCode,
           paymentStatus: payment.paymentStatus,
           amountDue: payment.amountDue,
           receivedAmount: payment.receivedAmount,
-          message: "Đã nhận thông tin thanh toán nhưng không có số điện thoại.",
+          message:
+            "Đã xác nhận thanh toán nhưng không có số điện thoại khách hàng.",
         },
         { status: 400 },
       );
@@ -322,13 +310,13 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           updated: false,
-          paid: payment.paymentStatus === "Đã thanh toán",
+          paid: true,
           orderCode,
           paymentStatus: payment.paymentStatus,
           amountDue: payment.amountDue,
           receivedAmount: payment.receivedAmount,
           message:
-            "Đã nhận thông tin thanh toán nhưng không tìm thấy Lead tương ứng.",
+            "Đã xác nhận thanh toán nhưng không tìm thấy Lead tương ứng.",
         },
         { status: 404 },
       );
@@ -345,7 +333,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       updated: true,
-      paid: payment.paymentStatus === "Đã thanh toán",
+      paid: true,
       orderCode,
       paymentStatus: payment.paymentStatus,
       amountDue: payment.amountDue,
@@ -363,7 +351,7 @@ export async function POST(req: NextRequest) {
         message:
           error instanceof Error
             ? error.message
-            : "Không thể xử lý webhook thanh toán.",
+            : "Không thể xử lý webhook đơn hàng.",
       },
       { status: 500 },
     );
