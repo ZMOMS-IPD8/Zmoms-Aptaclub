@@ -25,25 +25,20 @@ type PancakeTransferProof = {
 type PancakeOrder = {
   id?: string | number;
   bill_phone_number?: string;
-
   inserted_at?: string;
   updated_at?: string;
-
   total_price?: number | string;
   money_to_collect?: number | string;
   prepaid?: number | string;
   transfer_money?: number | string;
-
   cash?: number | string;
   cod?: number | string;
-
   charged_by_card?: number | string;
   charged_by_fundiin?: number | string;
   charged_by_kredivo?: number | string;
   charged_by_momo?: number | string;
   charged_by_qrpay?: number | string;
   charged_by_vnpay?: number | string;
-
   payment_purchase_histories?: PancakePaymentHistory[];
   transfer_proofs?: PancakeTransferProof[];
 };
@@ -68,19 +63,11 @@ function getSuccessfulPayment(
     [...histories].reverse().find((payment) => {
       const amount = getAmount(payment.amount);
 
-      if (amount <= 0) {
-        return false;
-      }
-
-      if (String(payment.result_code ?? "") !== "0") {
-        return false;
-      }
-
-      if (payment.ipn_reply !== true) {
-        return false;
-      }
-
-      return true;
+      return (
+        amount > 0 &&
+        String(payment.result_code ?? "") === "0" &&
+        payment.ipn_reply === true
+      );
     }) ?? null
   );
 }
@@ -152,19 +139,35 @@ function getPaymentInfo(order: PancakeOrder) {
       transactionId !== undefined && transactionId !== null
         ? String(transactionId)
         : "",
+    successfulPayment,
+    verifiedTransfer,
   };
 }
 
 async function findLeadByPhone(phone: string) {
-  const baseUrl =
+  const configuredBaseUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.APP_URL ||
     process.env.VERCEL_URL ||
     "";
 
-  const url = baseUrl.startsWith("http")
-    ? `${baseUrl}/api/member/check`
+  let baseUrl = configuredBaseUrl.trim();
+
+  if (
+    baseUrl &&
+    !baseUrl.startsWith("http://") &&
+    !baseUrl.startsWith("https://")
+  ) {
+    baseUrl = `https://${baseUrl}`;
+  }
+
+  const url = baseUrl
+    ? `${baseUrl.replace(/\/$/, "")}/api/member/check`
     : `http://localhost:${process.env.PORT || 3000}/api/member/check`;
+
+  console.log("[WEBHOOK] FIND LEAD");
+  console.log("[WEBHOOK] Phone:", phone);
+  console.log("[WEBHOOK] Member check URL:", url);
 
   const response = await fetch(url, {
     method: "POST",
@@ -177,11 +180,15 @@ async function findLeadByPhone(phone: string) {
     cache: "no-store",
   });
 
+  console.log("[WEBHOOK] Member check status:", response.status);
+
+  const data = await response.json().catch(() => null);
+
+  console.log("[WEBHOOK] Member check response:", data);
+
   if (!response.ok) {
     return null;
   }
-
-  const data = await response.json();
 
   if (!data?.success || !data?.registered || !data?.leadId) {
     return null;
@@ -201,6 +208,13 @@ async function updateLeadPayment(
 ) {
   const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
   const apiKey = process.env.PANCAKE_CRM_API_KEY;
+
+  console.log("[WEBHOOK] UPDATE LEAD");
+  console.log("[WEBHOOK] Lead ID:", leadId);
+  console.log("[WEBHOOK] Order code:", orderCode);
+  console.log("[WEBHOOK] Payment status:", paymentStatus);
+  console.log("[WEBHOOK] Payment date:", paymentDate);
+  console.log("[WEBHOOK] Transaction ID:", transactionId || null);
 
   if (!workspaceId || !apiKey) {
     throw new Error("Thiếu PANCAKE_WORKSPACE_ID hoặc PANCAKE_CRM_API_KEY.");
@@ -229,7 +243,11 @@ async function updateLeadPayment(
     },
   );
 
+  console.log("[WEBHOOK] CRM update status:", response.status);
+
   const data = await response.json().catch(() => null);
+
+  console.log("[WEBHOOK] CRM update response:", data);
 
   if (!response.ok) {
     throw new Error(
@@ -243,12 +261,22 @@ async function updateLeadPayment(
 }
 
 export async function POST(req: NextRequest) {
+  console.log("========== PANCAKE WEBHOOK START ==========");
+
   try {
     const payload = (await req.json()) as PancakeWebhookPayload;
+
+    console.log("[WEBHOOK] Payload nhận được:");
+    console.log(JSON.stringify(payload, null, 2));
+
+    console.log("[WEBHOOK] success:", payload?.success);
+    console.log("[WEBHOOK] Có data:", Boolean(payload?.data));
 
     const order = payload.data;
 
     if (!order) {
+      console.log("[WEBHOOK] ERROR: Không có payload.data");
+
       return NextResponse.json(
         {
           success: false,
@@ -258,9 +286,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log("[WEBHOOK] Order nhận được:");
+    console.log(JSON.stringify(order, null, 2));
+
     const orderCode = String(order.id ?? "").trim();
 
+    console.log("[WEBHOOK] Order code:", orderCode);
+
     if (!orderCode || !/^ZMOMS-\d+$/.test(orderCode)) {
+      console.log("[WEBHOOK] Order code không hợp lệ:", orderCode);
+
       return NextResponse.json({
         success: true,
         updated: false,
@@ -268,9 +303,43 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    console.log("[WEBHOOK] Order code hợp lệ");
+
+    console.log(
+      "[WEBHOOK] Payment purchase histories:",
+      JSON.stringify(order.payment_purchase_histories ?? [], null, 2),
+    );
+
+    console.log(
+      "[WEBHOOK] Transfer proofs:",
+      JSON.stringify(order.transfer_proofs ?? [], null, 2),
+    );
+
     const payment = getPaymentInfo(order);
 
+    console.log("[WEBHOOK] PAYMENT INFO");
+    console.log("[WEBHOOK] Amount due:", payment.amountDue);
+    console.log("[WEBHOOK] Received amount:", payment.receivedAmount);
+    console.log("[WEBHOOK] Payment status:", payment.paymentStatus);
+    console.log("[WEBHOOK] Payment date:", payment.paymentDate);
+    console.log("[WEBHOOK] Transaction ID:", payment.transactionId || null);
+
+    console.log(
+      "[WEBHOOK] Successful payment:",
+      JSON.stringify(payment.successfulPayment, null, 2),
+    );
+
+    console.log(
+      "[WEBHOOK] Verified transfer:",
+      JSON.stringify(payment.verifiedTransfer, null, 2),
+    );
+
     if (payment.paymentStatus !== "Đã thanh toán") {
+      console.log(
+        "[WEBHOOK] Chưa cập nhật CRM vì trạng thái:",
+        payment.paymentStatus,
+      );
+
       return NextResponse.json({
         success: true,
         updated: false,
@@ -282,11 +351,19 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    console.log("[WEBHOOK] XÁC NHẬN ĐƠN ĐÃ THANH TOÁN");
+
     const phone = String(order.bill_phone_number ?? "")
       .trim()
       .replace(/\D/g, "");
 
+    console.log("[WEBHOOK] Phone:", phone);
+
     if (!phone) {
+      console.log(
+        "[WEBHOOK] ERROR: Đã thanh toán nhưng không có số điện thoại",
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -305,7 +382,11 @@ export async function POST(req: NextRequest) {
 
     const member = await findLeadByPhone(phone);
 
+    console.log("[WEBHOOK] Member result:", member);
+
     if (!member) {
+      console.log("[WEBHOOK] ERROR: Không tìm thấy Lead tương ứng với phone");
+
       return NextResponse.json(
         {
           success: false,
@@ -322,13 +403,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await updateLeadPayment(
+    console.log("[WEBHOOK] Lead ID tìm được:", member.leadId);
+
+    const updateResult = await updateLeadPayment(
       member.leadId,
       orderCode,
       payment.paymentStatus,
       payment.paymentDate,
       payment.transactionId,
     );
+
+    console.log("[WEBHOOK] UPDATE CRM THÀNH CÔNG");
+    console.log("[WEBHOOK] CRM result:", JSON.stringify(updateResult, null, 2));
+
+    console.log("========== PANCAKE WEBHOOK SUCCESS ==========");
 
     return NextResponse.json({
       success: true,
@@ -344,6 +432,13 @@ export async function POST(req: NextRequest) {
       phone,
     });
   } catch (error) {
+    console.log("========== PANCAKE WEBHOOK ERROR ==========");
+
+    console.log(
+      "[WEBHOOK] Error:",
+      error instanceof Error ? error.message : error,
+    );
+
     return NextResponse.json(
       {
         success: false,
