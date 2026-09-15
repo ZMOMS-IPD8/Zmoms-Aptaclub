@@ -102,7 +102,6 @@ export async function checkMemberByPhone(
   }
 
   const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
-
   const apiKey = process.env.PANCAKE_CRM_API_KEY;
 
   if (!workspaceId || !apiKey) {

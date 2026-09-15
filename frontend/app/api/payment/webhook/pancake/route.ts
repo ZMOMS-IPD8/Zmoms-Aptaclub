@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkMemberByPhone } from "../../../../lib/pancake/member";
 
 type PancakePaymentHistory = {
+  type?: string;
   amount?: number | string;
   result_code?: string | number;
   ipn_reply?: boolean;
@@ -149,64 +151,6 @@ function getPaymentInfo(order: PancakeOrder) {
   };
 }
 
-async function findLeadByPhone(phone: string) {
-  const configuredBaseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.APP_URL ||
-    process.env.VERCEL_URL ||
-    "";
-
-  let baseUrl = configuredBaseUrl.trim();
-
-  if (
-    baseUrl &&
-    !baseUrl.startsWith("http://") &&
-    !baseUrl.startsWith("https://")
-  ) {
-    baseUrl = `https://${baseUrl}`;
-  }
-
-  const url = baseUrl
-    ? `${baseUrl.replace(/\/$/, "")}/api/member/check`
-    : `http://localhost:${process.env.PORT || 3000}/api/member/check`;
-
-  console.log("[WEBHOOK] FIND LEAD");
-  console.log("[WEBHOOK] Phone:", phone);
-  console.log("[WEBHOOK] Member check URL:", url);
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      phone,
-    }),
-    cache: "no-store",
-  });
-
-  console.log("[WEBHOOK] Member check status:", response.status);
-
-  const data = await response.json().catch(() => null);
-
-  console.log(
-    "[WEBHOOK] Member check response:",
-    JSON.stringify(data, null, 2),
-  );
-
-  if (!response.ok) {
-    return null;
-  }
-
-  if (!data?.success || !data?.registered || !data?.leadId) {
-    return null;
-  }
-
-  return {
-    leadId: String(data.leadId),
-  };
-}
-
 async function updateLeadPayment(
   leadId: string,
   orderCode: string,
@@ -286,9 +230,6 @@ export async function POST(req: NextRequest) {
 
     const order = body?.data ?? body;
 
-    console.log("[WEBHOOK] Payload có data:", Boolean(body?.data));
-    console.log("[WEBHOOK] Có order:", Boolean(order));
-
     if (!order || typeof order !== "object") {
       console.log("[WEBHOOK] ERROR: Payload không phải Order object");
 
@@ -319,7 +260,6 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("[WEBHOOK] Order code hợp lệ:", orderCode);
-
     console.log("[WEBHOOK] Bill phone:", order.bill_phone_number ?? null);
     console.log("[WEBHOOK] Bill name:", order.bill_full_name ?? null);
     console.log("[WEBHOOK] Money to collect:", order.money_to_collect ?? null);
@@ -417,11 +357,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const member = await findLeadByPhone(phone);
+    console.log("[WEBHOOK] CHECK MEMBER BY PHONE");
 
-    console.log("[WEBHOOK] Member result:", JSON.stringify(member, null, 2));
+    const member = await checkMemberByPhone(phone);
 
-    if (!member) {
+    console.log(
+      "[WEBHOOK] Member result:",
+      JSON.stringify(
+        {
+          registered: member.registered,
+          leadId: member.leadId,
+          phone: member.phone,
+          fullName: member.fullName,
+        },
+        null,
+        2,
+      ),
+    );
+
+    if (!member.registered || !member.leadId) {
       console.log("[WEBHOOK] ERROR: Không tìm thấy Lead tương ứng");
 
       return NextResponse.json(
@@ -434,6 +388,7 @@ export async function POST(req: NextRequest) {
           paymentStatus: payment.paymentStatus,
           amountDue: payment.amountDue,
           receivedAmount: payment.receivedAmount,
+          phone,
           message:
             "Đã xác nhận thanh toán nhưng không tìm thấy Lead tương ứng.",
         },
