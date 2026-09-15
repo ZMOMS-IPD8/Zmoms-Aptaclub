@@ -4,6 +4,8 @@ type PancakePaymentHistory = {
   amount?: number | string;
   result_code?: string | number;
   ipn_reply?: boolean;
+  date?: string;
+  inserted_at?: string;
   created_at?: string;
   updated_at?: string;
   payment_id?: string | number;
@@ -22,45 +24,36 @@ type PancakeTransferProof = {
 
 type PancakeOrder = {
   id?: string | number;
-  custom_id?: string;
   bill_phone_number?: string;
+
+  inserted_at?: string;
   updated_at?: string;
-  created_at?: string;
-  cod?: number | string;
+
+  total_price?: number | string;
+  money_to_collect?: number | string;
+  prepaid?: number | string;
   transfer_money?: number | string;
+
+  cash?: number | string;
+  cod?: number | string;
+
+  charged_by_card?: number | string;
+  charged_by_fundiin?: number | string;
+  charged_by_kredivo?: number | string;
+  charged_by_momo?: number | string;
+  charged_by_qrpay?: number | string;
+  charged_by_vnpay?: number | string;
+
   payment_purchase_histories?: PancakePaymentHistory[];
   transfer_proofs?: PancakeTransferProof[];
 };
 
 type PancakeWebhookPayload = {
-  order?: PancakeOrder;
-  data?: PancakeOrder | { order?: PancakeOrder };
-  orders?: PancakeOrder[];
+  data?: PancakeOrder;
+  success?: boolean;
 };
 
 type PaymentStatus = "Chưa thanh toán" | "Thanh toán thiếu" | "Đã thanh toán";
-
-function getOrder(payload: PancakeWebhookPayload): PancakeOrder | null {
-  if (payload.order) {
-    return payload.order;
-  }
-
-  if (payload.data) {
-    if ("custom_id" in payload.data) {
-      return payload.data;
-    }
-
-    if ("order" in payload.data && payload.data.order) {
-      return payload.data.order;
-    }
-  }
-
-  if (Array.isArray(payload.orders) && payload.orders.length > 0) {
-    return payload.orders[0];
-  }
-
-  return null;
-}
 
 function getAmount(value: unknown): number {
   const amount = Number(value ?? 0);
@@ -82,7 +75,7 @@ function getSuccessfulHistory(
       if (
         payment.result_code !== undefined &&
         payment.result_code !== null &&
-        String(payment.result_code) !== "00"
+        String(payment.result_code) !== "0"
       ) {
         return false;
       }
@@ -119,20 +112,20 @@ function getPaymentInfo(order: PancakeOrder) {
     ? order.transfer_proofs
     : [];
 
-  const amountDue = getAmount(order.cod);
-  const transferMoney = getAmount(order.transfer_money);
+  const amountDue = getAmount(order.money_to_collect);
 
   const successfulHistory = getSuccessfulHistory(histories);
   const verifiedTransfer = getVerifiedTransfer(transferProofs);
 
   const historyAmount = getAmount(successfulHistory?.amount);
+  const transferMoney = getAmount(order.transfer_money);
   const proofAmount = getAmount(verifiedTransfer?.amount);
 
   const receivedAmount =
-    transferMoney > 0
-      ? transferMoney
-      : historyAmount > 0
-        ? historyAmount
+    historyAmount > 0
+      ? historyAmount
+      : transferMoney > 0
+        ? transferMoney
         : proofAmount;
 
   let paymentStatus: PaymentStatus;
@@ -146,12 +139,14 @@ function getPaymentInfo(order: PancakeOrder) {
   }
 
   const paymentDate =
+    successfulHistory?.date ??
+    successfulHistory?.inserted_at ??
     successfulHistory?.created_at ??
     successfulHistory?.updated_at ??
     verifiedTransfer?.created_at ??
     verifiedTransfer?.updated_at ??
     order.updated_at ??
-    order.created_at ??
+    order.inserted_at ??
     new Date().toISOString();
 
   const transactionId =
@@ -205,7 +200,7 @@ async function findLeadByPhone(phone: string) {
   }
 
   return {
-    leadId: data.leadId,
+    leadId: String(data.leadId),
   };
 }
 
@@ -228,6 +223,7 @@ async function updateLeadPayment(
     {
       method: "PUT",
       headers: {
+        Accept: "application/json",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -262,25 +258,26 @@ export async function POST(req: NextRequest) {
   try {
     const payload = (await req.json()) as PancakeWebhookPayload;
 
-    const order = getOrder(payload);
+    const order = payload.data;
 
     if (!order) {
       return NextResponse.json(
         {
           success: false,
-          message: "Không tìm thấy Order trong webhook.",
+          message: "Không tìm thấy data Order trong webhook.",
         },
         { status: 400 },
       );
     }
 
-    const orderCode = String(order.custom_id ?? "").trim();
+    const orderCode = String(order.id ?? "").trim();
 
     if (!orderCode || !/^ZMOMS-\d+$/.test(orderCode)) {
       return NextResponse.json({
         success: true,
         updated: false,
         message: "Webhook không chứa mã đơn ZMOMS hợp lệ.",
+        orderCode,
       });
     }
 
@@ -292,7 +289,7 @@ export async function POST(req: NextRequest) {
         updated: false,
         paid: false,
         orderCode,
-        paymentStatus: "Chưa thanh toán",
+        paymentStatus: payment.paymentStatus,
         amountDue: payment.amountDue,
         receivedAmount: payment.receivedAmount,
       });
@@ -355,6 +352,8 @@ export async function POST(req: NextRequest) {
       receivedAmount: payment.receivedAmount,
       paymentDate: payment.paymentDate,
       transactionId: payment.transactionId || null,
+      leadId: member.leadId,
+      phone,
     });
   } catch (error) {
     return NextResponse.json(
