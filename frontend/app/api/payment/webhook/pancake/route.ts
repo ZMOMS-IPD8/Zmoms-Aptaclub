@@ -189,18 +189,20 @@ async function updateLeadPayment(
     JSON.stringify(updatePayload, null, 2),
   );
 
-  const response = await fetch(
-    `https://pos.pages.fm/api/v1/workspaces/${workspaceId}/leads?api_key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "PUT",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(updatePayload),
-      cache: "no-store",
+  const updateUrl =
+    `https://crm.pancake.vn/api/workspaces/` +
+    `${workspaceId}/lead/records` +
+    `?api_key=${encodeURIComponent(apiKey)}`;
+
+  const response = await fetch(updateUrl, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify(updatePayload),
+    cache: "no-store",
+  });
 
   console.log("[WEBHOOK] CRM update status:", response.status);
 
