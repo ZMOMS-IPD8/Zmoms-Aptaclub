@@ -128,6 +128,7 @@ export default function PaymentPageClient() {
     }
 
     let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
     const verifyPaymentAccess = async () => {
       try {
@@ -169,17 +170,14 @@ export default function PaymentPageClient() {
 
         setAccessStatus("granted");
 
-        const isPaid =
-          result.paid === true ||
-          result.paymentStatus === "paid" ||
-          result.payment_status === "paid" ||
-          result.status === "paid" ||
-          result.data?.paid === true ||
-          result.data?.paymentStatus === "paid" ||
-          result.data?.payment_status === "paid" ||
-          result.data?.status === "paid";
+        const isPaid = result.paymentStatus === "Đã thanh toán";
 
         setPaymentState(isPaid ? "paid" : "pending");
+
+        if (isPaid && intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
       } catch {
         if (!cancelled) {
           setAccessStatus("denied");
@@ -190,8 +188,16 @@ export default function PaymentPageClient() {
 
     verifyPaymentAccess();
 
+    intervalId = setInterval(() => {
+      verifyPaymentAccess();
+    }, 5000);
+
     return () => {
       cancelled = true;
+
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
   }, [hasAccessParams, registrationPhone, referralCode, combo, orderCode]);
 
@@ -412,6 +418,7 @@ export default function PaymentPageClient() {
                   strokeLinejoin="round"
                   className="text-amber-600"
                 />
+
                 <circle
                   cx="12"
                   cy="12"
