@@ -15,6 +15,7 @@ type Ward = {
 type ShippingData = {
   fullName: string;
   phone: string;
+  country: string;
   province: string;
   commune: string;
   address: string;
@@ -201,6 +202,7 @@ export default function ShippingForm({
     await onSubmit({
       fullName: fullName.trim(),
       phone: phone.trim(),
+      country: "Việt Nam",
       province,
       commune,
       address: address.trim(),
@@ -353,7 +355,7 @@ export default function ShippingForm({
             </p>
 
             <p className="mt-1 text-sm leading-5 text-[#12335B]">
-              {address}, {commune}, {province}
+              {address}, {commune}, {province}, Việt Nam
             </p>
           </div>
         )}

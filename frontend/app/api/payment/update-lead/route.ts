@@ -293,9 +293,9 @@ export async function POST(req: NextRequest) {
 
     const updatePayload: Record<string, string> = {
       id: leadId,
-      name: cleanFullName,
+      ten_nguoi_nhan: cleanFullName,
       so_dien_thoai_giao_hang: cleanShippingPhone,
-      Address: cleanAddress,
+      full_address: cleanAddress,
       province: cleanProvince,
       commune: cleanCommune,
       country: cleanCountry,

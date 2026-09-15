@@ -16,6 +16,7 @@ function formatPrice(value: number) {
 type ShippingData = {
   fullName: string;
   phone: string;
+  country: string;
   province: string;
   commune: string;
   address: string;
@@ -209,6 +210,15 @@ export default function PaymentPageClient() {
     setSubmitError("");
     setSubmitting(true);
 
+    const fullAddress = [
+      data.address.trim(),
+      data.commune.trim(),
+      data.province.trim(),
+      data.country.trim(),
+    ]
+      .filter(Boolean)
+      .join(", ");
+
     try {
       const response = await fetch("/api/payment/update-lead", {
         method: "POST",
@@ -219,10 +229,10 @@ export default function PaymentPageClient() {
           registrationPhone,
           shippingPhone: data.phone,
           fullName: data.fullName,
-          Address: data.address,
+          Address: fullAddress,
           province: data.province,
           commune: data.commune,
-          country: "Việt Nam",
+          country: data.country,
           maNguoiBan: referralCode,
           combo,
           orderCode,
