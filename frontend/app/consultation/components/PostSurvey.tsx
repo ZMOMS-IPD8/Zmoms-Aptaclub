@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Member } from "../page";
+import type { Member } from "../types/consultation";
 import PostSurveyGroupChoice from "./PostSurveyGroupChoice";
 
 type Props = {

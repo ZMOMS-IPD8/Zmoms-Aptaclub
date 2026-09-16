@@ -1,3 +1,5 @@
+"use client";
+
 import {
   formatClassDate,
   type ClassSession,
@@ -18,6 +20,19 @@ type Props = {
 const CLASS_TITLE =
   'Buổi tư vấn online: "CÁCH XỬ TRÍ CÁC TÌNH HUỐNG THƯỜNG GẶP KHI NUÔI CON BẰNG SỮA MẸ"';
 
+function getSessionTimestamp(session: ClassSession): number {
+  const [year, month, day] = session.date.split("-").map(Number);
+  const [hour, minute] = session.time.split(":").map(Number);
+
+  return Date.UTC(year, month - 1, day, hour - 7, minute, 0);
+}
+
+function getUpcomingSessions(sessions: ClassSession[]) {
+  const now = Date.now();
+
+  return sessions.filter((session) => getSessionTimestamp(session) > now);
+}
+
 export default function ClassSessionList({
   sessions,
   region,
@@ -29,6 +44,7 @@ export default function ClassSessionList({
   error,
 }: Props) {
   const regionName = region === "north" ? "MIỀN BẮC" : "MIỀN NAM";
+  const upcomingSessions = getUpcomingSessions(sessions);
 
   return (
     <section className="rounded-3xl bg-white p-5 shadow-sm sm:p-7">
@@ -45,7 +61,7 @@ export default function ClassSessionList({
         gian phù hợp.
       </p>
 
-      {sessions.length === 0 ? (
+      {upcomingSessions.length === 0 ? (
         <div className="mt-5 rounded-2xl bg-[#F5F9FC] p-5 text-center">
           <p className="text-sm font-medium text-gray-600">
             Hiện chưa có lớp học phù hợp. Mẹ vui lòng quay lại sau.
@@ -53,7 +69,7 @@ export default function ClassSessionList({
         </div>
       ) : (
         <div className="mt-5 space-y-3">
-          {sessions.map((session) => {
+          {upcomingSessions.map((session) => {
             const selected = selectedId === session.id;
 
             return (
@@ -106,7 +122,7 @@ export default function ClassSessionList({
       <button
         type="button"
         onClick={onConfirm}
-        disabled={!selectedId || loading || sessions.length === 0}
+        disabled={!selectedId || loading || upcomingSessions.length === 0}
         className="mt-6 h-12 w-full rounded-xl bg-[#12335B] text-sm font-bold text-white hover:bg-[#0D2949] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? "ĐANG ĐĂNG KÝ..." : "XÁC NHẬN THAM DỰ"}

@@ -1,20 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkMemberByPhone } from "../../lib/pancake/member";
+import {
+  getFieldValue,
+  normalizeClassDateTime,
+} from "../../lib/pancake/classTime";
+import {
+  CLASS_SESSIONS,
+  formatClassDateTime,
+} from "../../consultation/data/classSessions";
 
-function getFieldValue(value: unknown): string {
-  if (typeof value === "string") {
-    return value.trim();
+function getPancakeMessage(result: unknown): string {
+  if (!result || typeof result !== "object") {
+    return "Pancake không thể lưu thông tin khảo sát.";
   }
 
-  if (typeof value === "number") {
-    return String(value).trim();
+  const data = result as {
+    message?: unknown;
+    error?: unknown;
+  };
+
+  if (typeof data.message === "string" && data.message.trim()) {
+    return data.message.trim();
   }
 
-  if (value && typeof value === "object" && "value" in value) {
-    return String((value as { value?: unknown }).value ?? "").trim();
+  if (typeof data.error === "string" && data.error.trim()) {
+    return data.error.trim();
   }
 
-  return "";
+  return "Pancake không thể lưu thông tin khảo sát.";
 }
 
 export async function POST(req: NextRequest) {
@@ -100,6 +113,58 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const classId = String(survey?.booking?.classId ?? "").trim();
+    const classTitle = String(survey?.booking?.classTitle ?? "").trim();
+    const classDate = String(survey?.booking?.date ?? "").trim();
+    const classTime = String(survey?.booking?.time ?? "").trim();
+    const classLink = String(survey?.booking?.linkLopHoc ?? "").trim();
+
+    if (!classId || !classTitle || !classDate || !classTime || !classLink) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "CLASS_REQUIRED",
+          message: "Mẹ vui lòng chọn buổi tư vấn trước khi thực hiện khảo sát.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const selectedClass = CLASS_SESSIONS.find(
+      (session) =>
+        session.id === classId &&
+        session.date === classDate &&
+        session.time === classTime &&
+        session.meetUrl === classLink,
+    );
+
+    if (!selectedClass) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "INVALID_CLASS",
+          message:
+            "Buổi tư vấn không hợp lệ hoặc không còn tồn tại. Mẹ vui lòng chọn lại.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const normalizedClassDateTime = normalizeClassDateTime(
+      formatClassDateTime(selectedClass),
+    );
+
+    if (!normalizedClassDateTime) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "INVALID_CLASS_TIME",
+          message: "Thông tin thời gian lớp học không hợp lệ.",
+        },
+        { status: 400 },
+      );
+    }
+
     const thuTuCon = String(survey?.thongTinChung?.thuTuCon ?? "").trim();
 
     const duKienSinh = String(survey?.thongTinChung?.duKienSinh ?? "").trim();
@@ -150,7 +215,7 @@ export async function POST(req: NextRequest) {
       "===== KHẢO SÁT TRƯỚC KHI THAM GIA =====",
       "",
       `Họ tên: ${survey?.member?.name ?? ""}`,
-      `Số điện thoại: ${survey?.member?.phone ?? ""}`,
+      `Số điện thoại: ${cleanPhone}`,
       "",
       "I. THÔNG TIN CHUNG",
       `Mẹ đang mang thai con thứ mấy: ${thuTuCon}`,
@@ -167,10 +232,10 @@ export async function POST(req: NextRequest) {
       `Mẹ biết về IPD8 qua đâu: ${survey?.nhuCau?.nhanBietIpd8 ?? ""}`,
       "",
       "IV. THÔNG TIN BUỔI HỌC",
-      `Lớp học: ${survey?.booking?.classTitle ?? ""}`,
-      `Mã lớp: ${survey?.booking?.classId ?? ""}`,
-      `Ngày: ${survey?.booking?.date ?? ""}`,
-      `Giờ: ${survey?.booking?.time ?? ""}`,
+      `Lớp học: ${selectedClass.id}`,
+      `Tên lớp: ${classTitle}`,
+      `Ngày: ${selectedClass.date}`,
+      `Giờ: ${selectedClass.time}`,
       "",
       `Thời gian gửi: ${survey?.submittedAt ?? ""}`,
     ].join("\n");
@@ -198,15 +263,26 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(updatePayload),
     });
 
-    const result = await response.json();
+    const responseText = await response.text();
+
+    let result: unknown = null;
+
+    if (responseText.trim()) {
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        result = responseText;
+      }
+    }
 
     if (!response.ok) {
       return NextResponse.json(
         {
           success: false,
           status: "UPDATE_FAILED",
-          message:
-            result?.message || "Pancake không thể lưu thông tin khảo sát.",
+          message: getPancakeMessage(result),
+          pancakeStatus: response.status,
+          pancakeResponse: result,
         },
         { status: response.status },
       );
@@ -217,6 +293,14 @@ export async function POST(req: NextRequest) {
       status: "SURVEY_SAVED",
       message: "Đã lưu khảo sát thành công.",
       leadId,
+      booking: {
+        classId: selectedClass.id,
+        classTitle,
+        date: selectedClass.date,
+        time: selectedClass.time,
+        linkLopHoc: selectedClass.meetUrl,
+        thoiGianThamDu: normalizedClassDateTime,
+      },
     });
   } catch (error) {
     return NextResponse.json(

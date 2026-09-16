@@ -1,22 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkMemberByPhone } from "../../lib/pancake/member";
+import {
+  getFieldValue,
+  isClassStarted,
+  normalizeClassDateTime,
+} from "../../lib/pancake/classTime";
 
 const VALID_GROUPS = ["Nhóm A", "Nhóm B", "Nhóm C"];
 
-function getFieldValue(value: unknown): string {
-  if (typeof value === "string") {
-    return value.trim();
+function convertPancakeBookingTime(value: string): string {
+  const normalized = normalizeClassDateTime(value);
+
+  if (!normalized) {
+    return value;
   }
 
-  if (typeof value === "number") {
-    return String(value).trim();
+  const match = normalized.match(
+    /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/,
+  );
+
+  if (!match) {
+    return value;
   }
 
-  if (value && typeof value === "object" && "value" in value) {
-    return String((value as { value?: unknown }).value ?? "").trim();
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+
+  const timestamp = Date.UTC(year, month - 1, day, hour, minute, second);
+
+  const adjusted = new Date(timestamp + 7 * 60 * 60 * 1000);
+
+  return (
+    `${adjusted.getUTCFullYear().toString().padStart(4, "0")}-` +
+    `${(adjusted.getUTCMonth() + 1).toString().padStart(2, "0")}-` +
+    `${adjusted.getUTCDate().toString().padStart(2, "0")} ` +
+    `${adjusted.getUTCHours().toString().padStart(2, "0")}:` +
+    `${adjusted.getUTCMinutes().toString().padStart(2, "0")}:` +
+    `${adjusted.getUTCSeconds().toString().padStart(2, "0")}`
+  );
+}
+
+async function parsePancakeResponse(response: Response): Promise<{
+  success?: boolean;
+  message?: string;
+  error?: string;
+  [key: string]: unknown;
+}> {
+  const text = await response.text();
+
+  if (!text.trim()) {
+    return {};
   }
 
-  return "";
+  try {
+    return JSON.parse(text) as {
+      success?: boolean;
+      message?: string;
+      error?: string;
+      [key: string]: unknown;
+    };
+  } catch {
+    return {
+      message: text.slice(0, 500),
+    };
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -124,6 +175,40 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const existingLink = getFieldValue(member.lead.link_lop_hoc);
+
+    const pancakeExistingTime = getFieldValue(member.lead.thoi_gian_tham_du);
+
+    const existingTime = convertPancakeBookingTime(pancakeExistingTime);
+
+    const hasBooking = Boolean(existingLink) && Boolean(pancakeExistingTime);
+
+    if (!hasBooking) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "BOOKING_REQUIRED",
+          message: "Mẹ cần đăng ký buổi tư vấn trước khi đánh giá buổi học.",
+        },
+        { status: 403 },
+      );
+    }
+
+    const existingPreSurvey = getFieldValue(
+      member.lead.truoc_khi_tham_gia_lop_hoc,
+    );
+
+    if (!existingPreSurvey) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "PRE_SURVEY_REQUIRED",
+          message: "Mẹ cần hoàn thành khảo sát trước khi tham gia lớp học.",
+        },
+        { status: 403 },
+      );
+    }
+
     const existingPostRating = getFieldValue(member.lead.post_rating);
 
     if (existingPostRating) {
@@ -135,6 +220,17 @@ export async function POST(req: NextRequest) {
             "Mẹ đã hoàn thành đánh giá trước đó. Mẹ không cần thực hiện lại.",
         },
         { status: 409 },
+      );
+    }
+
+    if (!isClassStarted(existingTime)) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "CLASS_NOT_STARTED",
+          message: "Mẹ chỉ có thể đánh giá sau khi buổi tư vấn bắt đầu.",
+        },
+        { status: 403 },
       );
     }
 
@@ -167,10 +263,8 @@ export async function POST(req: NextRequest) {
       feedback || "Không có",
       "",
       "III. THÔNG TIN BUỔI HỌC",
-      `Thời gian tham dự: ${
-        survey?.booking?.thoiGianThamDu || "Không có thông tin"
-      }`,
-      `Link lớp học: ${survey?.booking?.linkLopHoc || "Không có thông tin"}`,
+      `Thời gian tham dự: ${existingTime}`,
+      `Link lớp học: ${existingLink}`,
       "",
       `Thời gian gửi: ${survey?.submittedAt ?? ""}`,
     ].join("\n");
@@ -197,7 +291,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(updatePayload),
     });
 
-    const result = await response.json();
+    const result = await parsePancakeResponse(response);
 
     if (!response.ok) {
       return NextResponse.json(
@@ -205,7 +299,9 @@ export async function POST(req: NextRequest) {
           success: false,
           status: "UPDATE_FAILED",
           message:
-            result?.message || "Pancake không thể lưu thông tin đánh giá.",
+            result?.message ||
+            result?.error ||
+            "Pancake không thể lưu thông tin đánh giá.",
         },
         { status: response.status },
       );

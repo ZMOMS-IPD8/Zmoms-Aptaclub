@@ -1,21 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import type { Member } from "../page";
+import type { Member } from "../types/consultation";
 import type { ClassSession } from "../data/classSessions";
 
 type Props = {
   member: Member;
   selectedClass: ClassSession;
-  onComplete: () => void;
-  onSkip: () => void;
+  onComplete: () => void | Promise<void>;
 };
 
 export default function PreSurvey({
   member,
   selectedClass,
   onComplete,
-  onSkip,
 }: Props) {
   const [thuTuCon, setThuTuCon] = useState("");
   const [duKienSinh, setDuKienSinh] = useState("");
@@ -48,7 +46,14 @@ export default function PreSurvey({
   const isNaturalBirth = duKienSinh === "Sinh thường";
 
   const handleSubmit = async () => {
+    if (loading) return;
+
     setError("");
+
+    if (!selectedClass) {
+      setError("Mẹ vui lòng chọn buổi tư vấn trước.");
+      return;
+    }
 
     if (!thuTuCon || !duKienSinh) {
       setError("Mẹ vui lòng hoàn thành các thông tin cơ bản.");
@@ -77,6 +82,7 @@ export default function PreSurvey({
           'Buổi tư vấn online: "CÁCH XỬ TRÍ CÁC TÌNH HUỐNG THƯỜNG GẶP KHI NUÔI CON BẰNG SỮA MẸ"',
         date: selectedClass.date,
         time: selectedClass.time,
+        linkLopHoc: selectedClass.meetUrl,
       },
 
       thongTinChung: {
@@ -134,12 +140,10 @@ export default function PreSurvey({
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
 
       if (response.status === 409) {
-        setError(
-          data?.message || "Mẹ đã hoàn thành khảo sát trước buổi học trước đó.",
-        );
+        setError(data?.message || "Mẹ đã hoàn thành khảo sát trước buổi học.");
         return;
       }
 
@@ -150,7 +154,12 @@ export default function PreSurvey({
         return;
       }
 
-      onComplete();
+      if (data?.status !== "SURVEY_SAVED") {
+        setError("Không xác nhận được kết quả lưu khảo sát.");
+        return;
+      }
+
+      await onComplete();
     } catch {
       setError("Không thể gửi khảo sát lúc này. Mẹ vui lòng thử lại.");
     } finally {
@@ -342,16 +351,7 @@ export default function PreSurvey({
         disabled={loading}
         className="mt-6 h-12 w-full rounded-xl bg-[#12335B] text-sm font-bold text-white hover:bg-[#0D2949] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {loading ? "ĐANG GỬI..." : "HOÀN TẤT KHẢO SÁT"}
-      </button>
-
-      <button
-        type="button"
-        onClick={onSkip}
-        disabled={loading}
-        className="mt-3 h-10 w-full text-sm font-bold text-gray-500 hover:text-[#12335B]"
-      >
-        Bỏ qua khảo sát
+        {loading ? "ĐANG XỬ LÝ..." : "HOÀN TẤT KHẢO SÁT"}
       </button>
     </section>
   );

@@ -1,4 +1,4 @@
-import type { Member } from "../page";
+import type { Member } from "../types/consultation";
 
 type Props = {
   member: Member;

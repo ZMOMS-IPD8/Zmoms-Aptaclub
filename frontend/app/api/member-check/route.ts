@@ -1,20 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkMemberByPhone } from "../../lib/pancake/member";
+import {
+  getFieldValue,
+  normalizeClassDateTime,
+} from "../../lib/pancake/classTime";
 
-function getFieldValue(value: unknown): string {
-  if (typeof value === "string") {
-    return value.trim();
+function shiftHours(value: string, hours: number): string {
+  const normalized = normalizeClassDateTime(value);
+
+  if (!normalized) {
+    return value;
   }
 
-  if (typeof value === "number") {
-    return String(value).trim();
+  const match = normalized.match(
+    /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/,
+  );
+
+  if (!match) {
+    return value;
   }
 
-  if (value && typeof value === "object" && "value" in value) {
-    return String((value as { value?: unknown }).value ?? "").trim();
-  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
 
-  return "";
+  const timestamp = Date.UTC(year, month - 1, day, hour, minute, second);
+
+  const adjusted = new Date(timestamp + hours * 60 * 60 * 1000);
+
+  const result =
+    `${adjusted.getUTCFullYear().toString().padStart(4, "0")}-` +
+    `${(adjusted.getUTCMonth() + 1).toString().padStart(2, "0")}-` +
+    `${adjusted.getUTCDate().toString().padStart(2, "0")} ` +
+    `${adjusted.getUTCHours().toString().padStart(2, "0")}:` +
+    `${adjusted.getUTCMinutes().toString().padStart(2, "0")}:` +
+    `${adjusted.getUTCSeconds().toString().padStart(2, "0")}`;
+
+  return result;
+}
+
+function convertPancakeBookingTime(value: string): string {
+  return shiftHours(value, 7);
 }
 
 export async function POST(req: NextRequest) {
@@ -67,27 +96,54 @@ export async function POST(req: NextRequest) {
     const lead = member.lead;
 
     const memberPhone = getFieldValue(lead.phone_number) || member.phone;
+
     const province = getFieldValue(lead.thanh_pho);
+
     const dueDate = getFieldValue(lead.ngay_du_sinh_hoac_ngay_sinh_cua_be);
 
     const linkLopHoc = getFieldValue(lead.link_lop_hoc);
-    const thoiGianThamDu = getFieldValue(lead.thoi_gian_tham_du);
-    const dongYThamDu = getFieldValue(lead.dong_y_tham_du_lop_hoc);
+
+    const pancakeThoiGianThamDu = getFieldValue(lead.thoi_gian_tham_du);
+
+    const thoiGianThamDu = pancakeThoiGianThamDu
+      ? convertPancakeBookingTime(pancakeThoiGianThamDu)
+      : "";
 
     const preSurvey = getFieldValue(lead.truoc_khi_tham_gia_lop_hoc);
 
     const postRating = getFieldValue(lead.post_rating);
+    const hasBooking = Boolean(linkLopHoc) && Boolean(thoiGianThamDu);
 
     const hasPreSurvey = Boolean(preSurvey);
     const hasPostSurvey = Boolean(postRating);
 
-    const hasBooking =
-      dongYThamDu === "Có" && Boolean(linkLopHoc) && Boolean(thoiGianThamDu);
+    let consultationStatus:
+      | "NEED_CLASS"
+      | "NEED_PRE_SURVEY"
+      | "BOOKED"
+      | "POST_SURVEY_COMPLETED";
+
+    if (!hasBooking) {
+      consultationStatus = "NEED_CLASS";
+    } else if (!hasPreSurvey) {
+      consultationStatus = "NEED_PRE_SURVEY";
+    } else if (hasPostSurvey) {
+      consultationStatus = "POST_SURVEY_COMPLETED";
+    } else {
+      consultationStatus = "BOOKED";
+    }
 
     return NextResponse.json({
       success: true,
       registered: true,
       status: "MEMBER_FOUND",
+      consultationStatus,
+
+      debug: {
+        pancakeThoiGianThamDu,
+        thoiGianThamDu,
+      },
+
       member: {
         leadId: member.leadId,
         name: member.fullName,

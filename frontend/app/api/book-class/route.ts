@@ -1,46 +1,87 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkMemberByPhone } from "../../lib/pancake/member";
+import {
+  getFieldValue,
+  normalizeClassDateTime,
+} from "../../lib/pancake/classTime";
+import {
+  CLASS_SESSIONS,
+  formatClassDateTime,
+} from "../../consultation/data/classSessions";
 
-function getFieldValue(value: unknown): string {
-  if (typeof value === "string") {
-    return value.trim();
+function shiftHours(value: string, hours: number): string {
+  const normalized = normalizeClassDateTime(value);
+
+  if (!normalized) {
+    return value;
   }
 
-  if (typeof value === "number") {
-    return String(value).trim();
+  const match = normalized.match(
+    /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/,
+  );
+
+  if (!match) {
+    return value;
   }
 
-  if (value && typeof value === "object" && "value" in value) {
-    return String((value as { value?: unknown }).value ?? "").trim();
-  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
 
-  return "";
+  const timestamp = Date.UTC(year, month - 1, day, hour, minute, second);
+
+  const adjusted = new Date(timestamp + hours * 60 * 60 * 1000);
+
+  return (
+    `${adjusted.getUTCFullYear().toString().padStart(4, "0")}-` +
+    `${(adjusted.getUTCMonth() + 1).toString().padStart(2, "0")}-` +
+    `${adjusted.getUTCDate().toString().padStart(2, "0")} ` +
+    `${adjusted.getUTCHours().toString().padStart(2, "0")}:` +
+    `${adjusted.getUTCMinutes().toString().padStart(2, "0")}:` +
+    `${adjusted.getUTCSeconds().toString().padStart(2, "0")}`
+  );
 }
 
-async function parsePancakeResponse(response: Response): Promise<{
-  success?: boolean;
-  message?: string;
-  error?: string;
-  [key: string]: unknown;
-}> {
+function convertVietnamTimeToPancake(value: string): string {
+  return shiftHours(value, -7);
+}
+
+async function parsePancakeResponse(response: Response): Promise<unknown> {
   const text = await response.text();
 
   if (!text.trim()) {
-    return {};
+    return null;
   }
 
   try {
-    return JSON.parse(text) as {
-      success?: boolean;
-      message?: string;
-      error?: string;
-      [key: string]: unknown;
-    };
+    return JSON.parse(text);
   } catch {
-    return {
-      message: text.slice(0, 500),
-    };
+    return text;
   }
+}
+
+function getPancakeMessage(result: unknown): string {
+  if (!result || typeof result !== "object") {
+    return "Pancake không thể cập nhật thông tin lớp học.";
+  }
+
+  const data = result as {
+    message?: unknown;
+    error?: unknown;
+  };
+
+  if (typeof data.message === "string" && data.message.trim()) {
+    return data.message.trim();
+  }
+
+  if (typeof data.error === "string" && data.error.trim()) {
+    return data.error.trim();
+  }
+
+  return "Pancake không thể cập nhật thông tin lớp học.";
 }
 
 export async function POST(req: NextRequest) {
@@ -49,7 +90,7 @@ export async function POST(req: NextRequest) {
 
     const phone = String(body?.phone ?? "").trim();
     const linkLopHoc = String(body?.linkLopHoc ?? "").trim();
-    const thoiGianThamDu = String(body?.thoiGianThamDu ?? "").trim();
+    const rawThoiGianThamDu = String(body?.thoiGianThamDu ?? "").trim();
 
     if (!phone) {
       return NextResponse.json(
@@ -73,7 +114,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!thoiGianThamDu) {
+    if (!rawThoiGianThamDu) {
       return NextResponse.json(
         {
           success: false,
@@ -97,6 +138,38 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const thoiGianThamDu = normalizeClassDateTime(rawThoiGianThamDu);
+
+    if (!thoiGianThamDu) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "INVALID_CLASS_TIME",
+          message:
+            "Thời gian tham dự không đúng định dạng. Vui lòng chọn lại buổi học.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const selectedClass = CLASS_SESSIONS.find(
+      (session) =>
+        session.meetUrl === linkLopHoc &&
+        formatClassDateTime(session) === thoiGianThamDu,
+    );
+
+    if (!selectedClass) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "INVALID_CLASS",
+          message:
+            "Buổi tư vấn không hợp lệ hoặc không còn tồn tại. Mẹ vui lòng chọn lại.",
+        },
+        { status: 400 },
+      );
+    }
+
     const member = await checkMemberByPhone(cleanPhone);
 
     if (!member.registered || !member.leadId || !member.lead) {
@@ -112,17 +185,13 @@ export async function POST(req: NextRequest) {
     }
 
     const existingLink = getFieldValue(member.lead.link_lop_hoc);
-
     const existingTime = getFieldValue(member.lead.thoi_gian_tham_du);
 
-    const existingConsent = getFieldValue(member.lead.dong_y_tham_du_lop_hoc);
-
-    const hasExistingBooking =
-      existingConsent === "Có" &&
-      Boolean(existingLink) &&
-      Boolean(existingTime);
+    const hasExistingBooking = Boolean(existingLink) && Boolean(existingTime);
 
     if (hasExistingBooking) {
+      const existingTimeVietnam = convertPancakeBookingTime(existingTime);
+
       return NextResponse.json(
         {
           success: false,
@@ -130,15 +199,29 @@ export async function POST(req: NextRequest) {
           message: "Mẹ đã đăng ký lớp học trước đó. Mẹ không cần đăng ký lại.",
           booking: {
             linkLopHoc: existingLink,
-            thoiGianThamDu: existingTime,
+            thoiGianThamDu: existingTimeVietnam,
           },
         },
         { status: 409 },
       );
     }
 
-    const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
+    const existingPreSurvey = getFieldValue(
+      member.lead.truoc_khi_tham_gia_lop_hoc,
+    );
 
+    if (!existingPreSurvey) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "PRE_SURVEY_REQUIRED",
+          message: "Mẹ cần hoàn thành khảo sát trước khi đăng ký buổi tư vấn.",
+        },
+        { status: 403 },
+      );
+    }
+
+    const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
     const apiKey = process.env.PANCAKE_CRM_API_KEY;
 
     if (!workspaceId || !apiKey) {
@@ -152,10 +235,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const pancakeThoiGianThamDu = convertVietnamTimeToPancake(thoiGianThamDu);
+
     const updatePayload = {
       id: member.leadId,
-      link_lop_hoc: linkLopHoc,
-      thoi_gian_tham_du: thoiGianThamDu,
+      link_lop_hoc: selectedClass.meetUrl,
+      thoi_gian_tham_du: pancakeThoiGianThamDu,
       dong_y_tham_du_lop_hoc: "Có",
     };
 
@@ -180,10 +265,9 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           status: "UPDATE_FAILED",
-          message:
-            updateResult?.message ||
-            updateResult?.error ||
-            "Pancake không thể cập nhật thông tin lớp học.",
+          message: getPancakeMessage(updateResult),
+          pancakeStatus: updateResponse.status,
+          pancakeResponse: updateResult,
         },
         { status: updateResponse.status },
       );
@@ -195,8 +279,9 @@ export async function POST(req: NextRequest) {
       message: "Đăng ký lớp học thành công.",
       booking: {
         phone: cleanPhone,
-        linkLopHoc,
-        thoiGianThamDu,
+        classId: selectedClass.id,
+        linkLopHoc: selectedClass.meetUrl,
+        thoiGianThamDu: thoiGianThamDu,
         dongYThamDuLopHoc: "Có",
       },
       leadId: member.leadId,
@@ -214,4 +299,8 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+function convertPancakeBookingTime(value: string): string {
+  return shiftHours(value, 7);
 }
