@@ -102,23 +102,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (
-      paymentStatus === "Chưa thanh toán" ||
-      paymentStatus === "Thanh toán thiếu"
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          pendingPayment: true,
-          paymentStatus,
-          orderCode: existingOrderCode || null,
-          message:
-            "Số điện thoại này đang có đơn hàng chờ thanh toán. Mẹ vui lòng tiếp tục thanh toán đơn hàng hiện tại.",
-        },
-        { status: 409 },
-      );
-    }
-
     const orderCode = `ZMOMS-${Date.now()}`;
 
     const fullName = String(lead.name ?? "").trim() || "Khách hàng ZMOMS";

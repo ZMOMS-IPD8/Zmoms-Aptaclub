@@ -185,6 +185,7 @@ export async function POST(req: NextRequest) {
     }
 
     const existingLink = getFieldValue(member.lead.link_lop_hoc);
+
     const existingTime = getFieldValue(member.lead.thoi_gian_tham_du);
 
     const hasExistingBooking = Boolean(existingLink) && Boolean(existingTime);
@@ -222,6 +223,7 @@ export async function POST(req: NextRequest) {
     }
 
     const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
+
     const apiKey = process.env.PANCAKE_CRM_API_KEY;
 
     if (!workspaceId || !apiKey) {
@@ -237,10 +239,13 @@ export async function POST(req: NextRequest) {
 
     const pancakeThoiGianThamDu = convertVietnamTimeToPancake(thoiGianThamDu);
 
+    const registrationTime = new Date().toISOString();
+
     const updatePayload = {
       id: member.leadId,
       link_lop_hoc: selectedClass.meetUrl,
       thoi_gian_tham_du: pancakeThoiGianThamDu,
+      thoi_gian_dang_ky_lop: registrationTime,
       dong_y_tham_du_lop_hoc: "Có",
     };
 
@@ -282,6 +287,7 @@ export async function POST(req: NextRequest) {
         classId: selectedClass.id,
         linkLopHoc: selectedClass.meetUrl,
         thoiGianThamDu: thoiGianThamDu,
+        thoiGianDangKyLop: registrationTime,
         dongYThamDuLopHoc: "Có",
       },
       leadId: member.leadId,

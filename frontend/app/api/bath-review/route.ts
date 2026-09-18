@@ -17,6 +17,39 @@ function getFieldValue(value: unknown): string {
   return "";
 }
 
+function normalizeBathDateTime(value: string): string {
+  return value
+    .trim()
+    .replace("T", " ")
+    .replace(/\s+/g, " ")
+    .replace(/Z$/, "")
+    .replace(/([+-]\d{2}:\d{2})$/, "")
+    .replace(/\.\d+$/, "");
+}
+
+function isBathTimePassed(value: string): boolean {
+  const normalized = normalizeBathDateTime(value);
+
+  const match = normalized.match(
+    /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/,
+  );
+
+  if (!match) {
+    return false;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6] ?? "0");
+
+  const bookingTimestamp = Date.UTC(year, month - 1, day, hour, minute, second);
+
+  return Date.now() >= bookingTimestamp;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -74,6 +107,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!notes) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "INVALID_BATH_NOTE",
+          message: "Mẹ vui lòng nhập ghi chú sau buổi chăm sóc.",
+        },
+        { status: 400 },
+      );
+    }
+
     const member = await checkMemberByPhone(cleanPhone);
 
     if (!member.registered || !member.lead) {
@@ -98,9 +142,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const address = getFieldValue(member.lead.dia_chi_tam_be);
+    const bathTime = getFieldValue(member.lead.thoi_gian_tam_be);
+
+    if (!address || !bathTime) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "BATH_BOOKING_NOT_FOUND",
+          message: "Không tìm thấy thông tin buổi chăm sóc tại nhà.",
+        },
+        { status: 404 },
+      );
+    }
+
+    if (!isBathTimePassed(bathTime)) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "BATH_TIME_NOT_PASSED",
+          message:
+            "Chưa đến thời gian chăm sóc. Mẹ vui lòng cập nhật sau khi hoàn tất buổi chăm sóc.",
+        },
+        { status: 403 },
+      );
+    }
+
     const existingStaffName = getFieldValue(member.lead.ten_nhan_vien_tam_be);
 
-    if (existingStaffName) {
+    const existingBathNote = getFieldValue(member.lead.ghi_chu_tam_be);
+
+    if (existingStaffName && existingBathNote) {
       return NextResponse.json(
         {
           success: false,

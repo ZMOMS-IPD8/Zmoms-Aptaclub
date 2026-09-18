@@ -17,6 +17,79 @@ function getFieldValue(value: unknown): string {
   return "";
 }
 
+function shiftHours(value: string, hours: number): string {
+  const match = value.match(
+    /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/,
+  );
+
+  if (!match) {
+    return value;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+
+  const timestamp = Date.UTC(year, month - 1, day, hour, minute, second);
+
+  const adjusted = new Date(timestamp + hours * 60 * 60 * 1000);
+
+  return (
+    `${adjusted.getUTCFullYear().toString().padStart(4, "0")}-` +
+    `${(adjusted.getUTCMonth() + 1).toString().padStart(2, "0")}-` +
+    `${adjusted.getUTCDate().toString().padStart(2, "0")} ` +
+    `${adjusted.getUTCHours().toString().padStart(2, "0")}:` +
+    `${adjusted.getUTCMinutes().toString().padStart(2, "0")}:` +
+    `${adjusted.getUTCSeconds().toString().padStart(2, "0")}`
+  );
+}
+
+function convertVietnamTimeToPancake(value: string): string {
+  return shiftHours(value, -7);
+}
+
+function convertPancakeTimeToVietnam(value: string): string {
+  return shiftHours(value, 7);
+}
+
+async function parsePancakeResponse(response: Response): Promise<unknown> {
+  const text = await response.text();
+
+  if (!text.trim()) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function getPancakeMessage(result: unknown): string {
+  if (!result || typeof result !== "object") {
+    return "Pancake không thể cập nhật thông tin đăng ký chăm sóc.";
+  }
+
+  const data = result as {
+    message?: unknown;
+    error?: unknown;
+  };
+
+  if (typeof data.message === "string" && data.message.trim()) {
+    return data.message.trim();
+  }
+
+  if (typeof data.error === "string" && data.error.trim()) {
+    return data.error.trim();
+  }
+
+  return "Pancake không thể cập nhật thông tin đăng ký chăm sóc.";
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -111,6 +184,7 @@ export async function POST(req: NextRequest) {
     }
 
     const existingAddress = getFieldValue(member.lead.dia_chi_tam_be);
+
     const existingTime = getFieldValue(member.lead.thoi_gian_tam_be);
 
     const hasBathBooking = Boolean(existingAddress && existingTime);
@@ -122,12 +196,18 @@ export async function POST(req: NextRequest) {
           status: "BATH_ALREADY_BOOKED",
           message:
             "Mẹ đã đăng ký buổi tư vấn và chăm sóc tại nhà trước đó. Mẹ không cần đăng ký lại.",
+          booking: {
+            address: existingAddress,
+            date: existingTime.substring(0, 10),
+            time: convertPancakeTimeToVietnam(existingTime).substring(11, 16),
+          },
         },
         { status: 409 },
       );
     }
 
     const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
+
     const apiKey = process.env.PANCAKE_CRM_API_KEY;
 
     if (!workspaceId || !apiKey) {
@@ -141,12 +221,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const thoiGianTamBe = `${date} ${time}:00`;
+    // date + time là giờ Việt Nam
+    const vietnamBathTime = `${date} ${time}:00`;
+
+    // Pancake lưu theo UTC -> trừ 7 giờ
+    const pancakeBathTime = convertVietnamTimeToPancake(vietnamBathTime);
+
+    // Thời điểm mẹ thực hiện đăng ký
+    const registrationTime = new Date().toISOString();
 
     const updatePayload = {
       id: leadId,
       dia_chi_tam_be: address,
-      thoi_gian_tam_be: thoiGianTamBe,
+      thoi_gian_tam_be: pancakeBathTime,
+      thoi_gian_dang_ky_tam_be: registrationTime,
     };
 
     const updateUrl =
@@ -163,16 +251,16 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(updatePayload),
     });
 
-    const result = await response.json();
+    const result = await parsePancakeResponse(response);
 
     if (!response.ok) {
       return NextResponse.json(
         {
           success: false,
           status: "UPDATE_FAILED",
-          message:
-            result?.message ||
-            "Pancake không thể lưu thông tin đăng ký chăm sóc.",
+          message: getPancakeMessage(result),
+          pancakeStatus: response.status,
+          pancakeResponse: result,
         },
         { status: response.status },
       );

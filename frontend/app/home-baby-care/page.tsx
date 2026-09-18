@@ -19,6 +19,8 @@ export type BathBookingData = {
   address: string;
   date: string;
   time: string;
+  hasReview?: boolean;
+  canReview?: boolean;
 };
 
 type Step = "phone" | "booking" | "success" | "review";
@@ -86,6 +88,8 @@ export default function HomeBabyCarePage() {
           address: String(data.bathBooking.address ?? ""),
           date: String(data.bathBooking.date ?? ""),
           time: String(data.bathBooking.time ?? ""),
+          hasReview: Boolean(data.bathBooking.hasReview),
+          canReview: Boolean(data.bathBooking.canReview),
         });
 
         setStep("success");
@@ -101,12 +105,26 @@ export default function HomeBabyCarePage() {
   };
 
   const handleBookingComplete = (data: BathBookingData) => {
-    setBooking(data);
+    setBooking({
+      ...data,
+      hasReview: false,
+      canReview: false,
+    });
     setError("");
     setStep("success");
   };
 
   const handleReviewComplete = () => {
+    setBooking((current) =>
+      current
+        ? {
+            ...current,
+            hasReview: true,
+            canReview: false,
+          }
+        : current,
+    );
+
     setError("");
     setStep("success");
   };

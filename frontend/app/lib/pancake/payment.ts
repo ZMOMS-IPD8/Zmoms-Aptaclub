@@ -75,6 +75,7 @@ function replacePaymentNote(template: string, phone: string, fullName: string) {
 
 export async function getPancakePaymentInfo(
   trackingLink: string,
+  customTransferContent?: string,
 ): Promise<PancakePaymentInfo> {
   if (!trackingLink) {
     throw new Error("Không tìm thấy tracking link của đơn hàng.");
@@ -134,7 +135,14 @@ export async function getPancakePaymentInfo(
 
   const paymentNote = String(data.payment_note ?? "").trim();
 
-  const transferContent = replacePaymentNote(paymentNote, phone, fullName);
+  const pancakeTransferContent = replacePaymentNote(
+    paymentNote,
+    phone,
+    fullName,
+  );
+
+  const transferContent =
+    String(customTransferContent ?? "").trim() || pancakeTransferContent;
 
   const amount = Number(amountFromHtml || data.cod || 0);
 

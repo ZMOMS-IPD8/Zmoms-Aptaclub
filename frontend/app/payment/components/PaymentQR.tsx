@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import type { PancakePaymentInfo } from "../../lib/pancake/payment";
 
 export type PaymentInfo = PancakePaymentInfo;
@@ -11,8 +10,6 @@ type Props = {
 };
 
 export default function PaymentQR({ payment, combo }: Props) {
-  const [downloadLoading, setDownloadLoading] = useState(false);
-
   const qrUrl =
     `https://vietqr.app/img?acc=${encodeURIComponent(payment.accountNumber)}` +
     `&bank=${encodeURIComponent(payment.bankCode)}` +
@@ -20,36 +17,6 @@ export default function PaymentQR({ payment, combo }: Props) {
     `&des=${encodeURIComponent(payment.transferContent)}`;
 
   const formatPrice = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
-
-  const handleDownload = async () => {
-    try {
-      setDownloadLoading(true);
-
-      const response = await fetch(qrUrl);
-
-      if (!response.ok) {
-        throw new Error("Không thể tải QR");
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-
-      link.href = url;
-      link.download = `QR-${combo}.png`;
-
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      URL.revokeObjectURL(url);
-    } catch {
-      window.open(qrUrl, "_blank");
-    } finally {
-      setDownloadLoading(false);
-    }
-  };
 
   const handleCopy = async (value: string) => {
     try {
@@ -73,7 +40,7 @@ export default function PaymentQR({ payment, combo }: Props) {
         </div>
 
         <p className="mt-4 text-xs leading-5 text-gray-500">
-          Mẹ có thể lưu mã QR về điện thoại để thuận tiện chuyển khoản.
+          Mẹ có thể sử dụng mã QR để thuận tiện chuyển khoản.
         </p>
       </div>
 
@@ -137,15 +104,6 @@ export default function PaymentQR({ payment, combo }: Props) {
           </p>
         </div>
       </div>
-
-      <button
-        type="button"
-        onClick={handleDownload}
-        disabled={downloadLoading}
-        className="mt-4 flex w-full items-center justify-center rounded-full border border-[#12335B] px-5 py-3 text-sm font-bold text-[#12335B] transition hover:bg-[#12335B] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {downloadLoading ? "ĐANG TẢI..." : "TẢI MÃ QR"}
-      </button>
     </section>
   );
 }

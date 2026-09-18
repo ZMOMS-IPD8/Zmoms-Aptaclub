@@ -117,7 +117,9 @@ export async function createPancakeOrder({
     throw new Error("Số điện thoại không hợp lệ.");
   }
 
-  const paymentReference = `${config.paymentCode} ${cleanPhone}`;
+  const cleanFullName = String(fullName).trim() || "Khách hàng ZMOMS";
+
+  const paymentReference = `${config.name} ${cleanFullName} ${cleanPhone}`;
 
   const url =
     `https://pos.pages.fm/api/v1/shops/` +
@@ -125,7 +127,7 @@ export async function createPancakeOrder({
     `?api_key=${encodeURIComponent(apiKey)}`;
 
   const payload = {
-    bill_full_name: fullName || "Khách hàng ZMOMS",
+    bill_full_name: cleanFullName,
     bill_phone_number: cleanPhone,
     items: [
       {
@@ -174,12 +176,16 @@ export async function createPancakeOrder({
     );
   }
 
-  const payment: PancakePaymentInfo = await getPancakePaymentInfo(trackingLink);
+  const payment: PancakePaymentInfo = await getPancakePaymentInfo(
+    trackingLink,
+    paymentReference,
+  );
 
   return {
     result,
     orderCode,
     combo,
+    comboName: config.name,
     amount: payment.amount,
     productId: config.productId,
     variationId: config.variationId,

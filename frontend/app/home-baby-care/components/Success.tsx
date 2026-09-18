@@ -27,13 +27,11 @@ export default function Success({ member, booking, onReview }: Props) {
       <div className="mt-5 rounded-2xl bg-[#F5F9FC] p-4 text-left">
         <div className="border-b border-[#E3EAF0] pb-3">
           <p className="text-xs text-gray-500">Họ tên</p>
-
           <p className="mt-1 text-sm font-bold text-[#12335B]">{member.name}</p>
         </div>
 
         <div className="border-b border-[#E3EAF0] py-3">
           <p className="text-xs text-gray-500">Dịch vụ</p>
-
           <p className="mt-1 text-sm font-bold leading-6 text-[#12335B]">
             01 buổi tư vấn và chăm sóc chuyên sâu Mẹ và Bé tại nhà (45 phút)
           </p>
@@ -41,7 +39,6 @@ export default function Success({ member, booking, onReview }: Props) {
 
         <div className="border-b border-[#E3EAF0] py-3">
           <p className="text-xs text-gray-500">Địa chỉ</p>
-
           <p className="mt-1 text-sm font-bold leading-6 text-[#12335B]">
             {booking.address}
           </p>
@@ -49,7 +46,6 @@ export default function Success({ member, booking, onReview }: Props) {
 
         <div className="border-b border-[#E3EAF0] py-3">
           <p className="text-xs text-gray-500">Ngày dự kiến</p>
-
           <p className="mt-1 text-sm font-bold text-[#12335B]">
             {formatDate(booking.date)}
           </p>
@@ -57,7 +53,6 @@ export default function Success({ member, booking, onReview }: Props) {
 
         <div className="pt-3">
           <p className="text-xs text-gray-500">Thời gian dự kiến</p>
-
           <p className="mt-1 text-sm font-bold text-[#12335B]">
             {booking.time}
           </p>
@@ -76,13 +71,15 @@ export default function Success({ member, booking, onReview }: Props) {
         </p>
       </div>
 
-      <button
-        type="button"
-        onClick={onReview}
-        className="mt-5 h-12 w-full rounded-xl border border-[#12335B] text-sm font-bold text-[#12335B] transition hover:bg-[#F5F9FC]"
-      >
-        CẬP NHẬT SAU BUỔI CHĂM SÓC
-      </button>
+      {booking.canReview && !booking.hasReview && (
+        <button
+          type="button"
+          onClick={onReview}
+          className="mt-5 h-12 w-full rounded-xl border border-[#12335B] text-sm font-bold text-[#12335B] transition hover:bg-[#F5F9FC]"
+        >
+          CẬP NHẬT SAU BUỔI CHĂM SÓC
+        </button>
+      )}
     </section>
   );
 }
