@@ -71,11 +71,7 @@ export default function EbookPage() {
               ✓
             </div>
 
-            <p className="mt-5 text-xs font-bold uppercase tracking-wide text-[#18A8DC]">
-              QL 3
-            </p>
-
-            <h1 className="mt-2 text-xl font-extrabold leading-tight text-[#12335B] sm:text-2xl">
+            <h1 className="mt-5 text-xl font-extrabold leading-tight text-[#12335B] sm:text-2xl">
               MẸ ĐÃ ĐĂNG KÝ NHẬN EBOOK
             </h1>
 
@@ -111,24 +107,19 @@ export default function EbookPage() {
 
   return (
     <main className="min-h-screen bg-[#F5F9FC] px-4 py-8 sm:px-6 sm:py-12">
-      <div className="mx-auto flex min-h-[calc(100vh-64px)] w-full max-w-[560px] items-center justify-center">
+      <div className="mx-auto w-full max-w-[560px]">
+        <div className="mb-6 text-center">
+          <h1 className="text-2xl font-extrabold leading-tight text-[#12335B] sm:text-3xl">
+            PHƯƠNG PHÁP TRÒ CHUYỆN GIÚP KÍCH HOẠT NÃO BỘ KHI BÉ BÚ MẸ
+          </h1>
+
+          <p className="mt-2 text-sm text-gray-500">
+            QUYỀN LỢI 3 DÀNH CHO HỘI VIÊN CLB
+          </p>
+        </div>
+
         <section className="w-full rounded-3xl bg-white p-5 shadow-sm sm:p-8">
-          <div className="text-center">
-            <p className="text-xs font-bold uppercase tracking-wide text-[#18A8DC]">
-              QL 3
-            </p>
-
-            <h1 className="mt-2 text-2xl font-extrabold leading-tight text-[#12335B] sm:text-3xl">
-              PHƯƠNG PHÁP TRÒ CHUYỆN GIÚP KÍCH HOẠT NÃO BỘ KHI BÉ BÚ MẸ
-            </h1>
-
-            <p className="mx-auto mt-3 max-w-[440px] text-sm leading-6 text-gray-500">
-              Ebook IPD8 chia sẻ phương pháp trò chuyện giúp mẹ tăng cường tương
-              tác và đồng hành cùng bé trong thời gian bú mẹ.
-            </p>
-          </div>
-
-          <div className="mt-6 overflow-hidden rounded-2xl bg-gradient-to-br from-[#E8F8FD] to-[#F5F9FC] p-5">
+          <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#E8F8FD] to-[#F5F9FC] p-5">
             <div className="flex min-h-[180px] items-center justify-center rounded-xl border border-white/80 bg-white/70 px-5 py-6 text-center">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-[#18A8DC]">
