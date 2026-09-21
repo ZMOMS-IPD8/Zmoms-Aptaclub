@@ -19,9 +19,9 @@ export const CLASS_SESSIONS: ClassSession[] = [
   {
     id: "south-02",
     region: "south",
-    date: "2026-09-16",
+    date: "2026-09-25",
     time: "20:00",
-    meetUrl: "https://meet.google.com/bnb-zqxx-vtf",
+    meetUrl: "https://meet.google.com/rsy-ceiu-eps",
   },
 ];
 
