@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkMemberByPhone } from "../../../../lib/pancake/member";
+import { PANCAKE_POS_CONFIG } from "../../../../lib/pancake/pos";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -25,35 +26,41 @@ type TransferProof = {
   updated_at?: string;
 };
 
+type PancakeItem = {
+  quantity?: number;
+  product_id?: string;
+  variation_id?: string;
+  variation_info?: {
+    name?: string;
+    id?: string;
+    retail_price?: number | string;
+  };
+};
+
 type PancakeOrder = {
   id?: string | number;
   bill_phone_number?: string;
   bill_full_name?: string;
+
   money_to_collect?: number | string;
   transfer_money?: number | string;
   total_price?: number | string;
   total_discount?: number | string;
+
   prepaid?: number | string;
   cash?: number | string;
   cod?: number | string;
+
   payment_purchase_histories?: PaymentHistory[];
   transfer_proofs?: TransferProof[];
+
+  items?: PancakeItem[];
+
   inserted_at?: string;
   updated_at?: string;
 };
 
 type PaymentStatus = "Chưa thanh toán" | "Thanh toán thiếu" | "Đã thanh toán";
-
-const COMBO_CONFIG = {
-  small: {
-    name: "Combo nhỏ",
-    price: 349000,
-  },
-  large: {
-    name: "Combo lớn",
-    price: 829000,
-  },
-} as const;
 
 function toNumber(value: unknown): number {
   const number = Number(value ?? 0);
@@ -89,14 +96,39 @@ function getExpectedAmount(order: PancakeOrder): number {
 }
 
 function getCombo(order: PancakeOrder) {
-  const expectedAmount = getExpectedAmount(order);
+  const items = Array.isArray(order.items) ? order.items : [];
 
-  if (expectedAmount === COMBO_CONFIG.small.price) {
-    return COMBO_CONFIG.small;
-  }
+  for (const item of items) {
+    const variationId = String(item.variation_id ?? "").trim();
+    const productId = String(item.product_id ?? "").trim();
 
-  if (expectedAmount === COMBO_CONFIG.large.price) {
-    return COMBO_CONFIG.large;
+    if (variationId && variationId === PANCAKE_POS_CONFIG.small.variationId) {
+      return PANCAKE_POS_CONFIG.small;
+    }
+
+    if (variationId && variationId === PANCAKE_POS_CONFIG.large.variationId) {
+      return PANCAKE_POS_CONFIG.large;
+    }
+
+    if (productId && productId === PANCAKE_POS_CONFIG.small.productId) {
+      return PANCAKE_POS_CONFIG.small;
+    }
+
+    if (productId && productId === PANCAKE_POS_CONFIG.large.productId) {
+      return PANCAKE_POS_CONFIG.large;
+    }
+
+    const variationName = String(item.variation_info?.name ?? "")
+      .trim()
+      .toLowerCase();
+
+    if (variationName === "combo nhỏ") {
+      return PANCAKE_POS_CONFIG.small;
+    }
+
+    if (variationName === "combo lớn") {
+      return PANCAKE_POS_CONFIG.large;
+    }
   }
 
   return null;
@@ -278,6 +310,13 @@ export async function POST(req: NextRequest) {
       transferMoney: order?.transfer_money ?? null,
       totalPrice: order?.total_price ?? null,
       totalDiscount: order?.total_discount ?? null,
+      items: Array.isArray(order?.items)
+        ? order.items.map((item: PancakeItem) => ({
+            productId: item.product_id ?? null,
+            variationId: item.variation_id ?? null,
+            variationName: item.variation_info?.name ?? null,
+          }))
+        : [],
     });
 
     if (!order || typeof order !== "object") {
