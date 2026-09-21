@@ -29,19 +29,15 @@ type PancakeOrder = {
   id?: string | number;
   bill_phone_number?: string;
   bill_full_name?: string;
-
   money_to_collect?: number | string;
   transfer_money?: number | string;
   total_price?: number | string;
   total_discount?: number | string;
-
   prepaid?: number | string;
   cash?: number | string;
   cod?: number | string;
-
   payment_purchase_histories?: PaymentHistory[];
   transfer_proofs?: TransferProof[];
-
   inserted_at?: string;
   updated_at?: string;
 };
@@ -114,9 +110,7 @@ function getPaymentHistory(order: PancakeOrder): PaymentHistory | null {
   return (
     [...histories].reverse().find((payment) => {
       const amount = toNumber(payment.amount);
-
       const resultCode = String(payment.result_code ?? "").trim();
-
       const ipnConfirmed = isTrue(payment.ipn_reply);
 
       return amount > 0 && (resultCode === "0" || ipnConfirmed);
@@ -201,6 +195,18 @@ async function updateLeadPayment(
   const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
   const apiKey = process.env.PANCAKE_CRM_API_KEY;
 
+  console.log("[WEBHOOK] CRM update start", {
+    leadId,
+    orderCode,
+    paymentStatus,
+    paymentDate,
+    transactionId,
+    comboName,
+    comboPrice,
+    hasWorkspaceId: Boolean(workspaceId),
+    hasApiKey: Boolean(apiKey),
+  });
+
   if (!workspaceId || !apiKey) {
     throw new Error("Thiếu PANCAKE_WORKSPACE_ID hoặc PANCAKE_CRM_API_KEY.");
   }
@@ -223,6 +229,8 @@ async function updateLeadPayment(
     `https://crm.pancake.vn/api/workspaces/${workspaceId}/lead/records` +
     `?api_key=${encodeURIComponent(apiKey)}`;
 
+  console.log("[WEBHOOK] CRM payload", updatePayload);
+
   const response = await fetch(updateUrl, {
     method: "POST",
     headers: {
@@ -234,6 +242,12 @@ async function updateLeadPayment(
   });
 
   const data = await response.json().catch(() => null);
+
+  console.log("[WEBHOOK] CRM response", {
+    status: response.status,
+    ok: response.ok,
+    data,
+  });
 
   if (!response.ok) {
     throw new Error(
@@ -247,12 +261,28 @@ async function updateLeadPayment(
 }
 
 export async function POST(req: NextRequest) {
+  console.log("[WEBHOOK] ===== PAYMENT WEBHOOK START =====");
+
   try {
     const body = await req.json();
 
+    console.log("[WEBHOOK] Payload received", body);
+
     const order = body?.data ?? body;
 
+    console.log("[WEBHOOK] Order extracted", {
+      hasDataWrapper: Boolean(body?.data),
+      orderId: order?.id ?? null,
+      phone: order?.bill_phone_number ?? null,
+      moneyToCollect: order?.money_to_collect ?? null,
+      transferMoney: order?.transfer_money ?? null,
+      totalPrice: order?.total_price ?? null,
+      totalDiscount: order?.total_discount ?? null,
+    });
+
     if (!order || typeof order !== "object") {
+      console.log("[WEBHOOK] ERROR: Invalid payload");
+
       return NextResponse.json(
         {
           success: false,
@@ -265,7 +295,11 @@ export async function POST(req: NextRequest) {
 
     const orderCode = String(order.id ?? "").trim();
 
+    console.log("[WEBHOOK] Order ID:", orderCode);
+
     if (!orderCode) {
+      console.log("[WEBHOOK] STOP: Missing Order ID");
+
       return NextResponse.json({
         success: true,
         updated: false,
@@ -275,7 +309,16 @@ export async function POST(req: NextRequest) {
 
     const payment = getPaymentInfo(order);
 
+    console.log("[WEBHOOK] Payment info", payment);
+
     if (payment.paymentStatus !== "Đã thanh toán") {
+      console.log("[WEBHOOK] STOP: Payment not completed", {
+        orderCode,
+        paymentStatus: payment.paymentStatus,
+        amountDue: payment.expectedAmount,
+        receivedAmount: payment.receivedAmount,
+      });
+
       return NextResponse.json({
         success: true,
         updated: false,
@@ -287,9 +330,19 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    console.log("[WEBHOOK] PAYMENT CONFIRMED", {
+      orderCode,
+      amountDue: payment.expectedAmount,
+      receivedAmount: payment.receivedAmount,
+    });
+
     const combo = getCombo(order);
 
+    console.log("[WEBHOOK] Combo detected", combo);
+
     if (!combo) {
+      console.log("[WEBHOOK] ERROR: Cannot detect combo");
+
       return NextResponse.json(
         {
           success: false,
@@ -309,7 +362,14 @@ export async function POST(req: NextRequest) {
       .trim()
       .replace(/\D/g, "");
 
+    console.log("[WEBHOOK] Customer", {
+      fullName: order.bill_full_name ?? null,
+      phone,
+    });
+
     if (!phone) {
+      console.log("[WEBHOOK] ERROR: Missing phone");
+
       return NextResponse.json(
         {
           success: false,
@@ -325,9 +385,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log("[WEBHOOK] Checking member by phone:", phone);
+
     const member = await checkMemberByPhone(phone);
 
+    console.log("[WEBHOOK] Member result", {
+      registered: member.registered,
+      leadId: member.leadId ?? null,
+      fullName: member.fullName ?? null,
+    });
+
     if (!member.registered || !member.leadId) {
+      console.log("[WEBHOOK] ERROR: Lead not found");
+
       return NextResponse.json(
         {
           success: false,
@@ -352,6 +422,16 @@ export async function POST(req: NextRequest) {
       combo.price,
     );
 
+    console.log("[WEBHOOK] SUCCESS: CRM updated", {
+      orderCode,
+      leadId: member.leadId,
+      paymentStatus: payment.paymentStatus,
+      combo: combo.name,
+      amount: combo.price,
+    });
+
+    console.log("[WEBHOOK] ===== PAYMENT WEBHOOK END =====");
+
     return NextResponse.json({
       success: true,
       updated: true,
@@ -369,6 +449,8 @@ export async function POST(req: NextRequest) {
       crm,
     });
   } catch (error) {
+    console.error("[WEBHOOK] ERROR:", error);
+
     return NextResponse.json(
       {
         success: false,
@@ -384,6 +466,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
+  console.log("[WEBHOOK] GET health check");
+
   return NextResponse.json({
     success: true,
     webhook: true,
