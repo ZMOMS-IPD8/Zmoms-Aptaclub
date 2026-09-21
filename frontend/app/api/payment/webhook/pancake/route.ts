@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkMemberByPhone } from "../../../../lib/pancake/member";
 
-type PancakePaymentHistory = {
-  type?: string;
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+type PaymentHistory = {
   amount?: number | string;
-  result_code?: string | number;
-  ipn_reply?: boolean | string | number;
-  date?: string;
   inserted_at?: string;
-  created_at?: string;
-  updated_at?: string;
+  ipn_reply?: boolean | string | number;
+  result_code?: string | number;
   payment_id?: string | number;
   transaction_id?: string | number;
+  type?: string;
+  date?: string;
 };
 
-type PancakeTransferProof = {
+type TransferProof = {
   amount?: number | string;
   is_income?: boolean;
   is_verify?: boolean;
@@ -26,43 +27,23 @@ type PancakeTransferProof = {
 
 type PancakeOrder = {
   id?: string | number;
-  type?: string;
-  event_type?: string;
-
   bill_phone_number?: string;
   bill_full_name?: string;
 
-  inserted_at?: string;
-  updated_at?: string;
-
-  total_price?: number | string;
-  total_price_after_sub_discount?: number | string;
   money_to_collect?: number | string;
-  prepaid?: number | string;
   transfer_money?: number | string;
+  total_price?: number | string;
+  total_discount?: number | string;
 
+  prepaid?: number | string;
   cash?: number | string;
   cod?: number | string;
 
-  amount?: number | string;
-  amount_due?: number | string;
-  amountDue?: number | string;
+  payment_purchase_histories?: PaymentHistory[];
+  transfer_proofs?: TransferProof[];
 
-  payment_status?: string;
-  paymentStatus?: string;
-  status_payment?: string;
-
-  payment_date?: string;
-  paymentDate?: string;
-
-  result_code?: string | number;
-  ipn_reply?: boolean | string | number;
-
-  transaction_id?: string | number;
-  payment_id?: string | number;
-
-  payment_purchase_histories?: PancakePaymentHistory[];
-  transfer_proofs?: PancakeTransferProof[];
+  inserted_at?: string;
+  updated_at?: string;
 };
 
 type PaymentStatus = "Chưa thanh toán" | "Thanh toán thiếu" | "Đã thanh toán";
@@ -78,10 +59,10 @@ const COMBO_CONFIG = {
   },
 } as const;
 
-function getAmount(value: unknown): number {
-  const amount = Number(value ?? 0);
+function toNumber(value: unknown): number {
+  const number = Number(value ?? 0);
 
-  return Number.isFinite(amount) && amount >= 0 ? amount : 0;
+  return Number.isFinite(number) && number >= 0 ? number : 0;
 }
 
 function isTrue(value: unknown): boolean {
@@ -94,202 +75,118 @@ function isTrue(value: unknown): boolean {
   );
 }
 
-function getComboByAmount(amount: number) {
-  if (amount === COMBO_CONFIG.small.price) {
+function getExpectedAmount(order: PancakeOrder): number {
+  const moneyToCollect = toNumber(order.money_to_collect);
+
+  if (moneyToCollect > 0) {
+    return moneyToCollect;
+  }
+
+  const totalPrice = toNumber(order.total_price);
+  const totalDiscount = toNumber(order.total_discount);
+
+  if (totalPrice > 0) {
+    return Math.max(totalPrice - totalDiscount, 0);
+  }
+
+  return 0;
+}
+
+function getCombo(order: PancakeOrder) {
+  const expectedAmount = getExpectedAmount(order);
+
+  if (expectedAmount === COMBO_CONFIG.small.price) {
     return COMBO_CONFIG.small;
   }
 
-  if (amount === COMBO_CONFIG.large.price) {
+  if (expectedAmount === COMBO_CONFIG.large.price) {
     return COMBO_CONFIG.large;
   }
 
   return null;
 }
 
-function getSuccessfulPayment(
-  histories: PancakePaymentHistory[],
-): PancakePaymentHistory | null {
+function getPaymentHistory(order: PancakeOrder): PaymentHistory | null {
+  const histories = Array.isArray(order.payment_purchase_histories)
+    ? order.payment_purchase_histories
+    : [];
+
   return (
     [...histories].reverse().find((payment) => {
-      const amount = getAmount(payment.amount);
+      const amount = toNumber(payment.amount);
+
       const resultCode = String(payment.result_code ?? "").trim();
 
-      return amount > 0 && resultCode === "0" && isTrue(payment.ipn_reply);
+      const ipnConfirmed = isTrue(payment.ipn_reply);
+
+      return amount > 0 && (resultCode === "0" || ipnConfirmed);
     }) ?? null
   );
 }
 
-function getVerifiedTransfer(
-  transferProofs: PancakeTransferProof[],
-): PancakeTransferProof | null {
+function getTransferProof(order: PancakeOrder): TransferProof | null {
+  const proofs = Array.isArray(order.transfer_proofs)
+    ? order.transfer_proofs
+    : [];
+
   return (
-    [...transferProofs].reverse().find((proof) => {
-      const amount = getAmount(proof.amount);
+    [...proofs].reverse().find((proof) => {
+      const amount = toNumber(proof.amount);
 
       return amount > 0 && proof.is_income === true && proof.is_verify === true;
     }) ?? null
   );
 }
 
-function getDirectPaymentAmount(order: PancakeOrder): number {
-  const candidates = [
-    order.amount,
-    order.amount_due,
-    order.amountDue,
-    order.transfer_money,
-    order.prepaid,
-    order.money_to_collect,
-  ];
-
-  for (const value of candidates) {
-    const amount = getAmount(value);
-
-    if (amount > 0) {
-      return amount;
-    }
-  }
-
-  return 0;
-}
-
 function getPaymentInfo(order: PancakeOrder) {
-  const histories = Array.isArray(order.payment_purchase_histories)
-    ? order.payment_purchase_histories
-    : [];
+  const expectedAmount = getExpectedAmount(order);
 
-  const transferProofs = Array.isArray(order.transfer_proofs)
-    ? order.transfer_proofs
-    : [];
+  const history = getPaymentHistory(order);
+  const transferProof = getTransferProof(order);
 
-  const amountDueCandidates = [
-    order.money_to_collect,
-    order.amount_due,
-    order.amountDue,
-    order.total_price_after_sub_discount,
-  ];
-
-  let amountDue = 0;
-
-  for (const value of amountDueCandidates) {
-    const amount = getAmount(value);
-
-    if (amount > 0) {
-      amountDue = amount;
-      break;
-    }
-  }
-
-  const successfulPayment = getSuccessfulPayment(histories);
-  const verifiedTransfer = getVerifiedTransfer(transferProofs);
-
-  const historyPaymentAmount = getAmount(successfulPayment?.amount);
-
-  const transferProofAmount = getAmount(verifiedTransfer?.amount);
-
-  const directPaymentAmount = getDirectPaymentAmount(order);
+  const historyAmount = toNumber(history?.amount);
+  const transferAmount = toNumber(transferProof?.amount);
+  const transferMoney = toNumber(order.transfer_money);
 
   const receivedAmount =
-    historyPaymentAmount > 0
-      ? historyPaymentAmount
-      : transferProofAmount > 0
-        ? transferProofAmount
-        : directPaymentAmount;
+    historyAmount > 0
+      ? historyAmount
+      : transferAmount > 0
+        ? transferAmount
+        : transferMoney;
 
-  const directPaymentStatus = String(
-    order.payment_status ?? order.paymentStatus ?? order.status_payment ?? "",
-  )
-    .trim()
-    .toLowerCase();
+  let paymentStatus: PaymentStatus = "Chưa thanh toán";
 
-  const directResultCode = String(order.result_code ?? "").trim();
-
-  const directIpnConfirmed = isTrue(order.ipn_reply);
-
-  const directPaymentConfirmed =
-    directResultCode === "0" && directIpnConfirmed && receivedAmount > 0;
-
-  const directStatusConfirmed =
-    directPaymentStatus === "đã thanh toán" ||
-    directPaymentStatus === "paid" ||
-    directPaymentStatus === "success" ||
-    directPaymentStatus === "completed";
-
-  let paymentStatus: PaymentStatus;
-
-  if (
-    successfulPayment ||
-    verifiedTransfer ||
-    directPaymentConfirmed ||
-    directStatusConfirmed
-  ) {
-    if (amountDue > 0 && receivedAmount > 0 && receivedAmount < amountDue) {
+  if (receivedAmount > 0) {
+    if (expectedAmount > 0 && receivedAmount < expectedAmount) {
       paymentStatus = "Thanh toán thiếu";
     } else {
       paymentStatus = "Đã thanh toán";
     }
-  } else {
-    paymentStatus = "Chưa thanh toán";
   }
 
   const paymentDate =
-    successfulPayment?.date ??
-    successfulPayment?.inserted_at ??
-    successfulPayment?.created_at ??
-    successfulPayment?.updated_at ??
-    verifiedTransfer?.created_at ??
-    verifiedTransfer?.updated_at ??
-    order.payment_date ??
-    order.paymentDate ??
+    history?.date ??
+    history?.inserted_at ??
+    transferProof?.created_at ??
+    transferProof?.updated_at ??
     order.updated_at ??
     order.inserted_at ??
     new Date().toISOString();
 
   const transactionId =
-    successfulPayment?.transaction_id ??
-    successfulPayment?.payment_id ??
-    verifiedTransfer?.transaction_id ??
-    verifiedTransfer?.payment_id ??
-    order.transaction_id ??
-    order.payment_id;
+    history?.transaction_id ??
+    history?.payment_id ??
+    transferProof?.transaction_id ??
+    transferProof?.payment_id;
 
   return {
-    amountDue,
+    expectedAmount,
     receivedAmount,
     paymentStatus,
     paymentDate,
-    transactionId:
-      transactionId !== undefined && transactionId !== null
-        ? String(transactionId)
-        : "",
+    transactionId: transactionId !== undefined ? String(transactionId) : "",
   };
-}
-
-function getComboFromOrder(order: PancakeOrder, amountDue: number) {
-  const directCombo = getComboByAmount(amountDue);
-
-  if (directCombo) {
-    return directCombo;
-  }
-
-  const amounts = [
-    order.amount,
-    order.amount_due,
-    order.amountDue,
-    order.money_to_collect,
-    order.total_price_after_sub_discount,
-    order.transfer_money,
-    order.prepaid,
-  ];
-
-  for (const value of amounts) {
-    const combo = getComboByAmount(getAmount(value));
-
-    if (combo) {
-      return combo;
-    }
-  }
-
-  return null;
 }
 
 async function updateLeadPayment(
@@ -323,8 +220,7 @@ async function updateLeadPayment(
   };
 
   const updateUrl =
-    `https://crm.pancake.vn/api/workspaces/` +
-    `${workspaceId}/lead/records` +
+    `https://crm.pancake.vn/api/workspaces/${workspaceId}/lead/records` +
     `?api_key=${encodeURIComponent(apiKey)}`;
 
   const response = await fetch(updateUrl, {
@@ -369,34 +265,31 @@ export async function POST(req: NextRequest) {
 
     const orderCode = String(order.id ?? "").trim();
 
-    if (!orderCode || !/^ZMOMS-\d+$/.test(orderCode)) {
+    if (!orderCode) {
       return NextResponse.json({
         success: true,
         updated: false,
-        orderCode: orderCode || null,
+        message: "Webhook không có Order ID.",
       });
     }
 
     const payment = getPaymentInfo(order);
 
-    if (
-      payment.paymentStatus === "Chưa thanh toán" ||
-      payment.paymentStatus === "Thanh toán thiếu"
-    ) {
+    if (payment.paymentStatus !== "Đã thanh toán") {
       return NextResponse.json({
         success: true,
         updated: false,
         paid: false,
         orderCode,
         paymentStatus: payment.paymentStatus,
-        amountDue: payment.amountDue,
+        amountDue: payment.expectedAmount,
         receivedAmount: payment.receivedAmount,
       });
     }
 
-    const comboInfo = getComboFromOrder(order, payment.amountDue);
+    const combo = getCombo(order);
 
-    if (!comboInfo) {
+    if (!combo) {
       return NextResponse.json(
         {
           success: false,
@@ -404,9 +297,9 @@ export async function POST(req: NextRequest) {
           paid: true,
           orderCode,
           paymentStatus: payment.paymentStatus,
-          amountDue: payment.amountDue,
+          amountDue: payment.expectedAmount,
           receivedAmount: payment.receivedAmount,
-          message: "Đã xác nhận thanh toán nhưng không xác định được Combo.",
+          message: "Không xác định được Combo từ Order.",
         },
         { status: 400 },
       );
@@ -424,10 +317,9 @@ export async function POST(req: NextRequest) {
           paid: true,
           orderCode,
           paymentStatus: payment.paymentStatus,
-          amountDue: payment.amountDue,
+          amountDue: payment.expectedAmount,
           receivedAmount: payment.receivedAmount,
-          message:
-            "Đã xác nhận thanh toán nhưng không có số điện thoại khách hàng.",
+          message: "Order không có bill_phone_number.",
         },
         { status: 400 },
       );
@@ -443,24 +335,21 @@ export async function POST(req: NextRequest) {
           paid: true,
           orderCode,
           paymentStatus: payment.paymentStatus,
-          amountDue: payment.amountDue,
-          receivedAmount: payment.receivedAmount,
           phone,
-          message:
-            "Đã xác nhận thanh toán nhưng không tìm thấy Lead tương ứng.",
+          message: "Không tìm thấy Lead tương ứng.",
         },
         { status: 404 },
       );
     }
 
-    const updateResult = await updateLeadPayment(
+    const crm = await updateLeadPayment(
       member.leadId,
       orderCode,
       payment.paymentStatus,
       payment.paymentDate,
       payment.transactionId,
-      comboInfo.name,
-      comboInfo.price,
+      combo.name,
+      combo.price,
     );
 
     return NextResponse.json({
@@ -469,15 +358,15 @@ export async function POST(req: NextRequest) {
       paid: true,
       orderCode,
       paymentStatus: payment.paymentStatus,
-      amountDue: payment.amountDue,
+      amountDue: payment.expectedAmount,
       receivedAmount: payment.receivedAmount,
       paymentDate: payment.paymentDate,
       transactionId: payment.transactionId || null,
       leadId: member.leadId,
       phone,
-      tenCombo: comboInfo.name,
-      giaTien: comboInfo.price,
-      crm: updateResult,
+      tenCombo: combo.name,
+      giaTien: combo.price,
+      crm,
     });
   } catch (error) {
     return NextResponse.json(
@@ -492,4 +381,11 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+export async function GET() {
+  return NextResponse.json({
+    success: true,
+    webhook: true,
+  });
 }
