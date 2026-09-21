@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isValidReferralCode } from "../../data/referralCodes";
 
 type PancakeLead = {
   id?: string;
@@ -23,8 +24,6 @@ type PancakeResponse = {
   [key: string]: unknown;
 };
 
-const REFERRAL_CODE_REGEX = /^(PG|NHS|SPA|SALE)([0-9]{3})$/;
-
 function getFieldValue(value: unknown): string {
   if (typeof value === "string") {
     return value.trim();
@@ -35,22 +34,6 @@ function getFieldValue(value: unknown): string {
   }
 
   return "";
-}
-
-function isValidReferralCode(code: string): boolean {
-  if (!code) {
-    return true;
-  }
-
-  const match = code.match(REFERRAL_CODE_REGEX);
-
-  if (!match) {
-    return false;
-  }
-
-  const number = Number(match[2]);
-
-  return number >= 1 && number <= 999;
 }
 
 function parseDate(value: string): Date | null {

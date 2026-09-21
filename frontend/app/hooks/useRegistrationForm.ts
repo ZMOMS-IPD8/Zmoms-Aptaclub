@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { RegistrationData } from "../types/registration";
+import { isValidReferralCode } from "../data/referralCodes";
 
 export type RegistrationDialogState = {
   open: boolean;
@@ -9,25 +10,6 @@ export type RegistrationDialogState = {
   message: string;
   status: "success" | "warning" | "error";
   zaloUrl?: string;
-};
-
-const REFERRAL_CODE_REGEX = /^(PG|NHS|SPA|SALE)([0-9]{3})$/;
-
-const isValidReferralCode = (code: string) => {
-  if (!code) {
-    return true;
-  }
-
-  const normalizedCode = code.trim().toUpperCase();
-  const match = normalizedCode.match(REFERRAL_CODE_REGEX);
-
-  if (!match) {
-    return false;
-  }
-
-  const number = Number(match[2]);
-
-  return number >= 1 && number <= 999;
 };
 
 export function useRegistrationForm() {
