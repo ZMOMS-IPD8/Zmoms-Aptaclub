@@ -27,10 +27,6 @@ export async function POST(req: NextRequest) {
 
     const combo = body.combo;
 
-    // =========================
-    // VALIDATION
-    // =========================
-
     if (!/^0\d{9}$/.test(phone)) {
       return NextResponse.json(
         {
@@ -61,10 +57,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // =========================
-    // PANCAKE CRM CONFIG
-    // =========================
-
     const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
 
     const apiKey = process.env.PANCAKE_CRM_API_KEY;
@@ -78,10 +70,6 @@ export async function POST(req: NextRequest) {
         { status: 500 },
       );
     }
-
-    // =========================
-    // CHECK MEMBER
-    // =========================
 
     const member = await checkMemberByPhone(phone);
 
@@ -97,11 +85,8 @@ export async function POST(req: NextRequest) {
     }
 
     const lead = member.lead;
-    const leadId = member.leadId;
 
-    // =========================
-    // CHECK PAYMENT STATUS
-    // =========================
+    const leadId = member.leadId;
 
     const paymentStatus = String(lead.trang_thai_thanh_toan ?? "").trim();
 
@@ -111,9 +96,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
+
           alreadyPurchased: true,
+
           paymentStatus,
+
           orderCode: existingOrderCode || null,
+
           message:
             "Số điện thoại này đã thanh toán đơn hàng. Mẹ vui lòng nhắn tin qua Zalo OA để biết tình trạng đơn hàng.",
         },
@@ -121,44 +110,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // =========================
-    // DETERMINE DISCOUNT
-    // =========================
-    //
-    // Frontend KHÔNG quyết định số tiền giảm.
-    //
-    // Có referral code hợp lệ:
-    //      giảm 300.000đ
-    //
-    // Không có referral code:
-    //      không giảm
-    //
-
     const discountAmount = referralCode ? REFERRAL_DISCOUNT : 0;
-
-    // =========================
-    // CREATE ORDER CODE
-    // =========================
 
     const orderCode = `ZMOMS-${Date.now()}`;
 
     const fullName = String(lead.name ?? "").trim() || "Khách hàng ZMOMS";
 
-    // =========================
-    // CREATE PANCAKE POS ORDER
-    // =========================
-
     const pancakeOrder = await createPancakeOrder({
       combo,
+
       phone,
+
       fullName,
+
       orderCode,
+
       discountAmount,
     });
-
-    // =========================
-    // UPDATE CRM
-    // =========================
 
     const updatePayload: Record<string, string> = {
       id: leadId,
@@ -217,10 +185,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // =========================
-    // SUCCESS
-    // =========================
-
     return NextResponse.json({
       success: true,
 
@@ -234,7 +198,7 @@ export async function POST(req: NextRequest) {
 
       originalAmount: pancakeOrder.originalAmount,
 
-      discountAmount,
+      discountAmount: pancakeOrder.discountAmount,
 
       amount: pancakeOrder.amount,
 

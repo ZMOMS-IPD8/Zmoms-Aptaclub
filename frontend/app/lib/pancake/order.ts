@@ -121,21 +121,13 @@ export async function createPancakeOrder({
 
   const cleanFullName = String(fullName).trim() || "Khách hàng ZMOMS";
 
-  /**
-   * Chỉ chấp nhận mức giảm được backend xác định.
-   *
-   * Hiện tại chương trình chỉ có:
-   * - 0đ
-   * - 300.000đ
-   */
   const verifiedDiscountAmount = discountAmount === 300000 ? 300000 : 0;
 
-  /**
-   * Không cho phép giảm lớn hơn giá sản phẩm.
-   */
   if (verifiedDiscountAmount >= config.price) {
     throw new Error("Mức giảm giá không hợp lệ.");
   }
+
+  const expectedAmount = config.price - verifiedDiscountAmount;
 
   const paymentReference = `${config.name} ${cleanFullName} ${cleanPhone}`;
 
@@ -146,28 +138,35 @@ export async function createPancakeOrder({
 
   const payload = {
     bill_full_name: cleanFullName,
+
     bill_phone_number: cleanPhone,
+
+    custom_id: orderCode,
 
     items: [
       {
         quantity: 1,
 
         variation_id: config.variationId,
+
         product_id: config.productId,
 
         variation_info: {
           name: config.name,
+
           product_display_id: config.displayId,
 
-          // GIÁ GỐC
           retail_price: config.price,
         },
 
-        // Không giảm trên từng sản phẩm.
-        discount_each_product: 0,
+        discount_each_product: verifiedDiscountAmount,
+
         is_bonus_product: false,
+
         is_discount_percent: false,
+
         is_wholesale: false,
+
         one_time_product: false,
       },
     ],
@@ -176,10 +175,7 @@ export async function createPancakeOrder({
 
     shipping_fee: 0,
 
-    // GIẢM TRÊN TOÀN BỘ ĐƠN HÀNG.
-    total_discount: verifiedDiscountAmount,
-
-    custom_id: orderCode,
+    total_discount: 0,
   };
 
   const response = await fetch(url, {
@@ -214,6 +210,12 @@ export async function createPancakeOrder({
     paymentReference,
   );
 
+  if (payment.amount !== expectedAmount) {
+    throw new Error(
+      `Số tiền Pancake trả về không đúng. Mong đợi ${expectedAmount}, thực tế ${payment.amount}.`,
+    );
+  }
+
   return {
     result,
 
@@ -227,13 +229,10 @@ export async function createPancakeOrder({
 
     variationId: config.variationId,
 
-    // Giá gốc
     originalAmount: config.price,
 
-    // Tổng giảm
     discountAmount: verifiedDiscountAmount,
 
-    // Số tiền thực tế cần thanh toán
     amount: payment.amount,
 
     paymentReference,
