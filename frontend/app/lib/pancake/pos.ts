@@ -6,7 +6,7 @@ export const PANCAKE_POS_CONFIG = {
     variationId: process.env.PANCAKE_SMALL_VARIATION_ID!,
     displayId: "ZMOMS349",
     name: "Combo nhỏ",
-    price: 349000,
+    price: 649000,
     paymentCode: "COMBONHO",
   },
 
@@ -15,7 +15,7 @@ export const PANCAKE_POS_CONFIG = {
     variationId: process.env.PANCAKE_LARGE_VARIATION_ID!,
     displayId: "ZMOMS829",
     name: "Combo lớn",
-    price: 829000,
+    price: 1129000,
     paymentCode: "COMBOLON",
   },
 } as const;

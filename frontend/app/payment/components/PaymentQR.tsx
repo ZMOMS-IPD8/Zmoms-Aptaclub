@@ -9,6 +9,8 @@ type Props = {
   combo: "small" | "large";
 };
 
+const ACCOUNT_NAME = "HO KINH DOANH UU DAI ME BE";
+
 export default function PaymentQR({ payment, combo }: Props) {
   const qrUrl =
     `https://vietqr.app/img?acc=${encodeURIComponent(payment.accountNumber)}` +
@@ -70,7 +72,7 @@ export default function PaymentQR({ payment, combo }: Props) {
           <span className="text-sm text-gray-500">Chủ tài khoản</span>
 
           <span className="text-right text-sm font-bold uppercase text-[#12335B]">
-            {payment.accountName}
+            {ACCOUNT_NAME}
           </span>
         </div>
 

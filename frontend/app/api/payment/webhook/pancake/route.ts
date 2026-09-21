@@ -5,7 +5,7 @@ type PancakePaymentHistory = {
   type?: string;
   amount?: number | string;
   result_code?: string | number;
-  ipn_reply?: boolean;
+  ipn_reply?: boolean | string | number;
   date?: string;
   inserted_at?: string;
   created_at?: string;
@@ -44,12 +44,22 @@ type PancakeOrder = {
   cash?: number | string;
   cod?: number | string;
 
-  charged_by_card?: number | string;
-  charged_by_fundiin?: number | string;
-  charged_by_kredivo?: number | string;
-  charged_by_momo?: number | string;
-  charged_by_qrpay?: number | string;
-  charged_by_vnpay?: number | string;
+  amount?: number | string;
+  amount_due?: number | string;
+  amountDue?: number | string;
+
+  payment_status?: string;
+  paymentStatus?: string;
+  status_payment?: string;
+
+  payment_date?: string;
+  paymentDate?: string;
+
+  result_code?: string | number;
+  ipn_reply?: boolean | string | number;
+
+  transaction_id?: string | number;
+  payment_id?: string | number;
 
   payment_purchase_histories?: PancakePaymentHistory[];
   transfer_proofs?: PancakeTransferProof[];
@@ -68,6 +78,22 @@ const COMBO_CONFIG = {
   },
 } as const;
 
+function getAmount(value: unknown): number {
+  const amount = Number(value ?? 0);
+
+  return Number.isFinite(amount) && amount >= 0 ? amount : 0;
+}
+
+function isTrue(value: unknown): boolean {
+  return (
+    value === true ||
+    value === 1 ||
+    String(value ?? "")
+      .trim()
+      .toLowerCase() === "true"
+  );
+}
+
 function getComboByAmount(amount: number) {
   if (amount === COMBO_CONFIG.small.price) {
     return COMBO_CONFIG.small;
@@ -80,24 +106,15 @@ function getComboByAmount(amount: number) {
   return null;
 }
 
-function getAmount(value: unknown): number {
-  const amount = Number(value ?? 0);
-
-  return Number.isFinite(amount) && amount >= 0 ? amount : 0;
-}
-
 function getSuccessfulPayment(
   histories: PancakePaymentHistory[],
 ): PancakePaymentHistory | null {
   return (
     [...histories].reverse().find((payment) => {
       const amount = getAmount(payment.amount);
+      const resultCode = String(payment.result_code ?? "").trim();
 
-      return (
-        amount > 0 &&
-        String(payment.result_code ?? "") === "0" &&
-        payment.ipn_reply === true
-      );
+      return amount > 0 && resultCode === "0" && isTrue(payment.ipn_reply);
     }) ?? null
   );
 }
@@ -114,6 +131,27 @@ function getVerifiedTransfer(
   );
 }
 
+function getDirectPaymentAmount(order: PancakeOrder): number {
+  const candidates = [
+    order.amount,
+    order.amount_due,
+    order.amountDue,
+    order.transfer_money,
+    order.prepaid,
+    order.money_to_collect,
+  ];
+
+  for (const value of candidates) {
+    const amount = getAmount(value);
+
+    if (amount > 0) {
+      return amount;
+    }
+  }
+
+  return 0;
+}
+
 function getPaymentInfo(order: PancakeOrder) {
   const histories = Array.isArray(order.payment_purchase_histories)
     ? order.payment_purchase_histories
@@ -123,24 +161,74 @@ function getPaymentInfo(order: PancakeOrder) {
     ? order.transfer_proofs
     : [];
 
-  const amountDue = getAmount(order.money_to_collect);
+  const amountDueCandidates = [
+    order.money_to_collect,
+    order.amount_due,
+    order.amountDue,
+    order.total_price_after_sub_discount,
+  ];
+
+  let amountDue = 0;
+
+  for (const value of amountDueCandidates) {
+    const amount = getAmount(value);
+
+    if (amount > 0) {
+      amountDue = amount;
+      break;
+    }
+  }
 
   const successfulPayment = getSuccessfulPayment(histories);
   const verifiedTransfer = getVerifiedTransfer(transferProofs);
 
-  const paymentAmount = getAmount(successfulPayment?.amount);
-  const proofAmount = getAmount(verifiedTransfer?.amount);
+  const historyPaymentAmount = getAmount(successfulPayment?.amount);
 
-  const receivedAmount = paymentAmount > 0 ? paymentAmount : proofAmount;
+  const transferProofAmount = getAmount(verifiedTransfer?.amount);
+
+  const directPaymentAmount = getDirectPaymentAmount(order);
+
+  const receivedAmount =
+    historyPaymentAmount > 0
+      ? historyPaymentAmount
+      : transferProofAmount > 0
+        ? transferProofAmount
+        : directPaymentAmount;
+
+  const directPaymentStatus = String(
+    order.payment_status ?? order.paymentStatus ?? order.status_payment ?? "",
+  )
+    .trim()
+    .toLowerCase();
+
+  const directResultCode = String(order.result_code ?? "").trim();
+
+  const directIpnConfirmed = isTrue(order.ipn_reply);
+
+  const directPaymentConfirmed =
+    directResultCode === "0" && directIpnConfirmed && receivedAmount > 0;
+
+  const directStatusConfirmed =
+    directPaymentStatus === "đã thanh toán" ||
+    directPaymentStatus === "paid" ||
+    directPaymentStatus === "success" ||
+    directPaymentStatus === "completed";
 
   let paymentStatus: PaymentStatus;
 
-  if (!successfulPayment && !verifiedTransfer) {
-    paymentStatus = "Chưa thanh toán";
-  } else if (amountDue > 0 && receivedAmount < amountDue) {
-    paymentStatus = "Thanh toán thiếu";
+  if (
+    successfulPayment ||
+    verifiedTransfer ||
+    directPaymentConfirmed ||
+    directStatusConfirmed
+  ) {
+    if (amountDue > 0 && receivedAmount > 0 && receivedAmount < amountDue) {
+      paymentStatus = "Thanh toán thiếu";
+    } else {
+      paymentStatus = "Đã thanh toán";
+    }
   } else {
-    paymentStatus = "Đã thanh toán";
+    paymentStatus = "Chưa thanh toán";
   }
 
   const paymentDate =
@@ -150,6 +238,8 @@ function getPaymentInfo(order: PancakeOrder) {
     successfulPayment?.updated_at ??
     verifiedTransfer?.created_at ??
     verifiedTransfer?.updated_at ??
+    order.payment_date ??
+    order.paymentDate ??
     order.updated_at ??
     order.inserted_at ??
     new Date().toISOString();
@@ -158,7 +248,9 @@ function getPaymentInfo(order: PancakeOrder) {
     successfulPayment?.transaction_id ??
     successfulPayment?.payment_id ??
     verifiedTransfer?.transaction_id ??
-    verifiedTransfer?.payment_id;
+    verifiedTransfer?.payment_id ??
+    order.transaction_id ??
+    order.payment_id;
 
   return {
     amountDue,
@@ -169,9 +261,35 @@ function getPaymentInfo(order: PancakeOrder) {
       transactionId !== undefined && transactionId !== null
         ? String(transactionId)
         : "",
-    successfulPayment,
-    verifiedTransfer,
   };
+}
+
+function getComboFromOrder(order: PancakeOrder, amountDue: number) {
+  const directCombo = getComboByAmount(amountDue);
+
+  if (directCombo) {
+    return directCombo;
+  }
+
+  const amounts = [
+    order.amount,
+    order.amount_due,
+    order.amountDue,
+    order.money_to_collect,
+    order.total_price_after_sub_discount,
+    order.transfer_money,
+    order.prepaid,
+  ];
+
+  for (const value of amounts) {
+    const combo = getComboByAmount(getAmount(value));
+
+    if (combo) {
+      return combo;
+    }
+  }
+
+  return null;
 }
 
 async function updateLeadPayment(
@@ -261,8 +379,6 @@ export async function POST(req: NextRequest) {
 
     const payment = getPaymentInfo(order);
 
-    const comboInfo = getComboByAmount(payment.amountDue);
-
     if (
       payment.paymentStatus === "Chưa thanh toán" ||
       payment.paymentStatus === "Thanh toán thiếu"
@@ -271,13 +387,14 @@ export async function POST(req: NextRequest) {
         success: true,
         updated: false,
         paid: false,
-        eventType: order.event_type ?? null,
         orderCode,
         paymentStatus: payment.paymentStatus,
         amountDue: payment.amountDue,
         receivedAmount: payment.receivedAmount,
       });
     }
+
+    const comboInfo = getComboFromOrder(order, payment.amountDue);
 
     if (!comboInfo) {
       return NextResponse.json(
@@ -289,7 +406,7 @@ export async function POST(req: NextRequest) {
           paymentStatus: payment.paymentStatus,
           amountDue: payment.amountDue,
           receivedAmount: payment.receivedAmount,
-          message: "Không xác định được Combo từ giá trị đơn hàng.",
+          message: "Đã xác nhận thanh toán nhưng không xác định được Combo.",
         },
         { status: 400 },
       );
@@ -305,7 +422,6 @@ export async function POST(req: NextRequest) {
           success: false,
           updated: false,
           paid: true,
-          eventType: order.event_type ?? null,
           orderCode,
           paymentStatus: payment.paymentStatus,
           amountDue: payment.amountDue,
@@ -325,7 +441,6 @@ export async function POST(req: NextRequest) {
           success: false,
           updated: false,
           paid: true,
-          eventType: order.event_type ?? null,
           orderCode,
           paymentStatus: payment.paymentStatus,
           amountDue: payment.amountDue,
@@ -352,7 +467,6 @@ export async function POST(req: NextRequest) {
       success: true,
       updated: true,
       paid: true,
-      eventType: order.event_type ?? null,
       orderCode,
       paymentStatus: payment.paymentStatus,
       amountDue: payment.amountDue,

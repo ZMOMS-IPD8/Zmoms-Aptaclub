@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { validateReferralCode } from "../data/referralCodes";
+import { isValidReferralCode } from "../../data/referralCodes";
 
 type Props = {
-  onVerified: (phone: string, referralCode: string) => void;
+  onVerified: (
+    phone: string,
+    referralCode: string,
+    discountAmount: number,
+  ) => void;
 };
 
 export default function ReferralVerification({ onVerified }: Props) {
@@ -36,6 +40,7 @@ export default function ReferralVerification({ onVerified }: Props) {
     setError("");
 
     const normalizedReferralCode = referralCode.trim().toUpperCase();
+    const hasReferralCode = Boolean(normalizedReferralCode);
 
     if (!phone) {
       setError("Mẹ vui lòng nhập số điện thoại.");
@@ -47,12 +52,7 @@ export default function ReferralVerification({ onVerified }: Props) {
       return;
     }
 
-    if (!normalizedReferralCode) {
-      setError("Mẹ vui lòng nhập mã giới thiệu.");
-      return;
-    }
-
-    if (!validateReferralCode(normalizedReferralCode)) {
+    if (hasReferralCode && !isValidReferralCode(normalizedReferralCode)) {
       setError("Mã giới thiệu không hợp lệ. Mẹ vui lòng kiểm tra lại.");
       return;
     }
@@ -87,7 +87,11 @@ export default function ReferralVerification({ onVerified }: Props) {
         return;
       }
 
-      onVerified(phone, normalizedReferralCode);
+      onVerified(
+        phone,
+        normalizedReferralCode,
+        Number(data.discountAmount ?? 0),
+      );
     } catch {
       setError("Không thể kiểm tra thông tin lúc này. Mẹ vui lòng thử lại.");
     } finally {
@@ -107,8 +111,8 @@ export default function ReferralVerification({ onVerified }: Props) {
           </h3>
 
           <p className="mt-1 text-xs leading-5 text-gray-500 sm:text-sm">
-            Mẹ nhập số điện thoại Zalo đã đăng ký và mã giới thiệu để nhận ưu
-            đãi giảm 300.000đ.
+            Mẹ nhập số điện thoại Zalo đã đăng ký. Nếu có mã giới thiệu hợp lệ,
+            mẹ sẽ được giảm 300.000đ.
           </p>
         </div>
 
@@ -167,7 +171,7 @@ export default function ReferralVerification({ onVerified }: Props) {
             disabled={loading}
             className="h-12 w-full rounded-xl bg-[#12335B] px-6 text-sm font-bold text-white transition hover:bg-[#0D2949] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "ĐANG KIỂM TRA..." : "KIỂM TRA VÀ NHẬN ƯU ĐÃI"}
+            {loading ? "ĐANG KIỂM TRA..." : "KIỂM TRA THÔNG TIN"}
           </button>
         </div>
       </section>

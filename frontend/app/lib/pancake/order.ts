@@ -8,6 +8,7 @@ type CreatePancakeOrderParams = {
   phone: string;
   fullName: string;
   orderCode: string;
+  discountAmount?: number;
 };
 
 type PancakeOrderResponse = {
@@ -94,6 +95,7 @@ export async function createPancakeOrder({
   phone,
   fullName,
   orderCode,
+  discountAmount = 0,
 }: CreatePancakeOrderParams) {
   const config = PANCAKE_POS_CONFIG[combo];
 
@@ -119,6 +121,22 @@ export async function createPancakeOrder({
 
   const cleanFullName = String(fullName).trim() || "Khách hàng ZMOMS";
 
+  /**
+   * Chỉ chấp nhận mức giảm được backend xác định.
+   *
+   * Hiện tại chương trình chỉ có:
+   * - 0đ
+   * - 300.000đ
+   */
+  const verifiedDiscountAmount = discountAmount === 300000 ? 300000 : 0;
+
+  /**
+   * Không cho phép giảm lớn hơn giá sản phẩm.
+   */
+  if (verifiedDiscountAmount >= config.price) {
+    throw new Error("Mức giảm giá không hợp lệ.");
+  }
+
   const paymentReference = `${config.name} ${cleanFullName} ${cleanPhone}`;
 
   const url =
@@ -129,16 +147,23 @@ export async function createPancakeOrder({
   const payload = {
     bill_full_name: cleanFullName,
     bill_phone_number: cleanPhone,
+
     items: [
       {
         quantity: 1,
+
         variation_id: config.variationId,
         product_id: config.productId,
+
         variation_info: {
           name: config.name,
           product_display_id: config.displayId,
+
+          // GIÁ GỐC
           retail_price: config.price,
         },
+
+        // Không giảm trên từng sản phẩm.
         discount_each_product: 0,
         is_bonus_product: false,
         is_discount_percent: false,
@@ -146,19 +171,27 @@ export async function createPancakeOrder({
         one_time_product: false,
       },
     ],
+
     note: paymentReference,
+
     shipping_fee: 0,
-    total_discount: 0,
+
+    // GIẢM TRÊN TOÀN BỘ ĐƠN HÀNG.
+    total_discount: verifiedDiscountAmount,
+
     custom_id: orderCode,
   };
 
   const response = await fetch(url, {
     method: "POST",
+
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
     },
+
     body: JSON.stringify(payload),
+
     cache: "no-store",
   });
 
@@ -183,14 +216,30 @@ export async function createPancakeOrder({
 
   return {
     result,
+
     orderCode,
+
     combo,
+
     comboName: config.name,
-    amount: payment.amount,
+
     productId: config.productId,
+
     variationId: config.variationId,
+
+    // Giá gốc
+    originalAmount: config.price,
+
+    // Tổng giảm
+    discountAmount: verifiedDiscountAmount,
+
+    // Số tiền thực tế cần thanh toán
+    amount: payment.amount,
+
     paymentReference,
+
     trackingLink,
+
     payment,
   };
 }

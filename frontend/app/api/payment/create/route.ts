@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateReferralCode } from "../../../deal/data/referralCodes";
+import { isValidReferralCode } from "../../../data/referralCodes";
 import { checkMemberByPhone } from "../../../lib/pancake/member";
 import { createPancakeOrder } from "../../../lib/pancake/order";
+
+const REFERRAL_DISCOUNT = 300000;
 
 type ComboType = "small" | "large";
 
 type CreateOrderBody = {
   phone: string;
-  referralCode: string;
+  referralCode?: string;
   combo: ComboType;
 };
 
@@ -25,6 +27,10 @@ export async function POST(req: NextRequest) {
 
     const combo = body.combo;
 
+    // =========================
+    // VALIDATION
+    // =========================
+
     if (!/^0\d{9}$/.test(phone)) {
       return NextResponse.json(
         {
@@ -35,7 +41,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!validateReferralCode(referralCode)) {
+    if (referralCode && !isValidReferralCode(referralCode)) {
       return NextResponse.json(
         {
           success: false,
@@ -55,7 +61,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // =========================
+    // PANCAKE CRM CONFIG
+    // =========================
+
     const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
+
     const apiKey = process.env.PANCAKE_CRM_API_KEY;
 
     if (!workspaceId || !apiKey) {
@@ -67,6 +78,10 @@ export async function POST(req: NextRequest) {
         { status: 500 },
       );
     }
+
+    // =========================
+    // CHECK MEMBER
+    // =========================
 
     const member = await checkMemberByPhone(phone);
 
@@ -83,6 +98,10 @@ export async function POST(req: NextRequest) {
 
     const lead = member.lead;
     const leadId = member.leadId;
+
+    // =========================
+    // CHECK PAYMENT STATUS
+    // =========================
 
     const paymentStatus = String(lead.trang_thai_thanh_toan ?? "").trim();
 
@@ -102,20 +121,50 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // =========================
+    // DETERMINE DISCOUNT
+    // =========================
+    //
+    // Frontend KHÔNG quyết định số tiền giảm.
+    //
+    // Có referral code hợp lệ:
+    //      giảm 300.000đ
+    //
+    // Không có referral code:
+    //      không giảm
+    //
+
+    const discountAmount = referralCode ? REFERRAL_DISCOUNT : 0;
+
+    // =========================
+    // CREATE ORDER CODE
+    // =========================
+
     const orderCode = `ZMOMS-${Date.now()}`;
 
     const fullName = String(lead.name ?? "").trim() || "Khách hàng ZMOMS";
+
+    // =========================
+    // CREATE PANCAKE POS ORDER
+    // =========================
 
     const pancakeOrder = await createPancakeOrder({
       combo,
       phone,
       fullName,
       orderCode,
+      discountAmount,
     });
+
+    // =========================
+    // UPDATE CRM
+    // =========================
 
     const updatePayload: Record<string, string> = {
       id: leadId,
+
       trang_thai_thanh_toan: "Chưa thanh toán",
+
       ma_don_hang: orderCode,
     };
 
@@ -126,11 +175,14 @@ export async function POST(req: NextRequest) {
 
     const updateResponse = await fetch(updateUrl, {
       method: "POST",
+
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
       },
+
       body: JSON.stringify(updatePayload),
+
       cache: "no-store",
     });
 
@@ -149,9 +201,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
+
           orderCreated: true,
+
           orderCode,
+
           trackingLink: pancakeOrder.trackingLink,
+
           message:
             updateResult.message ||
             updateResult.error ||
@@ -161,21 +217,38 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // =========================
+    // SUCCESS
+    // =========================
+
     return NextResponse.json({
       success: true,
+
       orderCode,
+
       phone,
+
       referralCode,
+
       combo,
+
+      originalAmount: pancakeOrder.originalAmount,
+
+      discountAmount,
+
       amount: pancakeOrder.amount,
+
       paymentReference: pancakeOrder.paymentReference,
+
       paymentStatus: "Chưa thanh toán",
+
       payment: pancakeOrder.payment,
     });
   } catch (error) {
     return NextResponse.json(
       {
         success: false,
+
         message:
           error instanceof Error ? error.message : "Không thể tạo đơn hàng.",
       },

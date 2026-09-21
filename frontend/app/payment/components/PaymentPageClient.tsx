@@ -118,13 +118,10 @@ export default function PaymentPageClient() {
   );
 
   const hasAccessParams =
-    Boolean(registrationPhone) &&
-    Boolean(referralCode) &&
-    Boolean(combo) &&
-    Boolean(orderCode);
+    Boolean(registrationPhone) && Boolean(combo) && Boolean(orderCode);
 
   useEffect(() => {
-    if (!hasAccessParams) {
+    if (!hasAccessParams || !combo) {
       return;
     }
 
@@ -160,6 +157,12 @@ export default function PaymentPageClient() {
         if (result.alreadyPurchased) {
           setAccessStatus("alreadyPurchased");
           setPaymentState("paid");
+
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
+
           return;
         }
 
@@ -201,6 +204,10 @@ export default function PaymentPageClient() {
       }
     };
   }, [hasAccessParams, registrationPhone, referralCode, combo, orderCode]);
+
+  const effectiveAccessStatus: AccessStatus = !hasAccessParams
+    ? "denied"
+    : accessStatus;
 
   const handleShippingSubmit = async (data: ShippingData) => {
     if (submitting || !combo || paymentState !== "paid") {
@@ -269,8 +276,6 @@ export default function PaymentPageClient() {
       setSubmitting(false);
     }
   };
-
-  const effectiveAccessStatus = hasAccessParams ? accessStatus : "denied";
 
   if (effectiveAccessStatus === "checking") {
     return <PaymentStatus status="checking" />;

@@ -9,7 +9,7 @@ import type { OfferType } from "./types/offer";
 
 export default function SuccessPage() {
   const [selected, setSelected] = useState<OfferType>("small");
-  const [discountApplied, setDiscountApplied] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState(0);
   const [verifiedPhone, setVerifiedPhone] = useState("");
   const [verifiedReferralCode, setVerifiedReferralCode] = useState("");
   const [creatingOrder, setCreatingOrder] = useState(false);
@@ -26,10 +26,14 @@ export default function SuccessPage() {
     setOrderError("");
   };
 
-  const handleVerified = (phone: string, referralCode: string) => {
+  const handleVerified = (
+    phone: string,
+    referralCode: string,
+    discountAmount: number,
+  ) => {
     setVerifiedPhone(phone);
     setVerifiedReferralCode(referralCode);
-    setDiscountApplied(true);
+    setDiscountAmount(discountAmount);
     setOrderError("");
   };
 
@@ -38,7 +42,7 @@ export default function SuccessPage() {
       return;
     }
 
-    if (!discountApplied || !verifiedPhone || !verifiedReferralCode) {
+    if (!verifiedPhone) {
       document.getElementById("referral-code")?.scrollIntoView({
         behavior: "smooth",
         block: "center",
@@ -64,6 +68,7 @@ export default function SuccessPage() {
           phone: verifiedPhone,
           referralCode: verifiedReferralCode,
           combo: selected,
+          discountAmount,
         }),
       });
 
@@ -98,6 +103,7 @@ export default function SuccessPage() {
         phone: verifiedPhone,
         referralCode: verifiedReferralCode,
         combo: selected,
+        discountAmount: String(data.discountAmount ?? discountAmount),
       });
 
       window.location.href = `/payment?${params.toString()}`;
@@ -107,6 +113,9 @@ export default function SuccessPage() {
       setCreatingOrder(false);
     }
   };
+
+  const discountApplied = discountAmount > 0;
+  const canPurchase = Boolean(verifiedPhone) && !creatingOrder;
 
   return (
     <main className="min-h-screen bg-[#FFFAF5] px-4 py-6 font-sans sm:py-10">
@@ -171,7 +180,8 @@ export default function SuccessPage() {
             </h2>
 
             <p className="mt-1 text-xs text-gray-500 sm:text-sm">
-              Chọn combo phù hợp và nhập mã giới thiệu để nhận ưu đãi 300.000đ.
+              Chọn combo phù hợp. Mẹ có mã giới thiệu hợp lệ sẽ được giảm
+              300.000đ.
             </p>
           </div>
 
@@ -205,20 +215,20 @@ export default function SuccessPage() {
           <button
             type="button"
             onClick={handleAction}
-            disabled={!discountApplied || creatingOrder}
+            disabled={!canPurchase}
             className={`flex w-full items-center justify-center rounded-full px-6 py-3.5 text-sm font-bold text-white shadow-sm transition active:scale-[0.99] ${
-              discountApplied && !creatingOrder
+              canPurchase
                 ? "bg-[#12335B] hover:bg-[#0D2949]"
                 : "cursor-not-allowed bg-gray-300"
             }`}
           >
             {creatingOrder
               ? "ĐANG TẠO ĐƠN..."
-              : discountApplied
+              : verifiedPhone
                 ? selectedOffer?.type === "small"
                   ? "MUA COMBO NHỎ"
                   : "MUA COMBO LỚN"
-                : "KIỂM TRA ƯU ĐÃI ĐỂ TIẾP TỤC"}
+                : "KIỂM TRA THÔNG TIN ĐỂ TIẾP TỤC"}
           </button>
         </section>
 
