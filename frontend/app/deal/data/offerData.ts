@@ -25,7 +25,7 @@ export const OFFERS: ComboOffer[] = [
   },
 ];
 
-export const FIXED_GIFTS = [
+export const SMALL_COMBO_ITEMS = [
   {
     name: "Lactacyd sữa tắm",
     value: 105000,
@@ -43,29 +43,45 @@ export const FIXED_GIFTS = [
     value: 30000,
   },
   {
-    name: "Kem đánh răng Denti Whoo Hàn Quốc",
-    value: 50000,
+    name: "E-Book 100 kỹ năng + 8 loại hình thông minh",
+    value: 249000,
   },
   {
-    name: "Sách 100 kỹ năng đầu đời trong 1.000 ngày",
-    value: 199000,
+    name: "Buổi tư vấn bởi chuyên viên",
+    value: 300000,
   },
 ];
 
-export const SMALL_COMBO_GIFT = {
-  name: "Quà tặng đầy tháng",
-  value: 300000,
-};
-
-export const LARGE_COMBO_GIFT = {
-  name: "Quà tặng đầy tháng",
-  value: 500000,
-};
-
-export const LARGE_COMBO_DIAPER_GIFT = {
-  name: "Hộp tã Molfix (10 miếng)",
-  value: 50000,
-};
+export const LARGE_COMBO_ITEMS = [
+  {
+    name: "Lactacyd sữa tắm",
+    value: 205000,
+  },
+  {
+    name: "Lifebuoy nước rửa tay",
+    value: 135000,
+  },
+  {
+    name: "Lifebuoy sữa tắm",
+    value: 185000,
+  },
+  {
+    name: "GreenCross rửa tay khô",
+    value: 130000,
+  },
+  {
+    name: "Kem đánh răng Denti Whoo Hàn Quốc",
+    value: 100000,
+  },
+  {
+    name: "E-Book 100 kỹ năng + 8 loại hình thông minh",
+    value: 249000,
+  },
+  {
+    name: "Hộp tã Molfix (10 miếng)",
+    value: 50000,
+  },
+];
 
 export const ORDER_TOTAL_VALUES = {
   small: 1150000,

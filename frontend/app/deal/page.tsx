@@ -180,8 +180,7 @@ export default function SuccessPage() {
             </h2>
 
             <p className="mt-1 text-xs text-gray-500 sm:text-sm">
-              Chọn combo phù hợp. Mẹ có mã giới thiệu hợp lệ sẽ được giảm
-              300.000đ.
+              Chọn combo phù hợp với nhu cầu của mẹ.
             </p>
           </div>
 

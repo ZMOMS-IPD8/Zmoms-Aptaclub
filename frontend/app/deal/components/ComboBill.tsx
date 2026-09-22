@@ -1,11 +1,9 @@
 import type { OfferType } from "../types/offer";
 import {
   DISCOUNT_VALUE,
-  FIXED_GIFTS,
-  LARGE_COMBO_DIAPER_GIFT,
-  LARGE_COMBO_GIFT,
+  LARGE_COMBO_ITEMS,
   OFFERS,
-  SMALL_COMBO_GIFT,
+  SMALL_COMBO_ITEMS,
 } from "../data/offerData";
 
 type Props = {
@@ -22,22 +20,7 @@ export default function ComboBill({ selected, discountApplied }: Props) {
 
   if (!offer) return null;
 
-  const gifts =
-    selected === "large"
-      ? [...FIXED_GIFTS, LARGE_COMBO_GIFT, LARGE_COMBO_DIAPER_GIFT]
-      : [
-          ...FIXED_GIFTS.filter(
-            (gift) => gift.name !== "Kem đánh răng Denti Whoo Hàn Quốc",
-          ).map((gift) =>
-            gift.name === "Sách 100 kỹ năng đầu đời trong 1.000 ngày"
-              ? {
-                  ...gift,
-                  value: gift.value + 50000,
-                }
-              : gift,
-          ),
-          SMALL_COMBO_GIFT,
-        ];
+  const gifts = selected === "small" ? SMALL_COMBO_ITEMS : LARGE_COMBO_ITEMS;
 
   const giftValue = gifts.reduce((total, gift) => total + gift.value, 0);
 
