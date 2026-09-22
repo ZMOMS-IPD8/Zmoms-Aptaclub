@@ -167,8 +167,8 @@ export default function SuccessPage() {
 
         <section className="mx-auto mt-6 max-w-[850px] overflow-hidden rounded-2xl bg-white shadow-sm">
           <img
-            src="/combo-em-be-thong-minh.png"
-            alt="Combo Em Bé Thông Minh"
+            src={selected === "small" ? "/combo-nho.png" : "/combo-lon.png"}
+            alt={selected === "small" ? "Combo Nhỏ" : "Combo Lớn"}
             className="h-auto w-full object-cover"
           />
         </section>
