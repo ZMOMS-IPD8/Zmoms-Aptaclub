@@ -23,6 +23,13 @@ export const CLASS_SESSIONS: ClassSession[] = [
     time: "20:00",
     meetUrl: "https://meet.google.com/rsy-ceiu-eps",
   },
+  {
+    id: "south-03",
+    region: "south",
+    date: "2026-09-23",
+    time: "11:30",
+    meetUrl: "https://meet.google.com/iqx-vmrb-yvg",
+  },
 ];
 
 const NORTH_PROVINCES = [
