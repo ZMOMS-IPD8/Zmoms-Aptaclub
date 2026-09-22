@@ -123,30 +123,6 @@ export default function OfferCard({
             </div>
           </div>
         )}
-
-        <div
-          className={`flex items-center justify-between gap-3 ${
-            discountApplied ? "mt-3" : "mt-4"
-          }`}
-        >
-          {discountApplied ? (
-            <span
-              className="inline-flex items-center rounded-full px-3 py-1 text-[10px] font-extrabold"
-              style={{
-                backgroundColor: offer.bgColor,
-                color: offer.color,
-              }}
-            >
-              TIẾT KIỆM 300.000đ
-            </span>
-          ) : (
-            <span />
-          )}
-
-          <span className="text-[10px] font-medium text-gray-400">
-            Nhập mã giới thiệu để nhận ưu đãi
-          </span>
-        </div>
       </div>
     </button>
   );
