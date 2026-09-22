@@ -78,15 +78,17 @@ export default function ComboBill({ selected, discountApplied }: Props) {
           </p>
         </div>
 
-        <div className="flex items-center justify-between gap-4 bg-[#FCE3F1] px-4 py-3 sm:px-5">
-          <p className="text-sm font-bold text-[#EC008C]">
-            (-) Voucher combo IPD8
-          </p>
+        {discountApplied && (
+          <div className="flex items-center justify-between gap-4 bg-[#FCE3F1] px-4 py-3 sm:px-5">
+            <p className="text-sm font-bold text-[#EC008C]">
+              (-) Voucher combo IPD8
+            </p>
 
-          <p className="shrink-0 text-sm font-extrabold text-[#EC008C]">
-            {discountApplied ? `− ${formatPrice(DISCOUNT_VALUE)}` : "− 0đ"}
-          </p>
-        </div>
+            <p className="shrink-0 text-sm font-extrabold text-[#EC008C]">
+              − {formatPrice(DISCOUNT_VALUE)}
+            </p>
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-4 bg-[#F1F5F9] px-4 py-3 sm:px-5">
           <p className="text-xs font-extrabold text-[#12335B] sm:text-sm">
@@ -154,12 +156,14 @@ export default function ComboBill({ selected, discountApplied }: Props) {
         </p>
       </div>
 
-      <div className="bg-white px-4 py-3 sm:px-5">
-        <p className="text-[10px] leading-4 text-gray-400">
-          * Voucher 300.000đ chỉ được áp dụng vào Hóa đơn ① ZMOMS. Hóa đơn ② là
-          hóa đơn lon sữa Aptamil và không áp dụng voucher.
-        </p>
-      </div>
+      {discountApplied && (
+        <div className="bg-white px-4 py-3 sm:px-5">
+          <p className="text-[10px] leading-4 text-gray-400">
+            * Voucher 300.000đ chỉ được áp dụng vào Hóa đơn ① ZMOMS. Hóa đơn ②
+            là hóa đơn lon sữa Aptamil và không áp dụng voucher.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
