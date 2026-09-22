@@ -111,8 +111,7 @@ export default function ReferralVerification({ onVerified }: Props) {
           </h3>
 
           <p className="mt-1 text-xs leading-5 text-gray-500 sm:text-sm">
-            Mẹ nhập số điện thoại Zalo đã đăng ký và mã giới thiệu để kiểm tra
-            thông tin.
+            Mẹ nhập số điện thoại Zalo đã đăng ký để kiểm tra thông tin.
           </p>
         </div>
 
