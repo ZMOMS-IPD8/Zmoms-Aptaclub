@@ -165,12 +165,14 @@ export default function SuccessPage() {
           </div>
         </section>
 
-        <section className="mx-auto mt-6 max-w-[850px] overflow-hidden rounded-2xl bg-white shadow-sm">
-          <img
-            src={selected === "small" ? "/combo-nho.png" : "/combo-lon.png"}
-            alt={selected === "small" ? "Combo Nhỏ" : "Combo Lớn"}
-            className="h-auto w-full object-cover"
-          />
+        <section className="mx-auto mt-6 w-full max-w-[850px] overflow-hidden rounded-2xl bg-white shadow-sm">
+          <div className="flex aspect-[16/9] w-full items-center justify-center">
+            <img
+              src={selected === "small" ? "/combo-nho.png" : "/combo-lon.png"}
+              alt={selected === "small" ? "Combo Nhỏ" : "Combo Lớn"}
+              className="h-full w-full object-contain"
+            />
+          </div>
         </section>
 
         <section className="mt-7">
