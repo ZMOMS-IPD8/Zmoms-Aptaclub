@@ -6,6 +6,7 @@ import { ORDER_TOTAL_VALUES } from "../data/offerData";
 type Props = {
   offer: ComboOffer;
   active: boolean;
+  discountAmount: number;
   onClick: () => void;
 };
 
@@ -13,8 +14,15 @@ function formatPrice(value: number) {
   return `${value.toLocaleString("vi-VN")}đ`;
 }
 
-export default function OfferCard({ offer, active, onClick }: Props) {
+export default function OfferCard({
+  offer,
+  active,
+  discountAmount,
+  onClick,
+}: Props) {
   const orderTotalValue = ORDER_TOTAL_VALUES[offer.type];
+
+  const discountApplied = discountAmount > 0;
 
   return (
     <button
@@ -88,42 +96,52 @@ export default function OfferCard({ offer, active, onClick }: Props) {
 
         <div className="my-4 h-px bg-[#E8EDF3]" />
 
-        <div
-          className="relative overflow-hidden rounded-xl px-4 py-3.5"
-          style={{
-            backgroundColor: offer.bgColor,
-          }}
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
-                Sau voucher 300.000đ
-              </p>
-
-              <p className="mt-0.5 text-sm font-extrabold text-[#12335B] sm:text-base">
-                Mẹ chỉ trả
-              </p>
-            </div>
-
-            <p
-              className="shrink-0 text-[27px] font-extrabold leading-none sm:text-[32px]"
-              style={{ color: offer.color }}
-            >
-              {formatPrice(offer.discountedPrice)}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <span
-            className="inline-flex items-center rounded-full px-3 py-1 text-[10px] font-extrabold"
+        {discountApplied && (
+          <div
+            className="relative overflow-hidden rounded-xl px-4 py-3.5"
             style={{
               backgroundColor: offer.bgColor,
-              color: offer.color,
             }}
           >
-            TIẾT KIỆM 300.000đ
-          </span>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                  Sau voucher 300.000đ
+                </p>
+
+                <p className="mt-0.5 text-sm font-extrabold text-[#12335B] sm:text-base">
+                  Mẹ chỉ trả
+                </p>
+              </div>
+
+              <p
+                className="shrink-0 text-[27px] font-extrabold leading-none sm:text-[32px]"
+                style={{ color: offer.color }}
+              >
+                {formatPrice(offer.discountedPrice)}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div
+          className={`flex items-center justify-between gap-3 ${
+            discountApplied ? "mt-3" : "mt-4"
+          }`}
+        >
+          {discountApplied ? (
+            <span
+              className="inline-flex items-center rounded-full px-3 py-1 text-[10px] font-extrabold"
+              style={{
+                backgroundColor: offer.bgColor,
+                color: offer.color,
+              }}
+            >
+              TIẾT KIỆM 300.000đ
+            </span>
+          ) : (
+            <span />
+          )}
 
           <span className="text-[10px] font-medium text-gray-400">
             Nhập mã giới thiệu để nhận ưu đãi

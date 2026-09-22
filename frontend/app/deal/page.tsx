@@ -191,6 +191,7 @@ export default function SuccessPage() {
                 key={offer.type}
                 offer={offer}
                 active={selected === offer.type}
+                discountAmount={discountAmount}
                 onClick={() => handleSelectOffer(offer.type)}
               />
             ))}
