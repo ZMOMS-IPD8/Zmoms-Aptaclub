@@ -25,7 +25,19 @@ export default function ComboBill({ selected, discountApplied }: Props) {
   const gifts =
     selected === "large"
       ? [...FIXED_GIFTS, LARGE_COMBO_GIFT, LARGE_COMBO_DIAPER_GIFT]
-      : [...FIXED_GIFTS, SMALL_COMBO_GIFT];
+      : [
+          ...FIXED_GIFTS.filter(
+            (gift) => gift.name !== "Kem đánh răng Denti Whoo Hàn Quốc",
+          ).map((gift) =>
+            gift.name === "Sách 100 kỹ năng đầu đời trong 1.000 ngày"
+              ? {
+                  ...gift,
+                  value: gift.value + 50000,
+                }
+              : gift,
+          ),
+          SMALL_COMBO_GIFT,
+        ];
 
   const giftValue = gifts.reduce((total, gift) => total + gift.value, 0);
 
