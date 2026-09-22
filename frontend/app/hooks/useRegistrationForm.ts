@@ -125,13 +125,13 @@ export function useRegistrationForm() {
       return false;
     }
 
-    const sixMonthsLater = new Date(
+    const twelveMonthsLater = new Date(
       birthDate.getFullYear(),
-      birthDate.getMonth() + 6,
+      birthDate.getMonth() + 12,
       birthDate.getDate(),
     );
 
-    return today < sixMonthsLater;
+    return today < twelveMonthsLater;
   };
 
   const canSubmit = consentMember && !isSubmitting;
@@ -210,7 +210,7 @@ export function useRegistrationForm() {
         setDialog({
           open: true,
           title: "Chưa đủ điều kiện tham dự",
-          message: `Bé hiện đã khoảng ${babyAge.months} tháng tuổi. Chương trình dành cho bé dưới 6 tháng tuổi.`,
+          message: `Bé hiện đã khoảng ${babyAge.months} tháng tuổi. Chương trình dành cho bé dưới 12 tháng tuổi.`,
           status: "warning",
         });
 

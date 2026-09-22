@@ -133,13 +133,13 @@ function isEligible(babyDate: string) {
     };
   }
 
-  const sixMonthsLater = new Date(
+  const twelveMonthsLater = new Date(
     selectedDate.getFullYear(),
-    selectedDate.getMonth() + 6,
+    selectedDate.getMonth() + 12,
     selectedDate.getDate(),
   );
 
-  if (today >= sixMonthsLater) {
+  if (today >= twelveMonthsLater) {
     let months =
       (today.getFullYear() - selectedDate.getFullYear()) * 12 +
       (today.getMonth() - selectedDate.getMonth());
@@ -152,7 +152,7 @@ function isEligible(babyDate: string) {
       valid: true,
       eligible: false,
       status: "Đã sinh",
-      message: `Bé hiện đã khoảng ${months} tháng tuổi. Chương trình dành cho bé dưới 6 tháng tuổi.`,
+      message: `Bé hiện đã khoảng ${months} tháng tuổi. Chương trình dành cho bé dưới 12 tháng tuổi.`,
     };
   }
 
