@@ -50,7 +50,28 @@ function SectionHeader({
 
       <div>
         <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+
         <p className="mt-1 text-sm text-gray-500">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function DashboardLoadingOverlay() {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/75 backdrop-blur-sm">
+      <div className="flex w-[340px] flex-col items-center rounded-2xl bg-white px-7 py-8 text-center shadow-xl">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-[#173B8F]" />
+
+        <p className="mt-5 text-lg font-semibold text-[#173B8F]">
+          Đang cập nhật dữ liệu...
+        </p>
+
+        <p className="mt-2 text-sm leading-6 text-gray-500">
+          Đang đồng bộ dữ liệu mới nhất từ hệ thống.
+          <br />
+          Vui lòng chờ trong giây lát.
+        </p>
       </div>
     </div>
   );
@@ -62,10 +83,14 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const [error, setError] = useState("");
 
   async function handleRefresh() {
-    try {
-      setLoading(true);
-      setError("");
+    if (loading) {
+      return;
+    }
 
+    setLoading(true);
+    setError("");
+
+    try {
       const result = await fetchDashboardData();
 
       setData(result);
@@ -84,160 +109,179 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     }
   }
 
-  const { stats, orders, consultation, babyCare } = data;
-  const { danone } = stats;
-  const funnel = stats.funnel;
+  const { stats, orders, consultation, babyCare, coSell } = data;
+
+  const { danone, funnel } = stats;
 
   return (
-    <main className="min-h-screen bg-[#F2F6FF]">
-      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
-        <DashboardHeader
-          loading={loading}
-          onRefresh={() => void handleRefresh()}
-        />
+    <>
+      {loading ? <DashboardLoadingOverlay /> : null}
 
-        {error ? (
-          <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
-            {error}
-          </div>
-        ) : null}
-
-        <section>
-          <SectionHeader
-            number="01"
-            title="Danone Performance"
-            description="Tổng quan Co-Data, Consent, NU và tỷ lệ chuyển đổi."
+      <main className="min-h-screen bg-[#F2F6FF]">
+        <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+          <DashboardHeader
+            loading={loading}
+            onRefresh={() => void handleRefresh()}
           />
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-gray-500">Co-Data</p>
-              <p className="mt-2 text-3xl font-bold text-[#173B8F]">
-                {danone.coData.toLocaleString("vi-VN")}
-              </p>
-              <p className="mt-2 text-xs text-gray-500">Đã hoàn tất đăng ký</p>
+          {error ? (
+            <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+              {error}
             </div>
+          ) : null}
 
-            <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-gray-500">Consent</p>
-              <p className="mt-2 text-3xl font-bold text-[#173B8F]">
-                {danone.consent.toLocaleString("vi-VN")}
-              </p>
-              <p className="mt-2 text-xs text-gray-500">
-                Đồng ý chia sẻ dữ liệu
-              </p>
+          <section>
+            <SectionHeader
+              number="01"
+              title="Danone Performance"
+              description="Tổng quan Co-Data, Consent, NU và tỷ lệ chuyển đổi."
+            />
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+                <p className="text-sm font-medium text-gray-500">Co-Data</p>
+
+                <p className="mt-2 text-3xl font-bold text-[#173B8F]">
+                  {danone.coData.toLocaleString("vi-VN")}
+                </p>
+
+                <p className="mt-2 text-xs text-gray-500">
+                  Đã hoàn tất đăng ký
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+                <p className="text-sm font-medium text-gray-500">Consent</p>
+
+                <p className="mt-2 text-3xl font-bold text-[#173B8F]">
+                  {danone.consent.toLocaleString("vi-VN")}
+                </p>
+
+                <p className="mt-2 text-xs text-gray-500">
+                  Đồng ý chia sẻ dữ liệu
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+                <p className="text-sm font-medium text-gray-500">
+                  Consent Rate
+                </p>
+
+                <p className="mt-2 text-3xl font-bold text-[#173B8F]">
+                  {danone.consentRate.toFixed(2)}%
+                </p>
+
+                <p className="mt-2 text-xs text-gray-500">Consent / Co-Data</p>
+              </div>
+
+              <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+                <p className="text-sm font-medium text-gray-500">NU</p>
+
+                <p className="mt-2 text-3xl font-bold text-[#173B8F]">
+                  {danone.nu.toLocaleString("vi-VN")}
+                </p>
+
+                <p className="mt-2 text-xs text-gray-500">
+                  Đã giao hàng thành công
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+                <p className="text-sm font-medium text-gray-500">
+                  Co-Data → NU
+                </p>
+
+                <p className="mt-2 text-3xl font-bold text-[#173B8F]">
+                  {danone.conversionRate.toFixed(2)}%
+                </p>
+
+                <p className="mt-2 text-xs text-gray-500">Tỷ lệ chuyển đổi</p>
+              </div>
             </div>
+          </section>
 
-            <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-gray-500">Consent Rate</p>
-              <p className="mt-2 text-3xl font-bold text-[#173B8F]">
-                {danone.consentRate.toFixed(2)}%
-              </p>
-              <p className="mt-2 text-xs text-gray-500">Consent / Co-Data</p>
-            </div>
+          <section className="mt-10">
+            <SectionHeader
+              number="02"
+              title="Tổng quan Funnel"
+              description="Phân bổ dữ liệu theo từng bước trong hành trình khách hàng."
+            />
 
-            <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-gray-500">NU</p>
-              <p className="mt-2 text-3xl font-bold text-[#173B8F]">
-                {danone.nu.toLocaleString("vi-VN")}
-              </p>
-              <p className="mt-2 text-xs text-gray-500">
-                Đã giao hàng thành công
-              </p>
-            </div>
+            <KpiCards
+              coData={funnel.coData}
+              coEdu={funnel.coEdu}
+              coLead={funnel.coLead}
+              coSell={funnel.coSell}
+            />
+          </section>
 
-            <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-gray-500">Co-Data → NU</p>
-              <p className="mt-2 text-3xl font-bold text-[#173B8F]">
-                {danone.conversionRate.toFixed(2)}%
-              </p>
-              <p className="mt-2 text-xs text-gray-500">Tỷ lệ chuyển đổi</p>
-            </div>
-          </div>
-        </section>
+          <section className="mt-10">
+            <SectionHeader
+              number="03"
+              title="Co-Data"
+              description="Tổng quan dữ liệu khách hàng đã hoàn tất đăng ký."
+            />
 
-        <section className="mt-10">
-          <SectionHeader
-            number="02"
-            title="Tổng quan Funnel"
-            description="Phân bổ dữ liệu theo từng bước trong hành trình khách hàng."
-          />
+            <RegistrationOverview
+              byDate={stats.registrations.byDate}
+              byProvince={stats.registrations.byProvince}
+              bySource={stats.registrations.bySource}
+              byWeek={stats.registrations.byWeek}
+              byMonth={stats.registrations.byMonth}
+            />
+          </section>
 
-          <KpiCards
-            total={funnel.total}
-            coData={funnel.coData}
-            coEdu={funnel.coEdu}
-            coLead={funnel.coLead}
-            coSell={danone.nu}
-          />
-        </section>
+          <section className="mt-10">
+            <SectionHeader
+              number="04"
+              title="Co-Edu"
+              description="Tổng quan đăng ký và chuyển đổi lớp học."
+            />
 
-        <section className="mt-10">
-          <SectionHeader
-            number="03"
-            title="Co-Data"
-            description="Tổng quan dữ liệu khách hàng đã hoàn tất đăng ký."
-          />
+            <ConsultationOverview
+              total={consultation.total}
+              registered={consultation.registered}
+              attended={consultation.attended}
+              preSurveyCompleted={consultation.preSurveyCompleted}
+              postSurveyCompleted={consultation.postSurveyCompleted}
+              attendanceRate={consultation.attendanceRate}
+            />
+          </section>
 
-          <RegistrationOverview
-            byDate={stats.registrations.byDate}
-            byProvince={stats.registrations.byProvince}
-            bySource={stats.registrations.bySource}
-            byTouchpoint={stats.registrations.byTouchpoint}
-            byWeek={stats.registrations.byWeek}
-            byMonth={stats.registrations.byMonth}
-          />
-        </section>
+          <section className="mt-10">
+            <SectionHeader
+              number="05"
+              title="Co-Lead"
+              description="Tổng quan chuyển đổi dịch vụ tắm bé."
+            />
 
-        <section className="mt-10">
-          <SectionHeader
-            number="04"
-            title="Co-Edu"
-            description="Tổng quan đăng ký và chuyển đổi lớp học."
-          />
+            <BabyCareOverview
+              total={babyCare.total}
+              registered={babyCare.registered}
+              completed={babyCare.completed}
+              pending={babyCare.pending}
+              completionRate={babyCare.completionRate}
+            />
+          </section>
 
-          <ConsultationOverview
-            total={consultation.total}
-            registered={consultation.registered}
-            attended={consultation.attended}
-            preSurveyCompleted={consultation.preSurveyCompleted}
-            postSurveyCompleted={consultation.postSurveyCompleted}
-            attendanceRate={consultation.attendanceRate}
-          />
-        </section>
+          <section className="mt-10 pb-10">
+            <SectionHeader
+              number="06"
+              title="Co-Sell"
+              description="Tổng quan đơn hàng, giao hàng thành công, doanh thu và Touchpoint."
+            />
 
-        <section className="mt-10">
-          <SectionHeader
-            number="05"
-            title="Co-Lead"
-            description="Tổng quan chuyển đổi dịch vụ tắm bé."
-          />
-
-          <BabyCareOverview
-            total={babyCare.total}
-            registered={babyCare.registered}
-            completed={babyCare.completed}
-            pending={babyCare.pending}
-            completionRate={babyCare.completionRate}
-          />
-        </section>
-
-        <section className="mt-10 pb-10">
-          <SectionHeader
-            number="06"
-            title="Co-Sell"
-            description="Tổng quan đơn hàng, giao hàng thành công và doanh thu."
-          />
-
-          <OrdersOverview
-            total={orders.total}
-            paid={orders.paid}
-            unpaid={orders.unpaid}
-            delivered={orders.delivered}
-            revenue={orders.revenue}
-          />
-        </section>
-      </div>
-    </main>
+            <OrdersOverview
+              total={orders.total}
+              paid={orders.paid}
+              unpaid={orders.unpaid}
+              delivered={orders.delivered}
+              revenue={orders.revenue}
+              touchpoints={coSell.touchpoints}
+            />
+          </section>
+        </div>
+      </main>
+    </>
   );
 }

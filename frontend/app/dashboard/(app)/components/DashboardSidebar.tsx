@@ -10,7 +10,6 @@ import {
   LogOut,
   RefreshCw,
   ShoppingCart,
-  Users,
   Baby,
 } from "lucide-react";
 
@@ -28,11 +27,6 @@ const menuGroups = [
   {
     label: "DATA",
     items: [
-      {
-        label: "Lead",
-        href: "/dashboard/leads",
-        icon: Users,
-      },
       {
         label: "Co-Data",
         href: "/dashboard/co-data",
@@ -75,10 +69,10 @@ export default function DashboardSidebar() {
     try {
       await fetch("/api/dashboard/login", {
         method: "DELETE",
+        credentials: "include",
       });
     } finally {
-      router.push("/dashboard/login");
-      router.refresh();
+      router.replace("/dashboard/login");
     }
   };
 

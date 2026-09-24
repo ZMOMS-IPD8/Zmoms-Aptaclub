@@ -2,128 +2,33 @@ import type {
   DashboardBabyCare,
   DashboardConsultation,
   DashboardOrder,
-  DashboardStats,
 } from "../../app/dashboard/(app)/types/dashboard";
 
+import {
+  countByDate,
+  countByField,
+  countByPeriod,
+  calculateConversion,
+  getFunnelStats,
+  getGroupedConversion,
+  getPregnancySegmentation,
+} from "./metrics";
+
+import {
+  getFieldValue,
+  getNumericValue,
+  hasField,
+  isCoData,
+  isCoEdu,
+  isCoLead,
+  isCoSell,
+  isDanoneConsent,
+  isNU,
+  isOrder,
+  isPaidStatus,
+} from "./logic";
+
 type PancakeLead = Record<string, unknown>;
-
-function getFieldValue(value: unknown): string {
-  if (typeof value === "string") {
-    return value.trim();
-  }
-
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value).trim();
-  }
-
-  if (value && typeof value === "object" && "value" in value) {
-    return String((value as { value?: unknown }).value ?? "").trim();
-  }
-
-  return "";
-}
-
-function getNumericValue(value: unknown): number {
-  const normalized = getFieldValue(value);
-
-  if (!normalized) {
-    return 0;
-  }
-
-  const cleaned = normalized.replace(/[^\d.,-]/g, "");
-
-  if (!cleaned) {
-    return 0;
-  }
-
-  const number =
-    cleaned.includes(".") && cleaned.includes(",")
-      ? Number(cleaned.replace(/\./g, "").replace(",", "."))
-      : Number(cleaned.replace(/[.,]/g, ""));
-
-  return Number.isFinite(number) ? number : 0;
-}
-
-function normalizeStatus(value: unknown): string {
-  return getFieldValue(value)
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function isPaidStatus(value: unknown): boolean {
-  const status = normalizeStatus(value);
-
-  return (
-    status.includes("da thanh toan") ||
-    status.includes("paid") ||
-    status.includes("success") ||
-    status.includes("thanh toan thanh cong")
-  );
-}
-
-function isDeliveredStatus(value: unknown): boolean {
-  const status = normalizeStatus(value);
-
-  return (
-    status.includes("giao thanh cong") ||
-    status.includes("da giao") ||
-    status.includes("delivered") ||
-    status.includes("successful delivery")
-  );
-}
-
-function hasSuccessfulDelivery(lead: PancakeLead): boolean {
-  const deliveredDate = getFieldValue(lead.ngay_giao_thanh_cong);
-
-  if (deliveredDate) {
-    return true;
-  }
-
-  return isDeliveredStatus(lead.trang_thai_giao_hang);
-}
-
-function hasField(lead: PancakeLead, field: string): boolean {
-  return getFieldValue(lead[field]) !== "";
-}
-
-function isCoData(lead: PancakeLead): boolean {
-  return hasField(lead, "thoi_gian_dang_ky");
-}
-
-function isCoEdu(lead: PancakeLead): boolean {
-  return isCoData(lead) && hasField(lead, "thoi_gian_dang_ky_lop");
-}
-
-function isCoLead(lead: PancakeLead): boolean {
-  return isCoData(lead) && hasField(lead, "thoi_gian_dang_ky_tam_be");
-}
-
-function isOrder(lead: PancakeLead): boolean {
-  return hasField(lead, "ngay_dat_hang") && hasField(lead, "ma_don_hang");
-}
-
-function isNU(lead: PancakeLead): boolean {
-  return isCoData(lead) && isOrder(lead) && hasSuccessfulDelivery(lead);
-}
-
-function isCoSell(lead: PancakeLead): boolean {
-  return isNU(lead);
-}
-
-function isDanoneConsent(lead: PancakeLead): boolean {
-  const value = normalizeStatus(lead.chia_se_de_dang_ky_aptaclub);
-
-  return (
-    value === "true" ||
-    value === "yes" ||
-    value === "co" ||
-    value === "dong y" ||
-    value === "1"
-  );
-}
 
 function formatOrder(lead: PancakeLead): DashboardOrder {
   return {
@@ -181,268 +86,6 @@ function formatBabyCare(lead: PancakeLead): DashboardBabyCare {
   };
 }
 
-function countByField(
-  leads: PancakeLead[],
-  field: string,
-): Record<string, number> {
-  const result: Record<string, number> = {};
-
-  for (const lead of leads) {
-    const value = getFieldValue(lead[field]) || "Chưa có";
-
-    result[value] = (result[value] || 0) + 1;
-  }
-
-  return result;
-}
-
-function countByDate(
-  leads: PancakeLead[],
-  field: string,
-): Record<string, number> {
-  const result: Record<string, number> = {};
-
-  for (const lead of leads) {
-    const value = getFieldValue(lead[field]);
-
-    if (!value) {
-      continue;
-    }
-
-    const isoDate = new Date(value);
-
-    if (!Number.isNaN(isoDate.getTime())) {
-      const date = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Ho_Chi_Minh",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(isoDate);
-
-      result[date] = (result[date] || 0) + 1;
-      continue;
-    }
-
-    const match = value.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
-
-    if (!match) {
-      continue;
-    }
-
-    const day = match[1].padStart(2, "0");
-    const month = match[2].padStart(2, "0");
-    const year = match[3];
-
-    const date = `${year}-${month}-${day}`;
-
-    result[date] = (result[date] || 0) + 1;
-  }
-
-  return result;
-}
-
-function parseDate(value: unknown): Date | null {
-  const normalized = getFieldValue(value);
-
-  if (!normalized) {
-    return null;
-  }
-
-  const isoDate = new Date(normalized);
-
-  if (!Number.isNaN(isoDate.getTime())) {
-    return isoDate;
-  }
-
-  const match = normalized.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
-
-  if (!match) {
-    return null;
-  }
-
-  const day = Number(match[1]);
-  const month = Number(match[2]);
-  const year = Number(match[3]);
-
-  const date = new Date(year, month - 1, day);
-
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function getWeekKey(value: unknown): string {
-  const date = parseDate(value);
-
-  if (!date) {
-    return "";
-  }
-
-  const utcDate = new Date(
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
-  );
-
-  const day = utcDate.getUTCDay() || 7;
-
-  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - day);
-
-  const year = utcDate.getUTCFullYear();
-
-  const yearStart = new Date(Date.UTC(year, 0, 1));
-
-  const week = Math.ceil(
-    ((utcDate.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
-  );
-
-  return `${year}-W${String(week).padStart(2, "0")}`;
-}
-
-function getMonthKey(value: unknown): string {
-  const date = parseDate(value);
-
-  if (!date) {
-    return "";
-  }
-
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-    2,
-    "0",
-  )}`;
-}
-
-function countByPeriod(
-  leads: PancakeLead[],
-  field: string,
-  period: "week" | "month",
-): Record<string, number> {
-  const result: Record<string, number> = {};
-
-  for (const lead of leads) {
-    const key =
-      period === "week" ? getWeekKey(lead[field]) : getMonthKey(lead[field]);
-
-    if (!key) {
-      continue;
-    }
-
-    result[key] = (result[key] || 0) + 1;
-  }
-
-  return result;
-}
-
-function calculateConversion(
-  baseCount: number,
-  convertedCount: number,
-): number {
-  if (baseCount <= 0) {
-    return 0;
-  }
-
-  return Number(((convertedCount / baseCount) * 100).toFixed(2));
-}
-
-function getGroupedConversion(leads: PancakeLead[], groupField: string) {
-  const groups: Record<
-    string,
-    {
-      lead: number;
-      consent: number;
-      nu: number;
-    }
-  > = {};
-
-  for (const lead of leads) {
-    const group = getFieldValue(lead[groupField]) || "Chưa có";
-
-    if (!groups[group]) {
-      groups[group] = {
-        lead: 0,
-        consent: 0,
-        nu: 0,
-      };
-    }
-
-    groups[group].lead += 1;
-
-    if (isDanoneConsent(lead)) {
-      groups[group].consent += 1;
-    }
-
-    if (isNU(lead)) {
-      groups[group].nu += 1;
-    }
-  }
-
-  return Object.fromEntries(
-    Object.entries(groups).map(([group, value]) => [
-      group,
-      {
-        lead: value.lead,
-        consent: value.consent,
-        consentRate: calculateConversion(value.lead, value.consent),
-        nu: value.nu,
-        conversionRate: calculateConversion(value.lead, value.nu),
-      },
-    ]),
-  );
-}
-
-function getFunnelStats(leads: PancakeLead[]): DashboardStats["funnel"] {
-  const coDataLeads = leads.filter(isCoData);
-
-  return {
-    total: leads.length,
-    lead: leads.filter((lead) => !isCoData(lead)).length,
-    coData: coDataLeads.length,
-    coEdu: coDataLeads.filter(isCoEdu).length,
-    coLead: coDataLeads.filter(isCoLead).length,
-    coSell: coDataLeads.filter(isCoSell).length,
-  };
-}
-
-function getPregnancySegmentation(
-  leads: PancakeLead[],
-): Record<string, number> {
-  const result: Record<string, number> = {
-    "Đang mang thai": 0,
-    "Đã sinh": 0,
-    "Không xác định": 0,
-  };
-
-  for (const lead of leads) {
-    const status = normalizeStatus(lead.tinh_trang_me);
-
-    if (status.includes("mang thai")) {
-      result["Đang mang thai"] += 1;
-      continue;
-    }
-
-    if (status.includes("da sinh")) {
-      result["Đã sinh"] += 1;
-      continue;
-    }
-
-    const dateValue = getFieldValue(lead.ngay_du_sinh_hoac_ngay_sinh_cua_be);
-
-    if (dateValue) {
-      const date = parseDate(dateValue);
-
-      if (date) {
-        if (date.getTime() > Date.now()) {
-          result["Đang mang thai"] += 1;
-        } else {
-          result["Đã sinh"] += 1;
-        }
-
-        continue;
-      }
-    }
-
-    result["Không xác định"] += 1;
-  }
-
-  return result;
-}
-
 export function transformDashboardData(
   entries: PancakeLead[],
   totalEntries: number,
@@ -459,10 +102,7 @@ export function transformDashboardData(
     isPaidStatus(order.paymentStatus),
   );
 
-  const deliveredOrders = orders.filter(
-    (order) =>
-      order.deliveredDate !== "" || isDeliveredStatus(order.deliveryStatus),
-  );
+  const deliveredOrders = orders.filter((order) => order.deliveredDate !== "");
 
   const revenue = paidOrders.reduce((total, order) => total + order.amount, 0);
 
@@ -500,8 +140,6 @@ export function transformDashboardData(
 
   const registrationsBySource = countByField(coDataLeads, "nguon_dang_ky");
 
-  const registrationsByTouchpoint = countByField(coDataLeads, "nguon_mua_hang");
-
   const registrationsByWeek = countByPeriod(
     coDataLeads,
     "thoi_gian_dang_ky",
@@ -517,8 +155,6 @@ export function transformDashboardData(
   const mothersByStatus = countByField(coDataLeads, "tinh_trang_me");
 
   const byEvent = getGroupedConversion(coDataLeads, "nguon_dang_ky");
-
-  const byTouchpoint = getGroupedConversion(coDataLeads, "nguon_mua_hang");
 
   const consentCount = coDataLeads.filter(isDanoneConsent).length;
 
@@ -543,6 +179,10 @@ export function transformDashboardData(
     "trang_thai_thanh_toan",
   );
 
+  const ebookReceived = coDataLeads.filter((lead) =>
+    hasField(lead, "email_nhan_ebook"),
+  ).length;
+
   return {
     stats: {
       totalLeads: totalEntries,
@@ -559,7 +199,6 @@ export function transformDashboardData(
 
         acquisition: {
           byEvent,
-          byTouchpoint,
           byDate: registrationsByDate,
           byWeek: registrationsByWeek,
           byMonth: registrationsByMonth,
@@ -573,9 +212,7 @@ export function transformDashboardData(
       },
 
       ebook: {
-        received: coDataLeads.filter((lead) =>
-          hasField(lead, "email_nhan_ebook"),
-        ).length,
+        received: ebookReceived,
       },
 
       consultation: {
@@ -600,7 +237,6 @@ export function transformDashboardData(
         byDate: registrationsByDate,
         byProvince: registrationsByProvince,
         bySource: registrationsBySource,
-        byTouchpoint: registrationsByTouchpoint,
         byWeek: registrationsByWeek,
         byMonth: registrationsByMonth,
       },
@@ -669,15 +305,27 @@ export function transformDashboardData(
       coData: {
         total: coDataLeads.length,
       },
+
       coEdu: {
         total: coEduLeads.length,
       },
+
       coLead: {
         total: coLeadLeads.length,
       },
+
       coSell: {
         total: coSellLeads.length,
       },
+
+      nu: {
+        total: nuLeads.length,
+      },
+    },
+
+    coSell: {
+      total: coSellLeads.length,
+      touchpoints: countByField(coSellLeads, "nguon_mua_hang"),
     },
   };
 }

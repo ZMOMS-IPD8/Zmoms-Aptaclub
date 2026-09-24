@@ -1,12 +1,13 @@
 "use client";
 
-import { Search, RotateCcw } from "lucide-react";
+import { RotateCcw, Search } from "lucide-react";
 
 type CoDataFiltersProps = {
   search: string;
   province: string;
   source: string;
   motherStatus: string;
+  consent: string;
   provinces: string[];
   sources: string[];
   motherStatuses: string[];
@@ -14,6 +15,7 @@ type CoDataFiltersProps = {
   onProvinceChange: (value: string) => void;
   onSourceChange: (value: string) => void;
   onMotherStatusChange: (value: string) => void;
+  onConsentChange: (value: string) => void;
   onReset: () => void;
 };
 
@@ -22,6 +24,7 @@ export default function CoDataFilters({
   province,
   source,
   motherStatus,
+  consent,
   provinces,
   sources,
   motherStatuses,
@@ -29,11 +32,12 @@ export default function CoDataFilters({
   onProvinceChange,
   onSourceChange,
   onMotherStatusChange,
+  onConsentChange,
   onReset,
 }: CoDataFiltersProps) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5">
-      <div className="grid gap-3 lg:grid-cols-[minmax(240px,1.5fr)_repeat(3,minmax(150px,1fr))_auto]">
+      <div className="grid gap-3 lg:grid-cols-[minmax(240px,1.5fr)_repeat(4,minmax(140px,1fr))_auto]">
         <div className="relative">
           <Search
             size={17}
@@ -55,6 +59,7 @@ export default function CoDataFilters({
           className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-[#173B8F]"
         >
           <option value="all">Tất cả tỉnh / thành</option>
+
           {provinces.map((item) => (
             <option key={item} value={item}>
               {item}
@@ -67,7 +72,8 @@ export default function CoDataFilters({
           onChange={(event) => onSourceChange(event.target.value)}
           className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-[#173B8F]"
         >
-          <option value="all">Tất cả nguồn</option>
+          <option value="all">Tất cả nguồn đăng ký</option>
+
           {sources.map((item) => (
             <option key={item} value={item}>
               {item}
@@ -81,11 +87,22 @@ export default function CoDataFilters({
           className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-[#173B8F]"
         >
           <option value="all">Tất cả tình trạng mẹ</option>
+
           {motherStatuses.map((item) => (
             <option key={item} value={item}>
               {item}
             </option>
           ))}
+        </select>
+
+        <select
+          value={consent}
+          onChange={(event) => onConsentChange(event.target.value)}
+          className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-[#173B8F]"
+        >
+          <option value="all">Tất cả Consent</option>
+          <option value="yes">Đã đồng ý Aptaclub</option>
+          <option value="no">Chưa đồng ý Aptaclub</option>
         </select>
 
         <button

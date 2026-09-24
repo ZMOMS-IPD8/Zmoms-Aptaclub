@@ -69,7 +69,6 @@ export type DashboardGroupedConversion = {
 
 export type DashboardDanoneAcquisition = {
   byEvent: Record<string, DashboardGroupedConversion>;
-  byTouchpoint: Record<string, DashboardGroupedConversion>;
   byDate: Record<string, number>;
   byWeek: Record<string, number>;
   byMonth: Record<string, number>;
@@ -125,7 +124,6 @@ export type DashboardStats = {
     byDate: Record<string, number>;
     byProvince: Record<string, number>;
     bySource: Record<string, number>;
-    byTouchpoint: Record<string, number>;
     byWeek: Record<string, number>;
     byMonth: Record<string, number>;
   };
@@ -172,6 +170,11 @@ export type DashboardLeadsData = {
   total_entries: number;
 };
 
+export type DashboardCoSellData = {
+  total: number;
+  touchpoints: Record<string, number>;
+};
+
 export type DashboardApiResponse<T> = {
   success: boolean;
   data: T;
@@ -184,4 +187,5 @@ export type DashboardData = {
   consultation: DashboardConsultationData;
   babyCare: DashboardBabyCareData;
   leads: DashboardLeadsData;
+  coSell: DashboardCoSellData;
 };

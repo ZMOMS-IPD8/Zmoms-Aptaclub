@@ -4,7 +4,6 @@ type RegistrationOverviewProps = {
   byDate: Record<string, number>;
   byProvince: Record<string, number>;
   bySource: Record<string, number>;
-  byTouchpoint: Record<string, number>;
   byWeek: Record<string, number>;
   byMonth: Record<string, number>;
 };
@@ -116,15 +115,17 @@ export default function RegistrationOverview({
   byDate,
   byProvince,
   bySource,
-  byTouchpoint,
   byWeek,
   byMonth,
 }: RegistrationOverviewProps) {
   const dates = getLatestDates(byDate, 5);
+
   const provinces = getTopItems(byProvince, 5);
+
   const sources = getTopItems(bySource, 5);
-  const touchpoints = getTopItems(byTouchpoint, 5);
+
   const weeks = getLatestItems(byWeek, 5);
+
   const months = getLatestItems(byMonth, 5);
 
   return (
@@ -150,13 +151,7 @@ export default function RegistrationOverview({
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <BreakdownCard
-          title="Theo Touchpoint"
-          data={touchpoints}
-          subtitle={`Top ${touchpoints.length} nhóm`}
-        />
-
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <BreakdownCard
           title="Theo tuần"
           data={weeks}

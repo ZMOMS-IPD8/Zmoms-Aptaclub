@@ -1,7 +1,6 @@
 import { formatNumber, formatPercent } from "../utils/format";
 
 type KpiCardsProps = {
-  total: number;
   coData: number;
   coEdu: number;
   coLead: number;
@@ -9,7 +8,6 @@ type KpiCardsProps = {
 };
 
 export default function KpiCards({
-  total,
   coData,
   coEdu,
   coLead,
@@ -99,24 +97,6 @@ export default function KpiCards({
             <p className="mt-2 text-xs text-gray-500">{card.description}</p>
           </div>
         ))}
-      </div>
-
-      <div className="rounded-2xl border border-gray-100 bg-white px-5 py-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-gray-900">
-              Tổng record trên Pancake CRM
-            </p>
-
-            <p className="mt-1 text-xs text-gray-500">
-              Bao gồm toàn bộ dữ liệu đang có trên CRM.
-            </p>
-          </div>
-
-          <p className="text-2xl font-bold text-gray-900">
-            {formatNumber(total)}
-          </p>
-        </div>
       </div>
     </div>
   );
