@@ -12,14 +12,14 @@ export const CLASS_SESSIONS: ClassSession[] = [
   {
     id: "north-01",
     region: "north",
-    date: "2026-09-25",
+    date: "2026-10-02",
     time: "20:00",
     meetUrl: "https://meet.google.com/rsy-ceiu-eps",
   },
   {
     id: "south-02",
     region: "south",
-    date: "2026-09-25",
+    date: "2026-10-02",
     time: "20:00",
     meetUrl: "https://meet.google.com/rsy-ceiu-eps",
   },
