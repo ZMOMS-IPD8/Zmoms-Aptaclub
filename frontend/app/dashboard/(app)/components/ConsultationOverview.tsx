@@ -4,8 +4,6 @@ type ConsultationOverviewProps = {
   total: number;
   registered: number;
   attended: number;
-  preSurveyCompleted: number;
-  postSurveyCompleted: number;
   attendanceRate: number;
 };
 
@@ -13,8 +11,6 @@ export default function ConsultationOverview({
   total,
   registered,
   attended,
-  preSurveyCompleted,
-  postSurveyCompleted,
   attendanceRate,
 }: ConsultationOverviewProps) {
   const notAttended = Math.max(registered - attended, 0);
@@ -44,23 +40,11 @@ export default function ConsultationOverview({
       background: "bg-orange-50",
       text: "text-orange-700",
     },
-    {
-      label: "Đã đánh giá trước buổi học",
-      value: preSurveyCompleted,
-      background: "bg-purple-50",
-      text: "text-purple-700",
-    },
-    {
-      label: "Đã đánh giá sau buổi học",
-      value: postSurveyCompleted,
-      background: "bg-pink-50",
-      text: "text-pink-700",
-    },
   ];
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {cards.map((card) => (
           <div
             key={card.label}

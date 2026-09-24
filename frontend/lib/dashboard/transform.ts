@@ -112,14 +112,6 @@ export function transformDashboardData(
     (item) => item.registeredAt !== "",
   );
 
-  const preSurveyCompleted = consultations.filter(
-    (item) => item.preSurvey !== "",
-  );
-
-  const postSurveyCompleted = consultations.filter(
-    (item) => item.postSurvey !== "",
-  );
-
   const consultationAttended = consultations.filter(
     (item) => item.postSurvey !== "",
   );
@@ -182,6 +174,28 @@ export function transformDashboardData(
   const ebookReceived = coDataLeads.filter((lead) =>
     hasField(lead, "email_nhan_ebook"),
   ).length;
+
+  const consultationAttendanceRate =
+    consultationRegistered.length > 0
+      ? Number(
+          (
+            (consultationAttended.length / consultationRegistered.length) *
+            100
+          ).toFixed(2),
+        )
+      : 0;
+
+  const babyCareCompletionRate =
+    babyCareRegistered.length > 0
+      ? Number(
+          (
+            (babyCareCompleted.length / babyCareRegistered.length) *
+            100
+          ).toFixed(2),
+        )
+      : 0;
+
+  const leadEntries = entries.filter((lead) => !isCoData(lead));
 
   return {
     stats: {
@@ -262,17 +276,7 @@ export function transformDashboardData(
       total: consultations.length,
       registered: consultationRegistered.length,
       attended: consultationAttended.length,
-      preSurveyCompleted: preSurveyCompleted.length,
-      postSurveyCompleted: postSurveyCompleted.length,
-      attendanceRate:
-        consultationRegistered.length > 0
-          ? Number(
-              (
-                (consultationAttended.length / consultationRegistered.length) *
-                100
-              ).toFixed(2),
-            )
-          : 0,
+      attendanceRate: consultationAttendanceRate,
       consultations,
     },
 
@@ -284,21 +288,13 @@ export function transformDashboardData(
         babyCareRegistered.length - babyCareCompleted.length,
         0,
       ),
-      completionRate:
-        babyCareRegistered.length > 0
-          ? Number(
-              (
-                (babyCareCompleted.length / babyCareRegistered.length) *
-                100
-              ).toFixed(2),
-            )
-          : 0,
+      completionRate: babyCareCompletionRate,
       babyCare,
     },
 
     leads: {
-      entries: entries.filter((lead) => !isCoData(lead)),
-      total_entries: entries.filter((lead) => !isCoData(lead)).length,
+      entries: leadEntries,
+      total_entries: leadEntries.length,
     },
 
     breakdown: {
