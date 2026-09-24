@@ -47,7 +47,6 @@ export default function DashboardLoginPage() {
       }
 
       router.replace("/dashboard");
-      router.refresh();
     } catch {
       setError("Không thể kết nối đến hệ thống.");
     } finally {
