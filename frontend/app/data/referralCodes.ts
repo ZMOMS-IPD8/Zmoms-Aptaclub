@@ -100,6 +100,8 @@ export const REFERRAL_CODES: string[] = [
   "W6F9TK",
   "X3G4QP",
   "GREEN",
+  "CHUONG",
+  "DIUMY",
 ];
 
 export const isValidReferralCode = (code: string) => {
