@@ -29,6 +29,8 @@ type Ward = {
 };
 
 const API_URL = "https://provinces.open-api.vn/api/v1";
+const MIN_BOOKING_DATE = "2026-10-12";
+const MAX_BOOKING_DATE = "2026-12-15";
 
 export default function BathBooking({
   member,
@@ -166,6 +168,11 @@ export default function BathBooking({
       return;
     }
 
+    if (date < MIN_BOOKING_DATE || date > MAX_BOOKING_DATE) {
+      onError("Ngày chăm sóc chỉ được đăng ký từ 12/10/2026 đến 15/12/2026.");
+      return;
+    }
+
     if (!time) {
       onError("Mẹ vui lòng chọn thời gian dự kiến chăm sóc.");
       return;
@@ -239,8 +246,6 @@ export default function BathBooking({
       onLoadingChange(false);
     }
   };
-
-  const today = new Date().toISOString().split("T")[0];
 
   return (
     <div className="space-y-4">
@@ -432,13 +437,18 @@ export default function BathBooking({
               id="bath-date"
               type="date"
               value={date}
-              min={today}
+              min={MIN_BOOKING_DATE}
+              max={MAX_BOOKING_DATE}
               onChange={(e) => {
                 onError("");
                 setDate(e.target.value);
               }}
               className="mt-3 h-12 w-full rounded-xl border border-[#D8E1EB] px-4 text-sm text-[#12335B] outline-none focus:border-[#18A8DC] focus:ring-2 focus:ring-[#18A8DC]/10"
             />
+
+            <p className="mt-2 text-xs text-gray-500">
+              Lịch tư vấn và chăm sóc tại nhà: 12/10/2026 – 15/12/2026
+            </p>
           </div>
 
           <div>
