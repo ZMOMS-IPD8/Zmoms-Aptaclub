@@ -29,6 +29,10 @@ function getFieldValue(value: unknown): string {
     return value.trim();
   }
 
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value).trim();
+  }
+
   if (value && typeof value === "object" && "value" in value) {
     return String((value as { value?: unknown }).value ?? "").trim();
   }
@@ -225,6 +229,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!referralCode) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "INVALID_REFERRAL_CODE",
+          message: "Vui lòng nhập mã giới thiệu.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!isValidReferralCode(referralCode)) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "INVALID_REFERRAL_CODE",
+          message: "Mã giới thiệu không hợp lệ.",
+        },
+        { status: 400 },
+      );
+    }
+
     const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
     const apiKey = process.env.PANCAKE_CRM_API_KEY;
     const zaloUrl = process.env.ZMOMS_ZALO_OA_URL || "";
@@ -250,17 +276,6 @@ export async function POST(req: NextRequest) {
           success: false,
           status: "INVALID_PHONE",
           message: "Số điện thoại không đúng định dạng.",
-        },
-        { status: 400 },
-      );
-    }
-
-    if (!isValidReferralCode(referralCode)) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "INVALID_REFERRAL_CODE",
-          message: "Mã giới thiệu không hợp lệ.",
         },
         { status: 400 },
       );

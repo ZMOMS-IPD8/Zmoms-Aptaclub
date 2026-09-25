@@ -134,7 +134,14 @@ export function useRegistrationForm() {
     return today < twelveMonthsLater;
   };
 
-  const canSubmit = consentMember && !isSubmitting;
+  const canSubmit =
+    fullName.trim() !== "" &&
+    phone.trim() !== "" &&
+    province !== "" &&
+    babyDate !== "" &&
+    referralCode.trim() !== "" &&
+    consentMember &&
+    !isSubmitting;
 
   const getFormData = (): RegistrationData => {
     return {
@@ -165,6 +172,14 @@ export function useRegistrationForm() {
 
     if (!/^0(3|5|7|8|9)[0-9]{8}$/.test(cleanPhone)) {
       return "Vui lòng nhập số điện thoại hợp lệ.";
+    }
+
+    if (!referralCode.trim()) {
+      return "Vui lòng nhập mã giới thiệu.";
+    }
+
+    if (!isValidReferralCode(referralCode.trim().toUpperCase())) {
+      return "Mã giới thiệu không hợp lệ.";
     }
 
     if (!province) {
@@ -216,10 +231,6 @@ export function useRegistrationForm() {
 
         return "__ELIGIBILITY_DIALOG__";
       }
-    }
-
-    if (!isValidReferralCode(referralCode)) {
-      return "Mã giới thiệu không hợp lệ.";
     }
 
     if (!consentMember) {
