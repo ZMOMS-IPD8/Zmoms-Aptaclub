@@ -291,14 +291,18 @@ export async function POST(req: NextRequest) {
 
     const selectedCombo = COMBO_CONFIG[combo];
 
+    const fullAddress = [
+      cleanAddress,
+      cleanCommune,
+      cleanProvince,
+      cleanCountry,
+    ].join(", ");
+
     const updatePayload: Record<string, string> = {
       id: leadId,
       ten_nguoi_nhan: cleanFullName,
       so_dien_thoai_giao_hang: cleanShippingPhone,
-      full_address: cleanAddress,
-      province: cleanProvince,
-      commune: cleanCommune,
-      country: cleanCountry,
+      full_address: fullAddress,
       ma_nguoi_ban: cleanMaNguoiBan,
       ten_combo: selectedCombo.name,
       gia_tien: String(selectedCombo.price),
@@ -318,7 +322,17 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(updatePayload),
     });
 
-    const updateResult = await updateResponse.json();
+    const updateText = await updateResponse.text();
+
+    let updateResult: Record<string, unknown> = {};
+
+    try {
+      updateResult = updateText
+        ? (JSON.parse(updateText) as Record<string, unknown>)
+        : {};
+    } catch {
+      updateResult = {};
+    }
 
     if (!updateResponse.ok) {
       return NextResponse.json(
@@ -327,8 +341,9 @@ export async function POST(req: NextRequest) {
           leadFound: true,
           leadId,
           message:
-            updateResult?.message ||
-            "Không thể cập nhật thông tin Lead trên Pancake.",
+            typeof updateResult.message === "string"
+              ? updateResult.message
+              : "Không thể cập nhật thông tin Lead trên Pancake.",
         },
         { status: updateResponse.status },
       );
@@ -345,6 +360,7 @@ export async function POST(req: NextRequest) {
       maNguoiBan: cleanMaNguoiBan || null,
       tenCombo: selectedCombo.name,
       giaTien: selectedCombo.price,
+      fullAddress,
       zaloUrl,
       message: "Đã cập nhật thông tin nhận hàng trên Pancake.",
     });
