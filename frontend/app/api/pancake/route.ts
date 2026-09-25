@@ -117,7 +117,7 @@ function isEligible(babyDate: string) {
       };
     }
 
-    if (pregnancyDays < 210) {
+    if (pregnancyDays < 196) {
       const weeks = Math.floor(pregnancyDays / 7);
       const days = pregnancyDays % 7;
 
@@ -125,7 +125,7 @@ function isEligible(babyDate: string) {
         valid: true,
         eligible: false,
         status: "Đang mang thai",
-        message: `Hiện tại tuổi thai của mẹ khoảng ${weeks} tuần ${days} ngày. Chương trình dành cho mẹ từ 30 tuần thai trở lên.`,
+        message: `Hiện tại tuổi thai của mẹ khoảng ${weeks} tuần ${days} ngày. Chương trình dành cho mẹ từ 28 tuần thai trở lên.`,
       };
     }
 

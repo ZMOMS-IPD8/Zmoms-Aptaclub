@@ -114,7 +114,7 @@ export function useRegistrationForm() {
   const isPregnancyEligible = () => {
     const pregnancy = getPregnancyInfo();
 
-    return !!pregnancy && pregnancy.totalDays >= 210;
+    return !!pregnancy && pregnancy.totalDays >= 196;
   };
 
   const isBabyEligible = () => {
@@ -208,7 +208,7 @@ export function useRegistrationForm() {
         setDialog({
           open: true,
           title: "Chưa đủ điều kiện tham dự",
-          message: `Hiện tại tuổi thai của mẹ khoảng ${pregnancy.weeks} tuần ${pregnancy.days} ngày. Chương trình dành cho mẹ từ 30 tuần thai trở lên.`,
+          message: `Hiện tại tuổi thai của mẹ khoảng ${pregnancy.weeks} tuần ${pregnancy.days} ngày. Chương trình dành cho mẹ từ 28 tuần thai trở lên.`,
           status: "warning",
         });
 
