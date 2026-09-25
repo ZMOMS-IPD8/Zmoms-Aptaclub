@@ -355,7 +355,7 @@ export default function ShippingForm({
             </p>
 
             <p className="mt-1 text-sm leading-5 text-[#12335B]">
-              {address}, {commune}, {province}, Việt Nam
+              {address.trim()}, {commune}, {province}, Việt Nam
             </p>
           </div>
         )}
