@@ -1,68 +1,57 @@
 import type { DashboardConsultationData } from "../../types/dashboard";
 
-function formatNumber(value: number) {
-  return value.toLocaleString("vi-VN");
-}
-
-function formatPercent(value: number) {
-  return `${value.toFixed(2)}%`;
-}
-
 export default function CoEduStats({
   consultation,
 }: {
   consultation: DashboardConsultationData;
 }) {
-  const pending = Math.max(
-    consultation.registered - consultation.postSurveyCompleted,
+  const notAttended = Math.max(
+    consultation.registered - consultation.attended,
     0,
   );
 
   const cards = [
     {
-      title: "Co-Edu",
-      value: formatNumber(consultation.registered),
-      description: "Đã đăng ký lớp",
-      className: "border-blue-100",
-      valueClassName: "text-[#173B8F]",
+      label: "Co-Edu",
+      value: consultation.total,
+      description: "Tổng khách hàng Co-Edu",
+      background: "bg-gray-50",
+      text: "text-gray-900",
     },
     {
-      title: "Đã tham dự",
-      value: formatNumber(consultation.postSurveyCompleted),
-      description: "Đã có Post-survey",
-      className: "border-emerald-100",
-      valueClassName: "text-emerald-700",
+      label: "Đăng ký lớp",
+      value: consultation.registered,
+      description: "Đã đăng ký lớp học",
+      background: "bg-blue-50",
+      text: "text-[#173B8F]",
     },
     {
-      title: "Chưa tham dự",
-      value: formatNumber(pending),
+      label: "Đã tham dự",
+      value: consultation.attended,
+      description: "Có Post-survey",
+      background: "bg-green-50",
+      text: "text-green-700",
+    },
+    {
+      label: "Chưa tham dự",
+      value: notAttended,
       description: "Chưa có Post-survey",
-      className: "border-slate-200",
-      valueClassName: "text-slate-700",
-    },
-    {
-      title: "Tỷ lệ tham dự",
-      value: formatPercent(consultation.attendanceRate),
-      description: "Đã tham dự / đăng ký",
-      className: "border-blue-100",
-      valueClassName: "text-[#173B8F]",
+      background: "bg-orange-50",
+      text: "text-orange-700",
     },
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
       {cards.map((card) => (
-        <div
-          key={card.title}
-          className={`rounded-2xl border bg-white p-5 shadow-sm ${card.className}`}
-        >
-          <p className="text-sm font-medium text-slate-500">{card.title}</p>
+        <div key={card.label} className={`rounded-2xl p-5 ${card.background}`}>
+          <p className="text-xs font-medium text-gray-500">{card.label}</p>
 
-          <p className={`mt-2 text-2xl font-bold ${card.valueClassName}`}>
-            {card.value}
+          <p className={`mt-2 text-2xl font-bold ${card.text}`}>
+            {card.value.toLocaleString("vi-VN")}
           </p>
 
-          <p className="mt-2 text-xs text-slate-500">{card.description}</p>
+          <p className="mt-2 text-xs text-gray-500">{card.description}</p>
         </div>
       ))}
     </div>
