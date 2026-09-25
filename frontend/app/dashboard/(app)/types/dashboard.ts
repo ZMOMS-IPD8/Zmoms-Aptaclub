@@ -150,8 +150,6 @@ export type DashboardConsultationData = {
   total: number;
   registered: number;
   attended: number;
-  preSurveyCompleted: number;
-  postSurveyCompleted: number;
   attendanceRate: number;
   consultations: DashboardConsultation[];
 };

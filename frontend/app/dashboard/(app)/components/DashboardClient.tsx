@@ -242,8 +242,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               total={consultation.total}
               registered={consultation.registered}
               attended={consultation.attended}
-              preSurveyCompleted={consultation.preSurveyCompleted}
-              postSurveyCompleted={consultation.postSurveyCompleted}
               attendanceRate={consultation.attendanceRate}
             />
           </section>
