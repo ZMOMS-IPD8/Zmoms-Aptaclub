@@ -217,14 +217,7 @@ export default function PaymentPageClient() {
     setSubmitError("");
     setSubmitting(true);
 
-    const fullAddress = [
-      data.address.trim(),
-      data.commune.trim(),
-      data.province.trim(),
-      data.country.trim(),
-    ]
-      .filter(Boolean)
-      .join(", ");
+    const address = data.address.trim();
 
     try {
       const response = await fetch("/api/payment/update-lead", {
@@ -236,7 +229,7 @@ export default function PaymentPageClient() {
           registrationPhone,
           shippingPhone: data.phone,
           fullName: data.fullName,
-          Address: fullAddress,
+          Address: address,
           province: data.province,
           commune: data.commune,
           country: data.country,
