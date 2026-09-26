@@ -1,11 +1,10 @@
 import { formatNumber } from "../utils/format";
 
 type RegistrationOverviewProps = {
-  byDate: Record<string, number>;
+  date: string;
+  total: number;
   byProvince: Record<string, number>;
   bySource: Record<string, number>;
-  byWeek: Record<string, number>;
-  byMonth: Record<string, number>;
 };
 
 function getTopItems(data: Record<string, number>, limit = 5) {
@@ -14,19 +13,7 @@ function getTopItems(data: Record<string, number>, limit = 5) {
     .slice(0, limit);
 }
 
-function getLatestDates(data: Record<string, number>, limit = 5) {
-  return Object.entries(data)
-    .sort(([dateA], [dateB]) => dateB.localeCompare(dateA))
-    .slice(0, limit);
-}
-
-function getLatestItems(data: Record<string, number>, limit = 5) {
-  return Object.entries(data)
-    .sort(([keyA], [keyB]) => keyB.localeCompare(keyA))
-    .slice(0, limit);
-}
-
-function formatBreakdownDate(value: string): string {
+function formatDate(value: string): string {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 
   if (!match) {
@@ -36,26 +23,14 @@ function formatBreakdownDate(value: string): string {
   return `${match[3]}/${match[2]}/${match[1]}`;
 }
 
-function formatMonthLabel(value: string): string {
-  const match = value.match(/^(\d{4})-(\d{2})$/);
-
-  if (!match) {
-    return value;
-  }
-
-  return `${match[2]}/${match[1]}`;
-}
-
 function BreakdownCard({
   title,
   data,
   subtitle,
-  formatLabel,
 }: {
   title: string;
   data: [string, number][];
   subtitle: string;
-  formatLabel?: (value: string) => string;
 }) {
   const total = data.reduce((sum, [, count]) => sum + count, 0);
 
@@ -82,7 +57,7 @@ function BreakdownCard({
               <div key={label}>
                 <div className="mb-1.5 flex items-center justify-between gap-3">
                   <span className="min-w-0 truncate text-sm text-gray-600">
-                    {formatLabel ? formatLabel(label) : label}
+                    {label}
                   </span>
 
                   <span className="shrink-0 text-sm font-bold text-gray-900">
@@ -112,57 +87,43 @@ function BreakdownCard({
 }
 
 export default function RegistrationOverview({
-  byDate,
+  date,
+  total,
   byProvince,
   bySource,
-  byWeek,
-  byMonth,
 }: RegistrationOverviewProps) {
-  const dates = getLatestDates(byDate, 5);
-
   const provinces = getTopItems(byProvince, 5);
-
   const sources = getTopItems(bySource, 5);
-
-  const weeks = getLatestItems(byWeek, 5);
-
-  const months = getLatestItems(byMonth, 5);
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <BreakdownCard
-          title="Theo ngày"
-          data={dates}
-          subtitle="5 ngày gần nhất"
-          formatLabel={formatBreakdownDate}
-        />
+      <div className="rounded-2xl bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-500">Co-Data hôm nay</p>
 
+            <p className="mt-1 text-xs text-gray-400">
+              Ngày đăng ký: {formatDate(date)}
+            </p>
+          </div>
+
+          <p className="text-4xl font-bold text-[#173B8F]">
+            {formatNumber(total)}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <BreakdownCard
           title="Theo tỉnh / thành"
           data={provinces}
-          subtitle={`Top ${provinces.length} nhóm`}
+          subtitle={`Top ${provinces.length} nhóm trong ngày`}
         />
 
         <BreakdownCard
           title="Theo Event"
           data={sources}
-          subtitle={`Top ${sources.length} nhóm`}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <BreakdownCard
-          title="Theo tuần"
-          data={weeks}
-          subtitle="5 tuần gần nhất"
-        />
-
-        <BreakdownCard
-          title="Theo tháng"
-          data={months}
-          subtitle="5 tháng gần nhất"
-          formatLabel={formatMonthLabel}
+          subtitle={`Top ${sources.length} nhóm trong ngày`}
         />
       </div>
     </div>

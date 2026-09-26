@@ -5,13 +5,15 @@ import type {
 } from "../../app/dashboard/(app)/types/dashboard";
 
 import {
+  calculateConversion,
   countByDate,
   countByField,
   countByPeriod,
-  calculateConversion,
   getFunnelStats,
   getGroupedConversion,
   getPregnancySegmentation,
+  getVietnamDateKey,
+  getVietnamDateKeyFromValue,
 } from "./metrics";
 
 import {
@@ -95,6 +97,22 @@ export function transformDashboardData(
   const coLeadLeads = coDataLeads.filter(isCoLead);
   const coSellLeads = coDataLeads.filter(isCoSell);
   const nuLeads = coDataLeads.filter(isNU);
+
+  const todayKey = getVietnamDateKey();
+
+  const todayCoDataLeads = coDataLeads.filter(
+    (lead) => getVietnamDateKeyFromValue(lead.thoi_gian_dang_ky) === todayKey,
+  );
+
+  const todayRegistrationsByProvince = countByField(
+    todayCoDataLeads,
+    "thanh_pho",
+  );
+
+  const todayRegistrationsBySource = countByField(
+    todayCoDataLeads,
+    "nguon_dang_ky",
+  );
 
   const orders = entries.filter(isOrder).map(formatOrder);
 
@@ -248,6 +266,12 @@ export function transformDashboardData(
       },
 
       registrations: {
+        today: {
+          date: todayKey,
+          total: todayCoDataLeads.length,
+          byProvince: todayRegistrationsByProvince,
+          bySource: todayRegistrationsBySource,
+        },
         byDate: registrationsByDate,
         byProvince: registrationsByProvince,
         bySource: registrationsBySource,
@@ -301,19 +325,15 @@ export function transformDashboardData(
       coData: {
         total: coDataLeads.length,
       },
-
       coEdu: {
         total: coEduLeads.length,
       },
-
       coLead: {
         total: coLeadLeads.length,
       },
-
       coSell: {
         total: coSellLeads.length,
       },
-
       nu: {
         total: nuLeads.length,
       },

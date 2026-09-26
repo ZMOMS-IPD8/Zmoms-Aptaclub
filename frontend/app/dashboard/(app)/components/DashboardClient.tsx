@@ -113,6 +113,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
   const { danone, funnel } = stats;
 
+  const todayRegistrations = stats.registrations.today;
+
   return (
     <>
       {loading ? <DashboardLoadingOverlay /> : null}
@@ -219,15 +221,14 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             <SectionHeader
               number="03"
               title="Co-Data"
-              description="Tổng quan dữ liệu khách hàng đã hoàn tất đăng ký."
+              description={`Tổng quan dữ liệu đăng ký trong ngày ${todayRegistrations.date.split("-").reverse().join("/")}.`}
             />
 
             <RegistrationOverview
-              byDate={stats.registrations.byDate}
-              byProvince={stats.registrations.byProvince}
-              bySource={stats.registrations.bySource}
-              byWeek={stats.registrations.byWeek}
-              byMonth={stats.registrations.byMonth}
+              date={todayRegistrations.date}
+              total={todayRegistrations.total}
+              byProvince={todayRegistrations.byProvince}
+              bySource={todayRegistrations.bySource}
             />
           </section>
 

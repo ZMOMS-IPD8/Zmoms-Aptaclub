@@ -9,6 +9,8 @@ import {
 
 type PancakeLead = Record<string, unknown>;
 
+const VIETNAM_TIME_ZONE = "Asia/Ho_Chi_Minh";
+
 export function countByField(
   leads: PancakeLead[],
   field: string,
@@ -24,6 +26,41 @@ export function countByField(
   return result;
 }
 
+export function getVietnamDateKey(date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: VIETNAM_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+export function getVietnamDateKeyFromValue(value: unknown): string {
+  const normalized = getFieldValue(value);
+
+  if (!normalized) {
+    return "";
+  }
+
+  const isoDate = new Date(normalized);
+
+  if (!Number.isNaN(isoDate.getTime())) {
+    return getVietnamDateKey(isoDate);
+  }
+
+  const match = normalized.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+
+  if (!match) {
+    return "";
+  }
+
+  const day = match[1].padStart(2, "0");
+  const month = match[2].padStart(2, "0");
+  const year = match[3];
+
+  return `${year}-${month}-${day}`;
+}
+
 export function countByDate(
   leads: PancakeLead[],
   field: string,
@@ -31,37 +68,11 @@ export function countByDate(
   const result: Record<string, number> = {};
 
   for (const lead of leads) {
-    const value = getFieldValue(lead[field]);
+    const date = getVietnamDateKeyFromValue(lead[field]);
 
-    if (!value) {
+    if (!date) {
       continue;
     }
-
-    const isoDate = new Date(value);
-
-    if (!Number.isNaN(isoDate.getTime())) {
-      const date = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Ho_Chi_Minh",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(isoDate);
-
-      result[date] = (result[date] || 0) + 1;
-      continue;
-    }
-
-    const match = value.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
-
-    if (!match) {
-      continue;
-    }
-
-    const day = match[1].padStart(2, "0");
-    const month = match[2].padStart(2, "0");
-    const year = match[3];
-
-    const date = `${year}-${month}-${day}`;
 
     result[date] = (result[date] || 0) + 1;
   }

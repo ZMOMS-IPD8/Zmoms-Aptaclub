@@ -121,6 +121,12 @@ export type DashboardStats = {
   };
 
   registrations: {
+    today: {
+      date: string;
+      total: number;
+      byProvince: Record<string, number>;
+      bySource: Record<string, number>;
+    };
     byDate: Record<string, number>;
     byProvince: Record<string, number>;
     bySource: Record<string, number>;
