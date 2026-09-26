@@ -66,106 +66,17 @@ function parseDate(value: string): Date | null {
   return date;
 }
 
-function getToday(): Date {
-  const today = new Date();
-
-  today.setHours(0, 0, 0, 0);
-
-  return today;
-}
-
 function getMotherStatus(babyDate: string): string | null {
   const date = parseDate(babyDate);
-  const today = getToday();
 
   if (!date) {
     return null;
   }
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   return date > today ? "Đang mang thai" : "Đã sinh";
-}
-
-function isEligible(babyDate: string) {
-  const selectedDate = parseDate(babyDate);
-  const today = getToday();
-
-  if (!selectedDate) {
-    return {
-      valid: false,
-      eligible: false,
-      status: null,
-      message: "Ngày dự sinh hoặc ngày sinh của bé không hợp lệ.",
-    };
-  }
-
-  if (selectedDate > today) {
-    const oneDay = 1000 * 60 * 60 * 24;
-
-    const daysUntilDue = Math.floor(
-      (selectedDate.getTime() - today.getTime()) / oneDay,
-    );
-
-    const pregnancyDays = 280 - daysUntilDue;
-
-    if (pregnancyDays < 0 || pregnancyDays > 280) {
-      return {
-        valid: false,
-        eligible: false,
-        status: "Đang mang thai",
-        message:
-          "Ngày dự sinh không hợp lệ. Vui lòng kiểm tra lại ngày dự sinh.",
-      };
-    }
-
-    if (pregnancyDays < 196) {
-      const weeks = Math.floor(pregnancyDays / 7);
-      const days = pregnancyDays % 7;
-
-      return {
-        valid: true,
-        eligible: false,
-        status: "Đang mang thai",
-        message: `Hiện tại tuổi thai của mẹ khoảng ${weeks} tuần ${days} ngày. Chương trình dành cho mẹ từ 28 tuần thai trở lên.`,
-      };
-    }
-
-    return {
-      valid: true,
-      eligible: true,
-      status: "Đang mang thai",
-      message: "",
-    };
-  }
-
-  const twelveMonthsLater = new Date(
-    selectedDate.getFullYear(),
-    selectedDate.getMonth() + 12,
-    selectedDate.getDate(),
-  );
-
-  if (today >= twelveMonthsLater) {
-    let months =
-      (today.getFullYear() - selectedDate.getFullYear()) * 12 +
-      (today.getMonth() - selectedDate.getMonth());
-
-    if (today.getDate() < selectedDate.getDate()) {
-      months--;
-    }
-
-    return {
-      valid: true,
-      eligible: false,
-      status: "Đã sinh",
-      message: `Bé hiện đã khoảng ${months} tháng tuổi. Chương trình dành cho bé dưới 12 tháng tuổi.`,
-    };
-  }
-
-  return {
-    valid: true,
-    eligible: true,
-    status: "Đã sinh",
-    message: "",
-  };
 }
 
 async function parsePancakeResponse(
@@ -294,29 +205,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const eligibility = isEligible(babyDate);
-
-    if (!eligibility.valid) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "INVALID_DATE",
-          message: eligibility.message,
-        },
-        { status: 400 },
-      );
-    }
-
-    if (!eligibility.eligible) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "NOT_ELIGIBLE",
-          message: eligibility.message,
-        },
-        { status: 403 },
-      );
-    }
+    /*
+     * Không còn check:
+     * - Tuần thai tối thiểu 28 tuần
+     * - Bé dưới 12 tháng
+     *
+     * Chỉ kiểm tra ngày có đúng định dạng và tồn tại hay không.
+     */
 
     const cleanBabyDate = `${babyDate} 00:00:00`;
     const motherStatus = getMotherStatus(babyDate);

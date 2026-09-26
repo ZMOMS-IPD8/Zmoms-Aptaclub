@@ -39,17 +39,15 @@ export default function RegistrationForm() {
 
   return (
     <>
-      <form
-        onSubmit={handleSubmit}
-        className="mx-auto w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-[0_4px_30px_rgba(0,0,0,0.06)] sm:rounded-3xl"
-      >
-        <div className="px-4 pb-2 pt-6 text-center sm:px-8 sm:pt-9 lg:px-10">
-          <h1 className="text-[20px] font-bold leading-[1.3] text-[#173b8f] sm:text-[26px] lg:text-[28px]">
+      <form onSubmit={handleSubmit}>
+        <div className="px-4 pt-6 text-center sm:px-8 sm:pt-8 lg:px-10">
+          <h1 className="text-[22px] font-bold leading-8 text-[#222] sm:text-[28px]">
             ĐĂNG KÝ HỘI VIÊN
-            <br className="sm:hidden" />
-            <span> & </span>
-            PHIẾU ĐỒNG Ý CHIA SẺ DỮ LIỆU CÁ NHÂN
           </h1>
+
+          <h2 className="mt-1 text-[18px] font-bold leading-7 text-[#222] sm:text-[22px]">
+            &amp; PHIẾU ĐỒNG Ý CHIA SẺ DỮ LIỆU CÁ NHÂN
+          </h2>
 
           <p className="mt-4 text-[15px] font-bold italic leading-6 text-[#ec0a7d] sm:mt-5 sm:text-[18px]">
             Cộng đồng Mẹ Nuôi Con Thông Minh
@@ -66,6 +64,7 @@ export default function RegistrationForm() {
 
         <div className="px-4 pb-6 pt-4 sm:px-8 sm:pb-8 sm:pt-5 lg:px-10">
           <div className="space-y-4">
+            {/* Họ tên */}
             <div>
               <label className="mb-1.5 block text-[14px] font-medium text-[#222]">
                 Họ và tên <span className="text-[#ec0a7d]">*</span>
@@ -81,22 +80,24 @@ export default function RegistrationForm() {
               />
             </div>
 
+            {/* Số điện thoại */}
             <div>
               <label className="mb-1.5 block text-[14px] font-medium text-[#222]">
-                Số điện thoại zalo <span className="text-[#ec0a7d]">*</span>
+                Số điện thoại Zalo <span className="text-[#ec0a7d]">*</span>
               </label>
 
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Nhập số điện thoại zalo mẹ vừa nhập trong Zalo OA Zmoms"
+                placeholder="Nhập số điện thoại Zalo mẹ vừa nhập trong Zalo OA Zmoms"
                 inputMode="tel"
                 autoComplete="tel"
                 className="h-12 w-full rounded-xl border border-[#d9dce3] bg-white px-4 text-[15px] outline-none transition placeholder:text-[#999] focus:border-[#ec0a7d] focus:ring-2 focus:ring-[#ec0a7d]/10 sm:h-14 sm:text-[16px]"
               />
             </div>
 
+            {/* Mã giới thiệu */}
             <div>
               <label className="mb-1.5 block text-[14px] font-medium text-[#222]">
                 Mã giới thiệu <span className="text-[#ec0a7d]">*</span>
@@ -113,6 +114,7 @@ export default function RegistrationForm() {
               />
             </div>
 
+            {/* Tỉnh thành */}
             <div>
               <label className="mb-1.5 block text-[14px] font-medium text-[#222]">
                 Tỉnh / thành <span className="text-[#ec0a7d]">*</span>
@@ -135,6 +137,7 @@ export default function RegistrationForm() {
               </select>
             </div>
 
+            {/* Ngày dự sinh / ngày sinh */}
             <div>
               <label className="mb-1.5 block text-[14px] font-medium text-[#222]">
                 Ngày dự sinh / Sinh nhật bé{" "}
