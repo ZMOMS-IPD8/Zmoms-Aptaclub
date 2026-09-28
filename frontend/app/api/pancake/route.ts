@@ -79,6 +79,35 @@ function getMotherStatus(babyDate: string): string | null {
   return date > today ? "Đang mang thai" : "Đã sinh";
 }
 
+function isEligibleBabyDate(babyDate: string): boolean {
+  const selectedDate = parseDate(babyDate);
+
+  if (!selectedDate) {
+    return false;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (selectedDate > today) {
+    const latestDueDate = new Date(today);
+    latestDueDate.setMonth(latestDueDate.getMonth() + 9);
+    latestDueDate.setHours(0, 0, 0, 0);
+
+    return selectedDate <= latestDueDate;
+  }
+
+  const secondBirthday = new Date(
+    selectedDate.getFullYear() + 2,
+    selectedDate.getMonth(),
+    selectedDate.getDate(),
+  );
+
+  secondBirthday.setHours(0, 0, 0, 0);
+
+  return secondBirthday > today;
+}
+
 async function parsePancakeResponse(
   response: Response,
 ): Promise<PancakeResponse> {
@@ -194,24 +223,17 @@ export async function POST(req: NextRequest) {
 
     const selectedDate = parseDate(babyDate);
 
-    if (!selectedDate) {
+    if (!selectedDate || !isEligibleBabyDate(babyDate)) {
       return NextResponse.json(
         {
           success: false,
           status: "INVALID_DATE",
-          message: "Ngày dự sinh hoặc ngày sinh của bé không hợp lệ.",
+          message:
+            "Thông tin ngày dự sinh hoặc ngày sinh của bé chưa phù hợp để đăng ký.",
         },
         { status: 400 },
       );
     }
-
-    /*
-     * Không còn check:
-     * - Tuần thai tối thiểu 28 tuần
-     * - Bé dưới 12 tháng
-     *
-     * Chỉ kiểm tra ngày có đúng định dạng và tồn tại hay không.
-     */
 
     const cleanBabyDate = `${babyDate} 00:00:00`;
     const motherStatus = getMotherStatus(babyDate);
@@ -324,6 +346,7 @@ export async function POST(req: NextRequest) {
       thoi_gian_dang_ky: registrationTime,
       thanh_pho: cleanProvince,
       ma_gioi_thieu_dang_ky: referralCode,
+      dong_y_dang_ky_hoi_vien: "true",
       da_doc_chinh_sach_aptamil: consentDanone ? "true" : "false",
       dong_y_nhan_thong_bao: consentMarketing ? "true" : "false",
       chia_se_de_dang_ky_aptaclub: consentAptaclub ? "true" : "false",

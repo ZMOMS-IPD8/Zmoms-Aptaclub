@@ -85,6 +85,35 @@ export function useRegistrationForm() {
     return date;
   };
 
+  const isEligibleBabyDate = (babyDate: string): boolean => {
+    const selectedDate = parseDate(babyDate);
+
+    if (!selectedDate) {
+      return false;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (selectedDate > today) {
+      const latestDueDate = new Date(today);
+      latestDueDate.setMonth(latestDueDate.getMonth() + 9);
+      latestDueDate.setHours(0, 0, 0, 0);
+
+      return selectedDate <= latestDueDate;
+    }
+
+    const secondBirthday = new Date(
+      selectedDate.getFullYear() + 2,
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+    );
+
+    secondBirthday.setHours(0, 0, 0, 0);
+
+    return secondBirthday > today;
+  };
+
   const validate = () => {
     if (!fullName.trim()) {
       return "Vui lòng nhập họ và tên.";
@@ -118,14 +147,14 @@ export function useRegistrationForm() {
       return "Vui lòng chọn ngày dự sinh hoặc ngày sinh của bé.";
     }
 
-    /*
-     * Không check tuần thai / độ tuổi của bé.
-     * Chỉ kiểm tra ngày có hợp lệ hay không.
-     */
     const selectedDate = parseDate(babyDate);
 
     if (!selectedDate) {
       return "Ngày dự sinh hoặc ngày sinh của bé không hợp lệ.";
+    }
+
+    if (!isEligibleBabyDate(babyDate)) {
+      return "Thông tin ngày dự sinh hoặc ngày sinh của bé chưa phù hợp để đăng ký.";
     }
 
     if (!consentMember) {
@@ -143,7 +172,7 @@ export function useRegistrationForm() {
     if (error) {
       setDialog({
         open: true,
-        title: "Thông tin chưa hợp lệ",
+        title: "Thông tin chưa phù hợp",
         message: error,
         status: "warning",
       });
@@ -213,10 +242,10 @@ export function useRegistrationForm() {
       if (result?.status === "INVALID_DATE") {
         setDialog({
           open: true,
-          title: "Ngày không hợp lệ",
+          title: "Thông tin chưa phù hợp",
           message:
             result?.message ||
-            "Ngày dự sinh hoặc ngày sinh của bé không hợp lệ.",
+            "Thông tin ngày dự sinh hoặc ngày sinh của bé chưa phù hợp để đăng ký.",
           status: "warning",
         });
 
