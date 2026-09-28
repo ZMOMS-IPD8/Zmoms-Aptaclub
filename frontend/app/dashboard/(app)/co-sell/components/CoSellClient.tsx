@@ -1,81 +1,37 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type {
-  DashboardApiResponse,
-  DashboardData,
-  DashboardOrder,
-} from "../../types/dashboard";
+import { useMemo, useState } from "react";
+
+import type { DashboardOrder } from "../../types/dashboard";
+import { transformDashboardData } from "@/lib/dashboard/transform";
+import { useDashboardSession } from "../../components/DashboardSessionProvider";
+
 import CoSellDetail from "./CoSellDetail";
 import CoSellFilters from "./CoSellFilters";
 import CoSellStats from "./CoSellStats";
 import CoSellTable from "./CoSellTable";
+
 import type { CoSellFilters as CoSellFiltersState } from "../types";
 
 const DEFAULT_FILTERS: CoSellFiltersState = {
   search: "",
   paymentStatus: "all",
-  deliveryStatus: "all",
 };
 
 export default function CoSellClient() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { storage, loading } = useDashboardSession();
+
   const [filters, setFilters] = useState<CoSellFiltersState>(DEFAULT_FILTERS);
+
   const [selectedItem, setSelectedItem] = useState<DashboardOrder | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
+  const data = useMemo(() => {
+    if (!storage) {
+      return null;
+    }
 
-    fetch("/api/dashboard/data", {
-      cache: "no-store",
-    })
-      .then(async (response) => {
-        if (response.status === 401) {
-          window.location.replace("/dashboard/login");
-          throw new Error("Unauthorized");
-        }
-
-        const result =
-          (await response.json()) as DashboardApiResponse<DashboardData>;
-
-        if (!response.ok || !result.success) {
-          throw new Error(result.message || "Không thể tải dữ liệu Co-Sell.");
-        }
-
-        return result.data;
-      })
-      .then((result) => {
-        if (mounted) {
-          setData(result);
-        }
-      })
-      .catch((error: unknown) => {
-        if (!mounted) {
-          return;
-        }
-
-        if (error instanceof Error && error.message === "Unauthorized") {
-          return;
-        }
-
-        setError(
-          error instanceof Error
-            ? error.message
-            : "Không thể tải dữ liệu Co-Sell.",
-        );
-      })
-      .finally(() => {
-        if (mounted) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    return transformDashboardData(storage.entries, storage.totalEntries);
+  }, [storage]);
 
   const orders = data?.orders;
 
@@ -99,40 +55,41 @@ export default function CoSellClient() {
 
       const paid = order.paymentStatus.trim() !== "";
 
-      const delivered = order.deliveredDate.trim() !== "";
-
       const matchesPayment =
         filters.paymentStatus === "all" ||
         (filters.paymentStatus === "paid" && paid) ||
         (filters.paymentStatus === "unpaid" && !paid);
 
-      const matchesDelivery =
-        filters.deliveryStatus === "all" ||
-        (filters.deliveryStatus === "delivered" && delivered) ||
-        (filters.deliveryStatus === "pending" && !delivered);
-
-      return matchesSearch && matchesPayment && matchesDelivery;
+      return matchesSearch && matchesPayment;
     });
-  }, [orders, filters.search, filters.paymentStatus, filters.deliveryStatus]);
+  }, [orders, filters.search, filters.paymentStatus]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F2F6FF] p-6 lg:p-8">
         <div className="mx-auto max-w-[1600px]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-sm text-slate-500">
-            Đang tải dữ liệu Co-Sell...
+          <div className="rounded-2xl border border-slate-200 bg-white p-8">
+            <p className="text-sm font-medium text-slate-700">
+              Đang tải dữ liệu...
+            </p>
           </div>
         </div>
       </div>
     );
   }
 
-  if (error || !data || !orders) {
+  if (!storage || !data || !orders) {
     return (
       <div className="min-h-screen bg-[#F2F6FF] p-6 lg:p-8">
         <div className="mx-auto max-w-[1600px]">
-          <div className="rounded-2xl border border-red-100 bg-red-50 p-6 text-sm text-red-600">
-            {error || "Không tải được dữ liệu Co-Sell."}
+          <div className="rounded-2xl border border-slate-200 bg-white p-8">
+            <p className="text-sm font-medium text-slate-700">
+              Chưa có dữ liệu Co-Sell.
+            </p>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Vui lòng đồng bộ dữ liệu từ Dashboard.
+            </p>
           </div>
         </div>
       </div>
@@ -153,8 +110,8 @@ export default function CoSellClient() {
                 <h1 className="text-2xl font-bold text-slate-900">Co-Sell</h1>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Theo dõi khách hàng đã phát sinh đơn hàng và giao hàng thành
-                  công.
+                  Theo dõi khách hàng đã phát sinh đơn hàng và trạng thái giao
+                  hàng.
                 </p>
               </div>
             </div>

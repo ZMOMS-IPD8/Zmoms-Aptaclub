@@ -75,7 +75,7 @@ export default function CoEduFilters({
           {total.toLocaleString("vi-VN")} hội viên
         </span>
 
-        <span>Đã tham dự = đã có Post-survey</span>
+        <span>Đã tham dự = đã có đánh giá sau buổi tư vấn</span>
       </div>
     </div>
   );

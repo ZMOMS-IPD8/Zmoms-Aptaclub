@@ -1,6 +1,12 @@
 const COOKIE_NAME = "dashboard_session";
 const SESSION_DURATION = 60 * 60 * 24;
 
+export type DashboardSession = {
+  sessionId: string;
+  username: string;
+  exp: number;
+};
+
 function getSecret(): string {
   const secret = process.env.DASHBOARD_SESSION_SECRET;
 
@@ -74,14 +80,19 @@ async function sign(value: string): Promise<string> {
   return base64UrlEncode(signature);
 }
 
+function createSessionId(): string {
+  return crypto.randomUUID();
+}
+
 export async function createSession(username: string): Promise<string> {
-  const payloadData = JSON.stringify({
+  const payloadData: DashboardSession = {
+    sessionId: createSessionId(),
     username,
     exp: Math.floor(Date.now() / 1000) + SESSION_DURATION,
-  });
+  };
 
   const payload = base64UrlEncode(
-    toArrayBuffer(new TextEncoder().encode(payloadData)),
+    toArrayBuffer(new TextEncoder().encode(JSON.stringify(payloadData))),
   );
 
   const signature = await sign(payload);
@@ -89,23 +100,23 @@ export async function createSession(username: string): Promise<string> {
   return `${payload}.${signature}`;
 }
 
-export async function verifySession(
+export async function getSession(
   token: string | undefined,
-): Promise<boolean> {
+): Promise<DashboardSession | null> {
   if (!token) {
-    return false;
+    return null;
   }
 
   const parts = token.split(".");
 
   if (parts.length !== 2) {
-    return false;
+    return null;
   }
 
   const [payload, signature] = parts;
 
   if (!payload || !signature) {
-    return false;
+    return null;
   }
 
   try {
@@ -119,24 +130,44 @@ export async function verifySession(
     );
 
     if (!valid) {
-      return false;
+      return null;
     }
 
-    const data = JSON.parse(new TextDecoder().decode(base64UrlDecode(payload)));
+    const data = JSON.parse(
+      new TextDecoder().decode(base64UrlDecode(payload)),
+    ) as Partial<DashboardSession>;
 
     if (
       !data ||
+      typeof data.sessionId !== "string" ||
+      !data.sessionId ||
       typeof data.username !== "string" ||
       !data.username ||
       typeof data.exp !== "number"
     ) {
-      return false;
+      return null;
     }
 
-    return data.exp > Math.floor(Date.now() / 1000);
+    if (data.exp <= Math.floor(Date.now() / 1000)) {
+      return null;
+    }
+
+    return {
+      sessionId: data.sessionId,
+      username: data.username,
+      exp: data.exp,
+    };
   } catch {
-    return false;
+    return null;
   }
+}
+
+export async function verifySession(
+  token: string | undefined,
+): Promise<boolean> {
+  const session = await getSession(token);
+
+  return session !== null;
 }
 
 export function getDashboardCookieName(): string {

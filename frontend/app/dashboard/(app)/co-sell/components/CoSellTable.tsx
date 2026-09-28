@@ -48,17 +48,14 @@ export default function CoSellTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1400px] table-fixed text-left text-sm">
+        <table className="w-full min-w-[1050px] table-fixed text-left text-sm">
           <colgroup>
-            <col className="w-[210px]" />
-            <col className="w-[150px]" />
-            <col className="w-[150px]" />
-            <col className="w-[190px]" />
-            <col className="w-[130px]" />
-            <col className="w-[150px]" />
-            <col className="w-[190px]" />
+            <col className="w-[250px]" />
             <col className="w-[180px]" />
+            <col className="w-[200px]" />
             <col className="w-[180px]" />
+            <col className="w-[200px]" />
+            <col className="w-[200px]" />
           </colgroup>
 
           <thead className="bg-slate-50">
@@ -76,22 +73,12 @@ export default function CoSellTable({
               </th>
 
               <th className="px-5 py-3 font-semibold text-slate-600">
-                Giá trị
-              </th>
-
-              <th className="px-5 py-3 font-semibold text-slate-600">
                 Thanh toán
               </th>
 
               <th className="px-5 py-3 font-semibold text-slate-600">
                 Giao hàng
               </th>
-
-              <th className="px-5 py-3 font-semibold text-slate-600">
-                Ngày giao thành công
-              </th>
-
-              <th className="px-5 py-3 font-semibold text-slate-600">Seller</th>
             </tr>
           </thead>
 
@@ -99,7 +86,7 @@ export default function CoSellTable({
             {orders.length === 0 ? (
               <tr>
                 <td
-                  colSpan={9}
+                  colSpan={6}
                   className="px-6 py-12 text-center text-sm text-slate-400"
                 >
                   Không có dữ liệu phù hợp.
@@ -140,10 +127,6 @@ export default function CoSellTable({
                     {formatDate(order.orderDate)}
                   </td>
 
-                  <td className="px-5 py-4 align-top font-semibold text-slate-900">
-                    {order.amount.toLocaleString("vi-VN")} ₫
-                  </td>
-
                   <td className="px-5 py-4 align-top">
                     <span className="inline-flex whitespace-nowrap rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
                       {order.paymentStatus || "—"}
@@ -154,14 +137,6 @@ export default function CoSellTable({
                     <span className="inline-flex whitespace-nowrap rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                       {order.deliveryStatus || "—"}
                     </span>
-                  </td>
-
-                  <td className="px-5 py-4 align-top text-slate-600">
-                    {formatDate(order.deliveredDate)}
-                  </td>
-
-                  <td className="px-5 py-4 align-top text-slate-600">
-                    {order.sellerCode || "—"}
                   </td>
                 </tr>
               ))

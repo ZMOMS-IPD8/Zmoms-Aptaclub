@@ -2,11 +2,17 @@
 
 import type { DashboardOrder } from "../../types/dashboard";
 
-function formatDateTime(value: string): string {
+function formatDate(value: string): string {
   const normalized = value?.trim();
 
   if (!normalized) {
     return "—";
+  }
+
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (match) {
+    return `${match[3]}/${match[2]}/${match[1]}`;
   }
 
   const date = new Date(normalized);
@@ -19,8 +25,6 @@ function formatDateTime(value: string): string {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   }).format(date);
 }
 
@@ -28,6 +32,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-b border-slate-100 py-3 last:border-b-0">
       <p className="text-xs font-medium text-slate-400">{label}</p>
+
       <p className="mt-1 text-sm text-slate-700">{value || "—"}</p>
     </div>
   );
@@ -76,8 +81,11 @@ export default function CoSellDetail({
 
             <div className="rounded-2xl border border-slate-200 p-4">
               <DetailRow label="Họ tên" value={item.name} />
+
               <DetailRow label="Số điện thoại" value={item.phone} />
+
               <DetailRow label="Người nhận" value={item.receiverName} />
+
               <DetailRow
                 label="Số điện thoại nhận hàng"
                 value={item.receiverPhone}
@@ -97,15 +105,8 @@ export default function CoSellDetail({
 
               <DetailRow
                 label="Ngày đặt hàng"
-                value={formatDateTime(item.orderDate)}
+                value={formatDate(item.orderDate)}
               />
-
-              <DetailRow
-                label="Giá trị"
-                value={`${item.amount.toLocaleString("vi-VN")} ₫`}
-              />
-
-              <DetailRow label="Mã người bán" value={item.sellerCode} />
             </div>
           </section>
 
@@ -120,11 +121,6 @@ export default function CoSellDetail({
               <DetailRow
                 label="Trạng thái giao hàng"
                 value={item.deliveryStatus}
-              />
-
-              <DetailRow
-                label="Ngày giao thành công"
-                value={formatDateTime(item.deliveredDate)}
               />
             </div>
           </section>

@@ -1,8 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { isTrue } from "@/lib/dashboard/logic";
+
+import { isCoData, isTrue } from "@/lib/dashboard/logic";
+
+import { useDashboardSession } from "../../components/DashboardSessionProvider";
+
+import type { PancakeLead } from "@/lib/dashboard/pancake";
 import type { CoDataLead } from "../types";
+
 import CoDataFilters from "./CoDataFilters";
 import CoDataStats from "./CoDataStats";
 import CoDataTable from "./CoDataTable";
@@ -10,6 +16,7 @@ import CoDataDetail from "./CoDataDetail";
 
 function getValue(value: unknown): string {
   if (typeof value === "string") return value.trim();
+
   if (typeof value === "number") return String(value);
 
   if (value && typeof value === "object" && "value" in value) {
@@ -19,7 +26,9 @@ function getValue(value: unknown): string {
   return "";
 }
 
-export default function CoDataClient({ entries }: { entries: CoDataLead[] }) {
+export default function CoDataClient() {
+  const { storage, loading } = useDashboardSession();
+
   const [search, setSearch] = useState("");
   const [province, setProvince] = useState("all");
   const [source, setSource] = useState("all");
@@ -29,6 +38,14 @@ export default function CoDataClient({ entries }: { entries: CoDataLead[] }) {
   const [selectedEntry, setSelectedEntry] = useState<CoDataLead | null>(null);
 
   const pageSize = 20;
+
+  const entries = useMemo<CoDataLead[]>(() => {
+    if (!storage?.entries) {
+      return [];
+    }
+
+    return storage.entries.filter((lead: PancakeLead) => isCoData(lead));
+  }, [storage]);
 
   const provinces = useMemo(
     () =>
@@ -142,6 +159,48 @@ export default function CoDataClient({ entries }: { entries: CoDataLead[] }) {
     setMotherStatus("all");
     setConsent("all");
     setCurrentPage(1);
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen p-6 lg:p-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-slate-900">Co-Data</h1>
+
+          <p className="mt-1 text-sm text-slate-500">Đang tải dữ liệu...</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-8">
+          <p className="text-sm text-slate-500">
+            Đang kiểm tra dữ liệu Dashboard.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!storage) {
+    return (
+      <div className="min-h-screen p-6 lg:p-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-slate-900">Co-Data</h1>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Danh sách hội viên đã đăng ký và thông tin thu thập.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-8">
+          <p className="text-sm font-medium text-slate-700">
+            Chưa có dữ liệu Co-Data.
+          </p>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Vui lòng chọn “Đồng bộ dữ liệu” ở Sidebar.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

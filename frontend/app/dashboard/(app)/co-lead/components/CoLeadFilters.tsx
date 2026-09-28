@@ -75,7 +75,7 @@ export default function CoLeadFilters({
           {total.toLocaleString("vi-VN")} hội viên
         </span>
 
-        <span>Đã hoàn thành = đã có nhân viên tắm bé</span>
+        <span>Đã hoàn thành = có tên nhân viên và ghi chú</span>
       </div>
     </div>
   );

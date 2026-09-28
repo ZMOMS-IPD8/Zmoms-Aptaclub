@@ -31,17 +31,10 @@ export default function CoSellStats({
       className: "border-slate-200",
       valueClassName: "text-slate-700",
     },
-    {
-      title: "Doanh thu",
-      value: `${formatNumber(orders.revenue)} ₫`,
-      description: "Tổng giá trị đơn đã thanh toán",
-      className: "border-blue-100",
-      valueClassName: "text-[#173B8F]",
-    },
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {cards.map((card) => (
         <div
           key={card.title}
@@ -50,9 +43,7 @@ export default function CoSellStats({
           <p className="text-sm font-medium text-slate-500">{card.title}</p>
 
           <p className={`mt-2 text-2xl font-bold ${card.valueClassName}`}>
-            {typeof card.value === "number"
-              ? formatNumber(card.value)
-              : card.value}
+            {formatNumber(card.value)}
           </p>
 
           <p className="mt-2 text-xs text-slate-500">{card.description}</p>

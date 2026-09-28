@@ -1,4 +1,4 @@
-type PancakeLead = Record<string, unknown>;
+export type PancakeLead = Record<string, unknown>;
 
 type PancakeResponse = {
   success: boolean;
@@ -7,6 +7,7 @@ type PancakeResponse = {
     cursor?: string | null;
     page_size?: number;
     total_entries?: number;
+    count?: number;
   };
   fallback?: string;
   message?: string;
@@ -36,6 +37,28 @@ export async function getAllLeads(): Promise<{
 
     url.searchParams.set("api_key", apiKey);
 
+    url.searchParams.set(
+      "filter",
+      JSON.stringify({
+        is_group: false,
+        fields: [
+          {
+            field_name: "thoi_gian_dang_ky",
+            type: "$having_value",
+            value: null,
+            is_filter_exclude: false,
+          },
+          {
+            field_name: "nguon_dang_ky",
+            type: "$having_value",
+            value: null,
+            is_filter_exclude: false,
+          },
+        ],
+        search_all: "",
+      }),
+    );
+
     if (cursor) {
       url.searchParams.set("cursor", cursor);
     }
@@ -63,6 +86,8 @@ export async function getAllLeads(): Promise<{
 
     if (typeof result.data.total_entries === "number") {
       totalEntries = result.data.total_entries;
+    } else if (typeof result.data.count === "number") {
+      totalEntries = result.data.count;
     }
 
     const nextCursor = result.data.cursor ?? null;

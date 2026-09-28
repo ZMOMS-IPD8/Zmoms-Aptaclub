@@ -4,7 +4,6 @@ import { CheckCircle2, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { isTrue } from "@/lib/dashboard/logic";
 import type { CoDataLead } from "../types";
-import { formatDate } from "../../utils/format";
 
 function getValue(value: unknown): string {
   if (typeof value === "string") return value.trim();
@@ -136,12 +135,16 @@ export default function CoDataDetail({
         <div className="flex-1 space-y-4 overflow-y-auto p-5">
           <Section title="Thông tin hội viên">
             <DetailRow label="Họ và tên" value={name} />
+
             <DetailRow label="Số điện thoại" value={phone} />
+
             <DetailRow label="Tỉnh / thành" value={province} />
+
             <DetailRow label="Mã giới thiệu" value={referralCode} />
+
             <DetailRow
               label="Ngày đăng ký"
-              value={registeredAt ? formatDate(registeredAt) : "—"}
+              value={registeredAt ? formatDateOnly(registeredAt) : "—"}
             />
           </Section>
 
@@ -179,6 +182,7 @@ export default function CoDataDetail({
 
           <Section title="Thông tin mẹ & bé">
             <DetailRow label="Ngày dự sinh / ngày sinh bé" value={babyDate} />
+
             <DetailRow label="Tình trạng mẹ" value={motherStatus} />
           </Section>
 

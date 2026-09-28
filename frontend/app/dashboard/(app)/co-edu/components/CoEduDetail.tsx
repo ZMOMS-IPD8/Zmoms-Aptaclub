@@ -2,6 +2,7 @@
 
 import { CheckCircle2, X } from "lucide-react";
 import type { ReactNode } from "react";
+
 import type { DashboardConsultation } from "../../types/dashboard";
 
 function formatDateOnly(value: string): string {
@@ -72,7 +73,7 @@ export default function CoEduDetail({
   item: DashboardConsultation;
   onClose: () => void;
 }) {
-  const attended = Boolean(item.postSurvey);
+  const attended = item.postRating.trim() !== "";
 
   return (
     <div className="fixed inset-0 z-50">
@@ -114,6 +115,11 @@ export default function CoEduDetail({
             <DetailRow
               label="Ngày đăng ký lớp"
               value={formatDateOnly(item.registeredAt)}
+            />
+
+            <DetailRow
+              label="Ngày tham dự"
+              value={formatDateOnly(item.attendedAt)}
             />
 
             <DetailRow

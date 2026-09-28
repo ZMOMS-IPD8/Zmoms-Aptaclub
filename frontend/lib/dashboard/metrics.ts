@@ -1,4 +1,5 @@
 import type { DashboardStats } from "../../app/dashboard/(app)/types/dashboard";
+
 import {
   getFieldValue,
   isCoData,
@@ -36,29 +37,13 @@ export function getVietnamDateKey(date = new Date()): string {
 }
 
 export function getVietnamDateKeyFromValue(value: unknown): string {
-  const normalized = getFieldValue(value);
+  const date = parseDate(value);
 
-  if (!normalized) {
+  if (!date) {
     return "";
   }
 
-  const isoDate = new Date(normalized);
-
-  if (!Number.isNaN(isoDate.getTime())) {
-    return getVietnamDateKey(isoDate);
-  }
-
-  const match = normalized.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
-
-  if (!match) {
-    return "";
-  }
-
-  const day = match[1].padStart(2, "0");
-  const month = match[2].padStart(2, "0");
-  const year = match[3];
-
-  return `${year}-${month}-${day}`;
+  return getVietnamDateKey(date);
 }
 
 export function countByDate(
@@ -80,16 +65,47 @@ export function countByDate(
   return result;
 }
 
-function getWeekKey(value: unknown): string {
+function getVietnamDateParts(value: unknown): {
+  year: number;
+  month: number;
+  day: number;
+} | null {
   const date = parseDate(value);
 
   if (!date) {
+    return null;
+  }
+
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: VIETNAM_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const year = Number(parts.find((part) => part.type === "year")?.value);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  const day = Number(parts.find((part) => part.type === "day")?.value);
+
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  return {
+    year,
+    month,
+    day,
+  };
+}
+
+function getWeekKey(value: unknown): string {
+  const parts = getVietnamDateParts(value);
+
+  if (!parts) {
     return "";
   }
 
-  const utcDate = new Date(
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
-  );
+  const utcDate = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
 
   const day = utcDate.getUTCDay() || 7;
 
@@ -107,16 +123,13 @@ function getWeekKey(value: unknown): string {
 }
 
 function getMonthKey(value: unknown): string {
-  const date = parseDate(value);
+  const parts = getVietnamDateParts(value);
 
-  if (!date) {
+  if (!parts) {
     return "";
   }
 
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-    2,
-    "0",
-  )}`;
+  return `${parts.year}-${String(parts.month).padStart(2, "0")}`;
 }
 
 export function countByPeriod(
@@ -202,7 +215,7 @@ export function getFunnelStats(leads: PancakeLead[]): DashboardStats["funnel"] {
 
   return {
     total: leads.length,
-    lead: leads.filter((lead) => !isCoData(lead)).length,
+    lead: 0,
     coData: coDataLeads.length,
     coEdu: coDataLeads.filter(
       (lead) => getFieldValue(lead.thoi_gian_dang_ky_lop) !== "",

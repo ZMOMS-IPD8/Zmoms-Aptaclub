@@ -1,13 +1,16 @@
-import { getCachedLeads } from "@/lib/dashboard/cache";
-import { transformDashboardData } from "@/lib/dashboard/transform";
+import { getOverviewData } from "@/lib/dashboard/overview";
 import DashboardClient from "./components/DashboardClient";
 
 export const runtime = "nodejs";
 
-export default async function DashboardPage() {
-  const { entries, totalEntries } = await getCachedLeads();
+export default function DashboardPage() {
+  let data;
 
-  const data = transformDashboardData(entries, totalEntries);
+  try {
+    data = getOverviewData();
+  } catch {
+    data = null;
+  }
 
   return <DashboardClient initialData={data} />;
 }

@@ -96,7 +96,9 @@ export default function CoLeadTable({
               </tr>
             ) : (
               babyCare.map((item) => {
-                const completed = Boolean(item.staff);
+                const completed =
+                  item.staff.trim() !== "" && item.note.trim() !== "";
+
                 const name = item.name || "—";
                 const phone = item.phone || "—";
 

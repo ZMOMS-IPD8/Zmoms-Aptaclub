@@ -2,11 +2,17 @@
 
 import type { DashboardBabyCare } from "../../types/dashboard";
 
-function formatDateTime(value: string): string {
+function formatDateOnly(value: string): string {
   const normalized = value?.trim();
 
   if (!normalized) {
     return "—";
+  }
+
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (match) {
+    return `${match[3]}/${match[2]}/${match[1]}`;
   }
 
   const date = new Date(normalized);
@@ -19,8 +25,6 @@ function formatDateTime(value: string): string {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   }).format(date);
 }
 
@@ -28,6 +32,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-b border-slate-100 py-3 last:border-b-0">
       <p className="text-xs font-medium text-slate-400">{label}</p>
+
       <p className="mt-1 text-sm text-slate-700">{value || "—"}</p>
     </div>
   );
@@ -40,7 +45,7 @@ export default function CoLeadDetail({
   item: DashboardBabyCare;
   onClose: () => void;
 }) {
-  const completed = Boolean(item.staff);
+  const completed = item.staff.trim() !== "" && item.note.trim() !== "";
 
   return (
     <div className="fixed inset-0 z-50">
@@ -80,7 +85,9 @@ export default function CoLeadDetail({
 
             <div className="rounded-2xl border border-slate-200 p-4">
               <DetailRow label="Họ tên" value={item.name} />
+
               <DetailRow label="Số điện thoại" value={item.phone} />
+
               <DetailRow label="Địa chỉ" value={item.address} />
             </div>
           </section>
@@ -93,12 +100,12 @@ export default function CoLeadDetail({
             <div className="rounded-2xl border border-slate-200 p-4">
               <DetailRow
                 label="Đăng ký tắm bé"
-                value={formatDateTime(item.registeredAt)}
+                value={formatDateOnly(item.registeredAt)}
               />
 
               <DetailRow
                 label="Thời gian tắm bé"
-                value={formatDateTime(item.serviceTime)}
+                value={formatDateOnly(item.serviceTime)}
               />
 
               <DetailRow

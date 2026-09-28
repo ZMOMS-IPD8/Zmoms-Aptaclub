@@ -20,7 +20,6 @@ export type DashboardOrder = {
   amount: number;
   deliveryStatus: string;
   paymentStatus: string;
-  deliveredDate: string;
 };
 
 export type DashboardConsultation = {

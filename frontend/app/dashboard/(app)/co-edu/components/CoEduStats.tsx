@@ -5,10 +5,15 @@ export default function CoEduStats({
 }: {
   consultation: DashboardConsultationData;
 }) {
-  const notAttended = Math.max(
-    consultation.registered - consultation.attended,
-    0,
-  );
+  const registered = consultation.consultations.filter(
+    (item) => item.registeredAt.trim() !== "",
+  ).length;
+
+  const attended = consultation.consultations.filter(
+    (item) => item.postRating.trim() !== "",
+  ).length;
+
+  const notAttended = Math.max(registered - attended, 0);
 
   const cards = [
     {
@@ -20,22 +25,22 @@ export default function CoEduStats({
     },
     {
       label: "Đăng ký lớp",
-      value: consultation.registered,
+      value: registered,
       description: "Đã đăng ký lớp học",
       background: "bg-blue-50",
       text: "text-[#173B8F]",
     },
     {
       label: "Đã tham dự",
-      value: consultation.attended,
-      description: "Có Post-survey",
+      value: attended,
+      description: "Có đánh giá sau buổi tư vấn",
       background: "bg-green-50",
       text: "text-green-700",
     },
     {
       label: "Chưa tham dự",
       value: notAttended,
-      description: "Chưa có Post-survey",
+      description: "Chưa có đánh giá sau buổi tư vấn",
       background: "bg-orange-50",
       text: "text-orange-700",
     },

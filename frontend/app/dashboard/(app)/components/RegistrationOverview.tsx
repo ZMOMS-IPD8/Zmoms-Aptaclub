@@ -1,16 +1,20 @@
 import { formatNumber } from "../utils/format";
 
-type RegistrationOverviewProps = {
-  date: string;
+type RegistrationData = {
   total: number;
   byProvince: Record<string, number>;
   bySource: Record<string, number>;
 };
 
-function getTopItems(data: Record<string, number>, limit = 5) {
-  return Object.entries(data)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, limit);
+type RegistrationOverviewProps = {
+  today: RegistrationData & {
+    date: string;
+  };
+  total: RegistrationData;
+};
+
+function getAllItems(data: Record<string, number>) {
+  return Object.entries(data).sort(([, a], [, b]) => b - a);
 }
 
 function formatDate(value: string): string {
@@ -27,13 +31,13 @@ function BreakdownCard({
   title,
   data,
   subtitle,
+  total,
 }: {
   title: string;
   data: [string, number][];
   subtitle: string;
+  total: number;
 }) {
-  const total = data.reduce((sum, [, count]) => sum + count, 0);
-
   return (
     <div className="rounded-2xl bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
@@ -56,13 +60,22 @@ function BreakdownCard({
             return (
               <div key={label}>
                 <div className="mb-1.5 flex items-center justify-between gap-3">
-                  <span className="min-w-0 truncate text-sm text-gray-600">
-                    {label}
+                  <span
+                    className="min-w-0 truncate text-sm text-gray-600"
+                    title={label}
+                  >
+                    {label || "—"}
                   </span>
 
-                  <span className="shrink-0 text-sm font-bold text-gray-900">
-                    {formatNumber(count)}
-                  </span>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className="text-xs text-gray-400">
+                      {percentage.toFixed(1)}%
+                    </span>
+
+                    <span className="text-sm font-bold text-gray-900">
+                      {formatNumber(count)}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
@@ -86,28 +99,43 @@ function BreakdownCard({
   );
 }
 
-export default function RegistrationOverview({
+function RegistrationSection({
+  title,
   date,
   total,
   byProvince,
   bySource,
-}: RegistrationOverviewProps) {
-  const provinces = getTopItems(byProvince, 5);
-  const sources = getTopItems(bySource, 5);
+}: {
+  title: string;
+  date?: string;
+  total: number;
+  byProvince: Record<string, number>;
+  bySource: Record<string, number>;
+}) {
+  const provinces = getAllItems(byProvince);
+  const sources = getAllItems(bySource);
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-2xl bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-500">Co-Data hôm nay</p>
+    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+      <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-base font-bold text-gray-900">{title}</h3>
 
+          {date ? (
             <p className="mt-1 text-xs text-gray-400">
               Ngày đăng ký: {formatDate(date)}
             </p>
-          </div>
+          ) : (
+            <p className="mt-1 text-xs text-gray-400">
+              Tất cả dữ liệu đã đăng ký
+            </p>
+          )}
+        </div>
 
-          <p className="text-4xl font-bold text-[#173B8F]">
+        <div className="rounded-xl bg-white px-4 py-2 shadow-sm">
+          <p className="text-xs text-gray-400">Tổng Co-Data</p>
+
+          <p className="text-2xl font-bold text-[#173B8F]">
             {formatNumber(total)}
           </p>
         </div>
@@ -117,15 +145,41 @@ export default function RegistrationOverview({
         <BreakdownCard
           title="Theo tỉnh / thành"
           data={provinces}
-          subtitle={`Top ${provinces.length} nhóm trong ngày`}
+          total={total}
+          subtitle={`${provinces.length} tỉnh / thành`}
         />
 
         <BreakdownCard
           title="Theo Event"
           data={sources}
-          subtitle={`Top ${sources.length} nhóm trong ngày`}
+          total={total}
+          subtitle={`${sources.length} nguồn / Event`}
         />
       </div>
+    </div>
+  );
+}
+
+export default function RegistrationOverview({
+  today,
+  total,
+}: RegistrationOverviewProps) {
+  return (
+    <div className="space-y-5">
+      <RegistrationSection
+        title="Hôm nay"
+        date={today.date}
+        total={today.total}
+        byProvince={today.byProvince}
+        bySource={today.bySource}
+      />
+
+      <RegistrationSection
+        title="Tổng toàn bộ dữ liệu"
+        total={total.total}
+        byProvince={total.byProvince}
+        bySource={total.bySource}
+      />
     </div>
   );
 }

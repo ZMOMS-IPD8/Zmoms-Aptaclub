@@ -24,14 +24,14 @@ export default function CoLeadStats({
     {
       title: "Đã hoàn thành",
       value: formatNumber(babyCare.completed),
-      description: "Đã có nhân viên thực hiện",
+      description: "Có tên nhân viên và ghi chú",
       className: "border-emerald-100",
       valueClassName: "text-emerald-700",
     },
     {
       title: "Chưa hoàn thành",
       value: formatNumber(babyCare.pending),
-      description: "Chưa có nhân viên thực hiện",
+      description: "Chưa đủ tên nhân viên và ghi chú",
       className: "border-slate-200",
       valueClassName: "text-slate-700",
     },

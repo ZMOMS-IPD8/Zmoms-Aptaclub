@@ -17,7 +17,7 @@ export default function CoSellFilters({
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px_220px_auto]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px_auto]">
         <div>
           <label className="mb-2 block text-xs font-semibold text-slate-600">
             Tìm kiếm
@@ -59,28 +59,6 @@ export default function CoSellFilters({
           </select>
         </div>
 
-        <div>
-          <label className="mb-2 block text-xs font-semibold text-slate-600">
-            Giao hàng
-          </label>
-
-          <select
-            value={filters.deliveryStatus}
-            onChange={(event) =>
-              onChange({
-                ...filters,
-                deliveryStatus: event.target
-                  .value as CoSellFiltersState["deliveryStatus"],
-              })
-            }
-            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-[#173B8F]"
-          >
-            <option value="all">Tất cả</option>
-            <option value="delivered">Đã giao thành công</option>
-            <option value="pending">Chưa giao thành công</option>
-          </select>
-        </div>
-
         <div className="flex items-end">
           <button
             type="button"
@@ -98,7 +76,7 @@ export default function CoSellFilters({
           {total.toLocaleString("vi-VN")} đơn hàng
         </span>
 
-        <span>Co-Sell = đã giao hàng thành công</span>
+        <span>Co-Sell = đơn hàng đã giao thành công có nguồn mua hàng</span>
       </div>
     </div>
   );

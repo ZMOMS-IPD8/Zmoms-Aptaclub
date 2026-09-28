@@ -20,14 +20,15 @@ import {
   getFieldValue,
   getNumericValue,
   hasField,
+  isBabyCareCompleted,
   isCoData,
   isCoEdu,
   isCoLead,
   isCoSell,
   isDanoneConsent,
   isNU,
-  isOrder,
   isPaidStatus,
+  normalizeStatus,
 } from "./logic";
 
 type PancakeLead = Record<string, unknown>;
@@ -48,7 +49,6 @@ function formatOrder(lead: PancakeLead): DashboardOrder {
     amount: getNumericValue(lead.gia_tien),
     deliveryStatus: getFieldValue(lead.trang_thai_giao_hang),
     paymentStatus: getFieldValue(lead.trang_thai_thanh_toan),
-    deliveredDate: getFieldValue(lead.ngay_giao_thanh_cong),
   };
 }
 
@@ -93,9 +93,13 @@ export function transformDashboardData(
   totalEntries: number,
 ) {
   const coDataLeads = entries.filter(isCoData);
+
   const coEduLeads = coDataLeads.filter(isCoEdu);
+
   const coLeadLeads = coDataLeads.filter(isCoLead);
+
   const coSellLeads = coDataLeads.filter(isCoSell);
+
   const nuLeads = coDataLeads.filter(isNU);
 
   const todayKey = getVietnamDateKey();
@@ -114,33 +118,35 @@ export function transformDashboardData(
     "nguon_dang_ky",
   );
 
-  const orders = entries.filter(isOrder).map(formatOrder);
+  const orders = coSellLeads.map(formatOrder);
 
   const paidOrders = orders.filter((order) =>
     isPaidStatus(order.paymentStatus),
   );
 
-  const deliveredOrders = orders.filter((order) => order.deliveredDate !== "");
+  const deliveredOrders = orders.filter(
+    (order) => normalizeStatus(order.deliveryStatus) === "giao thanh cong",
+  );
 
   const revenue = paidOrders.reduce((total, order) => total + order.amount, 0);
 
   const consultations = coEduLeads.map(formatConsultation);
 
   const consultationRegistered = consultations.filter(
-    (item) => item.registeredAt !== "",
+    (item) => item.registeredAt.trim() !== "",
   );
 
   const consultationAttended = consultations.filter(
-    (item) => item.postSurvey !== "",
+    (item) => item.postRating.trim() !== "",
   );
 
   const babyCare = coLeadLeads.map(formatBabyCare);
 
   const babyCareRegistered = babyCare.filter(
-    (item) => item.registeredAt !== "",
+    (item) => item.registeredAt.trim() !== "",
   );
 
-  const babyCareCompleted = babyCare.filter((item) => item.staff !== "");
+  const babyCareCompleted = coLeadLeads.filter(isBabyCareCompleted);
 
   const funnel = getFunnelStats(entries);
 
@@ -212,8 +218,6 @@ export function transformDashboardData(
           ).toFixed(2),
         )
       : 0;
-
-  const leadEntries = entries.filter((lead) => !isCoData(lead));
 
   return {
     stats: {
@@ -317,8 +321,8 @@ export function transformDashboardData(
     },
 
     leads: {
-      entries: leadEntries,
-      total_entries: leadEntries.length,
+      entries: [],
+      total_entries: 0,
     },
 
     breakdown: {

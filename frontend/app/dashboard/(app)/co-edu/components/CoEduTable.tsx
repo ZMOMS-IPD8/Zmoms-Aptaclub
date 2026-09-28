@@ -48,10 +48,11 @@ export default function CoEduTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1250px] table-fixed text-left text-sm">
+        <table className="w-full min-w-[1400px] table-fixed text-left text-sm">
           <colgroup>
             <col className="w-[220px]" />
             <col className="w-[160px]" />
+            <col className="w-[150px]" />
             <col className="w-[150px]" />
             <col className="w-[180px]" />
             <col className="w-[220px]" />
@@ -69,6 +70,10 @@ export default function CoEduTable({
 
               <th className="px-5 py-3 font-semibold text-slate-600">
                 Đăng ký lớp
+              </th>
+
+              <th className="px-5 py-3 font-semibold text-slate-600">
+                Ngày tham dự
               </th>
 
               <th className="px-5 py-3 font-semibold text-slate-600">
@@ -93,7 +98,7 @@ export default function CoEduTable({
             {consultations.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-6 py-12 text-center text-sm text-slate-400"
                 >
                   Không có dữ liệu phù hợp.
@@ -101,7 +106,8 @@ export default function CoEduTable({
               </tr>
             ) : (
               consultations.map((item) => {
-                const attended = Boolean(item.postSurvey);
+                const attended = item.postRating.trim() !== "";
+
                 const name = item.name || "—";
                 const phone = item.phone || "—";
 
@@ -129,6 +135,13 @@ export default function CoEduTable({
                       title={item.registeredAt || "—"}
                     >
                       {formatDateOnly(item.registeredAt)}
+                    </td>
+
+                    <td
+                      className="whitespace-nowrap px-5 py-4 align-top text-slate-600"
+                      title={item.attendedAt || "—"}
+                    >
+                      {formatDateOnly(item.attendedAt)}
                     </td>
 
                     <td className="px-5 py-4 align-top">

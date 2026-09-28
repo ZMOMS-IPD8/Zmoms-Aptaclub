@@ -13,6 +13,8 @@ import {
   Baby,
 } from "lucide-react";
 
+import { useDashboardSession } from "./DashboardSessionProvider";
+
 const menuGroups = [
   {
     label: "",
@@ -61,12 +63,38 @@ const menuGroups = [
   },
 ];
 
+function formatSyncTime(value?: string) {
+  if (!value) {
+    return "Chưa đồng bộ";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Chưa đồng bộ";
+  }
+
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
+}
+
 export default function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
+  const { storage, syncing, sync, clearStorage } = useDashboardSession();
+
   const handleLogout = async () => {
     try {
+      await clearStorage();
+
       await fetch("/api/dashboard/login", {
         method: "DELETE",
         credentials: "include",
@@ -76,8 +104,16 @@ export default function DashboardSidebar() {
     }
   };
 
-  const handleRefresh = () => {
-    window.location.reload();
+  const handleRefresh = async () => {
+    if (syncing) {
+      return;
+    }
+
+    try {
+      await sync();
+    } catch {
+      return;
+    }
   };
 
   const isActive = (href: string) => {
@@ -100,6 +136,7 @@ export default function DashboardSidebar() {
             <div className="text-[15px] font-bold tracking-tight text-slate-900">
               ZMOMS
             </div>
+
             <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">
               Dashboard
             </div>
@@ -155,21 +192,48 @@ export default function DashboardSidebar() {
       </nav>
 
       <div className="border-t border-slate-200 p-3">
+        <div className="mb-2 rounded-xl bg-slate-50 px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                syncing ? "animate-pulse bg-amber-500" : "bg-green-500"
+              }`}
+            />
+
+            <span className="text-[11px] font-semibold text-slate-500">
+              {syncing ? "Đang đồng bộ..." : "Đã đồng bộ"}
+            </span>
+          </div>
+
+          <p className="mt-1 text-[11px] leading-4 text-slate-400">
+            {syncing
+              ? "Đang lấy dữ liệu mới nhất từ Pancake CRM."
+              : `Lần cuối: ${formatSyncTime(storage?.syncedAt)}`}
+          </p>
+        </div>
+
         <button
           type="button"
-          onClick={handleRefresh}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+          onClick={() => void handleRefresh()}
+          disabled={syncing}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <RefreshCw size={17} strokeWidth={1.9} />
-          <span>Làm mới dữ liệu</span>
+          <RefreshCw
+            size={17}
+            strokeWidth={1.9}
+            className={syncing ? "animate-spin" : ""}
+          />
+
+          <span>{syncing ? "Đang đồng bộ..." : "Đồng bộ dữ liệu"}</span>
         </button>
 
         <button
           type="button"
-          onClick={handleLogout}
+          onClick={() => void handleLogout()}
           className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
         >
           <LogOut size={17} strokeWidth={1.9} />
+
           <span>Đăng xuất</span>
         </button>
       </div>

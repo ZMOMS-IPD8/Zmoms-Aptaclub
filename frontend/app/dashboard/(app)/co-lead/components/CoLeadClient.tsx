@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+
+import { transformDashboardData } from "@/lib/dashboard/transform";
+import { useDashboardSession } from "../../components/DashboardSessionProvider";
+
 import type {
-  DashboardApiResponse,
   DashboardBabyCare,
-  DashboardData,
+  DashboardBabyCareData,
 } from "../../types/dashboard";
+
 import CoLeadDetail from "./CoLeadDetail";
 import CoLeadFilters from "./CoLeadFilters";
 import CoLeadStats from "./CoLeadStats";
@@ -17,68 +21,28 @@ const DEFAULT_FILTERS: CoLeadFiltersState = {
   status: "all",
 };
 
+function isCompleted(item: DashboardBabyCare): boolean {
+  return item.staff.trim() !== "" && item.note.trim() !== "";
+}
+
 export default function CoLeadClient() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { storage, loading } = useDashboardSession();
+
   const [filters, setFilters] = useState<CoLeadFiltersState>(DEFAULT_FILTERS);
+
   const [selectedItem, setSelectedItem] = useState<DashboardBabyCare | null>(
     null,
   );
 
-  useEffect(() => {
-    let mounted = true;
+  const babyCare = useMemo<DashboardBabyCareData | null>(() => {
+    if (!storage) {
+      return null;
+    }
 
-    fetch("/api/dashboard/data", {
-      cache: "no-store",
-    })
-      .then(async (response) => {
-        if (response.status === 401) {
-          window.location.replace("/dashboard/login");
-          throw new Error("Unauthorized");
-        }
+    const data = transformDashboardData(storage.entries, storage.totalEntries);
 
-        const result =
-          (await response.json()) as DashboardApiResponse<DashboardData>;
-
-        if (!response.ok || !result.success) {
-          throw new Error(result.message || "Không thể tải dữ liệu Co-Lead.");
-        }
-
-        return result.data;
-      })
-      .then((result) => {
-        if (mounted) {
-          setData(result);
-        }
-      })
-      .catch((error: unknown) => {
-        if (!mounted) {
-          return;
-        }
-
-        if (error instanceof Error && error.message === "Unauthorized") {
-          return;
-        }
-
-        setError(
-          error instanceof Error
-            ? error.message
-            : "Không thể tải dữ liệu Co-Lead.",
-        );
-      })
-      .finally(() => {
-        if (mounted) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const babyCare = data?.babyCare;
+    return data.babyCare;
+  }, [storage]);
 
   const filteredBabyCare = useMemo(() => {
     if (!babyCare) {
@@ -94,7 +58,7 @@ export default function CoLeadClient() {
       const matchesSearch =
         !search || name.includes(search) || phone.includes(search);
 
-      const completed = Boolean(item.staff);
+      const completed = isCompleted(item);
 
       const matchesStatus =
         filters.status === "all" ||
@@ -109,20 +73,42 @@ export default function CoLeadClient() {
     return (
       <div className="min-h-screen bg-[#F2F6FF] p-6 lg:p-8">
         <div className="mx-auto max-w-[1600px]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-sm text-slate-500">
-            Đang tải dữ liệu Co-Lead...
+          <div className="rounded-2xl border border-slate-200 bg-white p-8">
+            <p className="text-sm text-slate-500">Đang tải dữ liệu...</p>
           </div>
         </div>
       </div>
     );
   }
 
-  if (error || !data || !babyCare) {
+  if (!storage || !babyCare) {
     return (
       <div className="min-h-screen bg-[#F2F6FF] p-6 lg:p-8">
         <div className="mx-auto max-w-[1600px]">
-          <div className="rounded-2xl border border-red-100 bg-red-50 p-6 text-sm text-red-600">
-            {error || "Không tải được dữ liệu Co-Lead."}
+          <div className="mb-8">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#173B8F] text-sm font-bold text-white">
+                05
+              </div>
+
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">Co-Lead</h1>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Theo dõi hội viên đăng ký và hoàn thành dịch vụ tắm bé.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-8">
+            <p className="text-sm font-medium text-slate-700">
+              Chưa có dữ liệu Co-Lead.
+            </p>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Vui lòng chọn “Đồng bộ dữ liệu” ở Sidebar.
+            </p>
           </div>
         </div>
       </div>

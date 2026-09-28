@@ -1,39 +1,38 @@
 import { getAllLeads } from "./pancake";
 
-const CACHE_TTL = 10_000;
-
 type LeadsData = Awaited<ReturnType<typeof getAllLeads>>;
 
 let cachedData: LeadsData | null = null;
-let cachedAt = 0;
-let pendingRequest: Promise<LeadsData> | null = null;
+let syncingRequest: Promise<LeadsData> | null = null;
 
-export async function getCachedLeads(): Promise<LeadsData> {
-  const now = Date.now();
+export function getDashboardCache(): LeadsData | null {
+  return cachedData;
+}
 
-  if (cachedData && now - cachedAt < CACHE_TTL) {
-    return cachedData;
+export function hasDashboardCache(): boolean {
+  return cachedData !== null;
+}
+
+export async function syncDashboardCache(): Promise<LeadsData> {
+  if (syncingRequest) {
+    return syncingRequest;
   }
 
-  if (pendingRequest) {
-    return pendingRequest;
-  }
+  cachedData = null;
 
-  pendingRequest = getAllLeads();
+  syncingRequest = getAllLeads();
 
   try {
-    const data = await pendingRequest;
+    const data = await syncingRequest;
 
     cachedData = data;
-    cachedAt = Date.now();
 
     return data;
   } finally {
-    pendingRequest = null;
+    syncingRequest = null;
   }
 }
 
-export function clearDashboardCache() {
+export function clearDashboardCache(): void {
   cachedData = null;
-  cachedAt = 0;
 }

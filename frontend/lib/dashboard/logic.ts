@@ -47,9 +47,18 @@ export function normalizeStatus(value: unknown): string {
 }
 
 export function isTrue(value: unknown): boolean {
-  const normalized = getFieldValue(value).toLowerCase();
+  const normalized = getFieldValue(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
 
-  return normalized === "true" || normalized === "1" || normalized === "yes";
+  return (
+    normalized === "true" ||
+    normalized === "1" ||
+    normalized === "yes" ||
+    normalized === "co"
+  );
 }
 
 export function hasField(lead: PancakeLead, field: string): boolean {
@@ -68,11 +77,11 @@ export function isPaidStatus(value: unknown): boolean {
 }
 
 export function hasSuccessfulDelivery(lead: PancakeLead): boolean {
-  return getFieldValue(lead.ngay_giao_thanh_cong) !== "";
+  return normalizeStatus(lead.trang_thai_giao_hang) === "giao thanh cong";
 }
 
 export function isCoData(lead: PancakeLead): boolean {
-  return hasField(lead, "thoi_gian_dang_ky");
+  return hasField(lead, "thoi_gian_dang_ky") && hasField(lead, "nguon_dang_ky");
 }
 
 export function isCoEdu(lead: PancakeLead): boolean {
@@ -83,6 +92,12 @@ export function isCoLead(lead: PancakeLead): boolean {
   return isCoData(lead) && hasField(lead, "thoi_gian_dang_ky_tam_be");
 }
 
+export function isBabyCareCompleted(lead: PancakeLead): boolean {
+  return (
+    hasField(lead, "ten_nhan_vien_tam_be") && hasField(lead, "ghi_chu_tam_be")
+  );
+}
+
 export function isOrder(lead: PancakeLead): boolean {
   return hasField(lead, "ngay_dat_hang") && hasField(lead, "ma_don_hang");
 }
@@ -91,8 +106,12 @@ export function isNU(lead: PancakeLead): boolean {
   return isCoData(lead) && isOrder(lead) && hasSuccessfulDelivery(lead);
 }
 
+export function hasPurchaseSource(lead: PancakeLead): boolean {
+  return hasField(lead, "nguon_mua_hang");
+}
+
 export function isCoSell(lead: PancakeLead): boolean {
-  return isNU(lead);
+  return isNU(lead) && hasPurchaseSource(lead);
 }
 
 export function isDanoneConsent(lead: PancakeLead): boolean {
@@ -104,6 +123,32 @@ export function parseDate(value: unknown): Date | null {
 
   if (!normalized) {
     return null;
+  }
+
+  const vietnamDateTimeMatch = normalized.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?)?$/,
+  );
+
+  if (vietnamDateTimeMatch) {
+    const [
+      ,
+      year,
+      month,
+      day,
+      hour = "00",
+      minute = "00",
+      second = "00",
+      millisecond = "0",
+    ] = vietnamDateTimeMatch;
+
+    const date = new Date(
+      `${year}-${month}-${day}T${hour}:${minute}:${second}.${millisecond.padEnd(
+        3,
+        "0",
+      )}+07:00`,
+    );
+
+    return Number.isNaN(date.getTime()) ? null : date;
   }
 
   const isoDate = new Date(normalized);
@@ -122,7 +167,12 @@ export function parseDate(value: unknown): Date | null {
   const month = Number(match[2]);
   const year = Number(match[3]);
 
-  const date = new Date(year, month - 1, day);
+  const date = new Date(
+    `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(
+      2,
+      "0",
+    )}T00:00:00+07:00`,
+  );
 
   return Number.isNaN(date.getTime()) ? null : date;
 }
