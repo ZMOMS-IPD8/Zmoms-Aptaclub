@@ -2,6 +2,7 @@
 
 import { CheckCircle2, X } from "lucide-react";
 import type { ReactNode } from "react";
+
 import { isTrue } from "@/lib/dashboard/logic";
 import type { CoDataLead } from "../types";
 
@@ -93,7 +94,6 @@ export default function CoDataDetail({
     getValue(entry.so_dien_thoai_dang_ky) || getValue(entry.phone_number);
 
   const province = getValue(entry.thanh_pho);
-  const referralCode = getValue(entry.ma_gioi_thieu_dang_ky);
   const registeredAt = getValue(entry.thoi_gian_dang_ky);
   const babyDate = formatDateOnly(entry.ngay_du_sinh_hoac_ngay_sinh_cua_be);
   const motherStatus = getValue(entry.tinh_trang_me);
@@ -139,8 +139,6 @@ export default function CoDataDetail({
             <DetailRow label="Số điện thoại" value={phone} />
 
             <DetailRow label="Tỉnh / thành" value={province} />
-
-            <DetailRow label="Mã giới thiệu" value={referralCode} />
 
             <DetailRow
               label="Ngày đăng ký"

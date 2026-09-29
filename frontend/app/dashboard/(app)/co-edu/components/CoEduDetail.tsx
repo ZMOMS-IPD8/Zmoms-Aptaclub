@@ -158,7 +158,7 @@ export default function CoEduDetail({
 
           <Section title="Khảo sát">
             <DetailRow
-              label="Pre-survey"
+              label="Đánh giá trước buổi học"
               value={
                 <SurveyBadge
                   active={Boolean(item.preSurvey)}
@@ -168,7 +168,7 @@ export default function CoEduDetail({
             />
 
             <DetailRow
-              label="Post-survey"
+              label="Đánh giá sau buổi học"
               value={
                 <SurveyBadge
                   active={Boolean(item.postSurvey)}
@@ -177,7 +177,10 @@ export default function CoEduDetail({
               }
             />
 
-            <DetailRow label="Đánh giá" value={item.postRating || "—"} />
+            <DetailRow
+              label="Đánh giá sau buổi học"
+              value={item.postRating || "—"}
+            />
 
             <DetailRow label="Nhu cầu hỗ trợ" value={item.supportNeed || "—"} />
           </Section>
