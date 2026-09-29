@@ -207,7 +207,7 @@ export default function DashboardSidebar() {
 
           <p className="mt-1 text-[11px] leading-4 text-slate-400">
             {syncing
-              ? "Đang lấy dữ liệu mới nhất từ Pancake CRM."
+              ? "Đang lấy dữ liệu mới nhất."
               : `Lần cuối: ${formatSyncTime(storage?.syncedAt)}`}
           </p>
         </div>
