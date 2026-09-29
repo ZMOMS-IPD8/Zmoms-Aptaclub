@@ -1,4 +1,5 @@
 export const REFERRAL_CODES: string[] = [
+  "SAMMY",
   "A3K7QM",
   "C4R9TX",
   "D6W3HP",
