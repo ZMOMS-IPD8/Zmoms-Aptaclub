@@ -122,7 +122,7 @@ export default function DashboardClient() {
     return <EmptyDashboard />;
   }
 
-  const { stats, orders, consultation, babyCare } = data;
+  const { stats, consultation, babyCare } = data;
 
   const { funnel, danone } = stats;
 
@@ -248,15 +248,11 @@ export default function DashboardClient() {
           <SectionHeader
             number="06"
             title="Co-Sell"
-            description="Tổng quan đơn hàng, giao hàng thành công, doanh thu và Touchpoint."
+            description="Tổng quan đơn hàng hoàn thành và các kênh chuyển đổi."
           />
 
           <OrdersOverview
-            total={orders.total}
-            paid={orders.paid}
-            unpaid={orders.unpaid}
-            delivered={orders.delivered}
-            revenue={orders.revenue}
+            total={data.coSell.total}
             touchpoints={data.coSell.touchpoints}
           />
         </section>
