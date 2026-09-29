@@ -302,7 +302,7 @@ export async function POST(req: NextRequest) {
       id: leadId,
       ten_nguoi_nhan: cleanFullName,
       so_dien_thoai_giao_hang: cleanShippingPhone,
-      full_address: fullAddress,
+      dia_chi_nhan_hang: fullAddress,
       ma_nguoi_ban: cleanMaNguoiBan,
       ten_combo: selectedCombo.name,
       gia_tien: String(selectedCombo.price),

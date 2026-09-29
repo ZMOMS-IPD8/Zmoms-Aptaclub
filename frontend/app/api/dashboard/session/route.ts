@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { getDashboardCookieName, getSession } from "@/lib/dashboard/auth";
 
 export const runtime = "nodejs";
@@ -25,6 +26,8 @@ export async function GET(request: NextRequest) {
     data: {
       sessionId: session.sessionId,
       username: session.username,
+      role: session.role,
+      dataScope: session.dataScope,
       exp: session.exp,
     },
   });

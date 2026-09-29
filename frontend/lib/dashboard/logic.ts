@@ -9,8 +9,16 @@ export function getFieldValue(value: unknown): string {
     return String(value).trim();
   }
 
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => getFieldValue(item))
+      .filter(Boolean)
+      .join(", ")
+      .trim();
+  }
+
   if (value && typeof value === "object" && "value" in value) {
-    return String((value as { value?: unknown }).value ?? "").trim();
+    return getFieldValue((value as { value?: unknown }).value);
   }
 
   return "";

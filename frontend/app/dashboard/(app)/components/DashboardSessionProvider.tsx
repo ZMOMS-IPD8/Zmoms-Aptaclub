@@ -20,6 +20,8 @@ import {
 type DashboardSession = {
   sessionId: string;
   username: string;
+  role: "CUSTOMER" | "TEAM";
+  dataScope: "ALL" | "ZMOMS" | "CỘNG ĐỒNG BẦU";
   exp: number;
 };
 
@@ -102,7 +104,10 @@ export function DashboardSessionProvider({
       return;
     }
 
-    if (storedData.sessionId !== currentSession.sessionId) {
+    if (
+      storedData.sessionId !== currentSession.sessionId ||
+      storedData.dataScope !== currentSession.dataScope
+    ) {
       await clearDashboardStorage();
 
       setStorage(null);
@@ -111,7 +116,7 @@ export function DashboardSessionProvider({
     }
 
     setStorage(storedData);
-  }, []);
+  }, [clearDashboardStorage]);
 
   const sync = useCallback(async () => {
     setSyncing(true);
@@ -152,13 +157,17 @@ export function DashboardSessionProvider({
         throw new Error("Phiên đăng nhập không hợp lệ.");
       }
 
+      if (currentData.dataScope !== session.dataScope) {
+        throw new Error("Phạm vi dữ liệu không hợp lệ.");
+      }
+
       await saveDashboardStorage<PancakeLead>(currentData);
 
       setStorage(currentData);
     } finally {
       setSyncing(false);
     }
-  }, [session]);
+  }, [session, clearDashboardStorage]);
 
   useEffect(() => {
     let active = true;

@@ -2,8 +2,11 @@ const DB_NAME = "zmoms-dashboard";
 const DB_VERSION = 1;
 const STORE_NAME = "dashboard";
 
+export type DashboardDataScope = "ALL" | "ZMOMS" | "CỘNG ĐỒNG BẦU";
+
 export type DashboardStorageData<T = unknown> = {
   sessionId: string;
+  dataScope: DashboardDataScope;
   syncedAt: string;
   totalEntries: number;
   entries: T[];
@@ -43,6 +46,7 @@ export async function getDashboardStorage<
 
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, "readonly");
+
     const store = transaction.objectStore(STORE_NAME);
     const request = store.get("snapshot");
 
@@ -67,6 +71,7 @@ export async function saveDashboardStorage<T = unknown>(
 
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, "readwrite");
+
     const store = transaction.objectStore(STORE_NAME);
 
     const request = store.put(data, "snapshot");
@@ -89,6 +94,7 @@ export async function clearDashboardStorage(): Promise<void> {
 
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, "readwrite");
+
     const store = transaction.objectStore(STORE_NAME);
 
     const request = store.delete("snapshot");

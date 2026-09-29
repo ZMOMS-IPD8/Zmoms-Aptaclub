@@ -1,11 +1,64 @@
 import { NextResponse } from "next/server";
+
 import {
   createSession,
   getDashboardCookieName,
   getDashboardSessionDuration,
+  type DashboardDataScope,
+  type DashboardRole,
 } from "@/lib/dashboard/auth";
 
 export const runtime = "nodejs";
+
+type DashboardAccount = {
+  username: string;
+  password: string;
+  role: DashboardRole;
+  dataScope: DashboardDataScope;
+};
+
+function getAccounts(): DashboardAccount[] {
+  const customerUsername = process.env.DASHBOARD_CUSTOMER_USERNAME;
+  const customerPassword = process.env.DASHBOARD_CUSTOMER_PASSWORD;
+
+  const zmomsUsername = process.env.DASHBOARD_ZMOMS_USERNAME;
+  const zmomsPassword = process.env.DASHBOARD_ZMOMS_PASSWORD;
+
+  const communityUsername = process.env.DASHBOARD_CONG_DONG_BAU_USERNAME;
+
+  const communityPassword = process.env.DASHBOARD_CONG_DONG_BAU_PASSWORD;
+
+  const accounts: DashboardAccount[] = [];
+
+  if (customerUsername && customerPassword) {
+    accounts.push({
+      username: customerUsername,
+      password: customerPassword,
+      role: "CUSTOMER",
+      dataScope: "ALL",
+    });
+  }
+
+  if (zmomsUsername && zmomsPassword) {
+    accounts.push({
+      username: zmomsUsername,
+      password: zmomsPassword,
+      role: "TEAM",
+      dataScope: "ZMOMS",
+    });
+  }
+
+  if (communityUsername && communityPassword) {
+    accounts.push({
+      username: communityUsername,
+      password: communityPassword,
+      role: "TEAM",
+      dataScope: "CỘNG ĐỒNG BẦU",
+    });
+  }
+
+  return accounts;
+}
 
 export async function POST(request: Request) {
   try {
@@ -14,10 +67,9 @@ export async function POST(request: Request) {
     const username = String(body.username ?? "").trim();
     const password = String(body.password ?? "");
 
-    const adminUsername = process.env.DASHBOARD_USERNAME;
-    const adminPassword = process.env.DASHBOARD_PASSWORD;
+    const accounts = getAccounts();
 
-    if (!adminUsername || !adminPassword) {
+    if (accounts.length === 0) {
       return NextResponse.json(
         {
           success: false,
@@ -27,7 +79,11 @@ export async function POST(request: Request) {
       );
     }
 
-    if (username !== adminUsername || password !== adminPassword) {
+    const account = accounts.find(
+      (item) => item.username === username && item.password === password,
+    );
+
+    if (!account) {
       return NextResponse.json(
         {
           success: false,
@@ -37,7 +93,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const session = await createSession(username);
+    const session = await createSession(
+      account.username,
+      account.role,
+      account.dataScope,
+    );
 
     const response = NextResponse.json({
       success: true,

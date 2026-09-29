@@ -1,9 +1,15 @@
 const COOKIE_NAME = "dashboard_session";
 const SESSION_DURATION = 60 * 60 * 24;
 
+export type DashboardDataScope = "ALL" | "ZMOMS" | "CỘNG ĐỒNG BẦU";
+
+export type DashboardRole = "CUSTOMER" | "TEAM";
+
 export type DashboardSession = {
   sessionId: string;
   username: string;
+  role: DashboardRole;
+  dataScope: DashboardDataScope;
   exp: number;
 };
 
@@ -84,10 +90,16 @@ function createSessionId(): string {
   return crypto.randomUUID();
 }
 
-export async function createSession(username: string): Promise<string> {
+export async function createSession(
+  username: string,
+  role: DashboardRole,
+  dataScope: DashboardDataScope,
+): Promise<string> {
   const payloadData: DashboardSession = {
     sessionId: createSessionId(),
     username,
+    role,
+    dataScope,
     exp: Math.floor(Date.now() / 1000) + SESSION_DURATION,
   };
 
@@ -143,6 +155,10 @@ export async function getSession(
       !data.sessionId ||
       typeof data.username !== "string" ||
       !data.username ||
+      (data.role !== "CUSTOMER" && data.role !== "TEAM") ||
+      (data.dataScope !== "ALL" &&
+        data.dataScope !== "ZMOMS" &&
+        data.dataScope !== "CỘNG ĐỒNG BẦU") ||
       typeof data.exp !== "number"
     ) {
       return null;
@@ -155,6 +171,8 @@ export async function getSession(
     return {
       sessionId: data.sessionId,
       username: data.username,
+      role: data.role,
+      dataScope: data.dataScope,
       exp: data.exp,
     };
   } catch {
