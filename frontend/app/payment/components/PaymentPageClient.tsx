@@ -375,18 +375,11 @@ export default function PaymentPageClient() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 rounded-xl bg-[#F8FAFC] p-4 text-xs sm:grid-cols-2">
+          <div className="mt-4 rounded-xl bg-[#F8FAFC] p-4 text-xs">
             <p className="text-gray-500">
               Số điện thoại:{" "}
               <span className="font-bold text-gray-700">
                 {registrationPhone || "—"}
-              </span>
-            </p>
-
-            <p className="text-gray-500">
-              Mã người bán:{" "}
-              <span className="font-bold text-gray-700">
-                {referralCode || "—"}
               </span>
             </p>
           </div>
