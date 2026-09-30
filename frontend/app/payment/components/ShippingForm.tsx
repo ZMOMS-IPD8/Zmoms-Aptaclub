@@ -67,7 +67,11 @@ export default function ShippingForm({
         const data: Province[] = await response.json();
 
         if (!cancelled) {
-          setProvinces(data);
+          const sortedProvinces = [...data].sort((a, b) =>
+            a.name.localeCompare(b.name, "vi"),
+          );
+
+          setProvinces(sortedProvinces);
           setLoadingProvinces(false);
         }
       } catch {
@@ -112,7 +116,11 @@ export default function ShippingForm({
         const data: Ward[] = await response.json();
 
         if (!controller.signal.aborted) {
-          setWards(data);
+          const sortedWards = [...data].sort((a, b) =>
+            a.name.localeCompare(b.name, "vi"),
+          );
+
+          setWards(sortedWards);
           setLoadingWards(false);
         }
       } catch (error) {
