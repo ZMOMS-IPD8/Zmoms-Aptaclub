@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { isValidReferralCode } from "../../data/referralCodes";
+import { isValidPurchaseReferralCode } from "../../data/referralCodes";
 
 type Props = {
   onVerified: (
@@ -52,7 +52,10 @@ export default function ReferralVerification({ onVerified }: Props) {
       return;
     }
 
-    if (hasReferralCode && !isValidReferralCode(normalizedReferralCode)) {
+    if (
+      hasReferralCode &&
+      !isValidPurchaseReferralCode(normalizedReferralCode)
+    ) {
       setError("Mã giới thiệu không hợp lệ. Mẹ vui lòng kiểm tra lại.");
       return;
     }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { RegistrationData } from "../types/registration";
-import { isValidReferralCode } from "../data/referralCodes";
+import { isValidRegistrationReferralCode } from "../data/referralCodes";
 
 export type RegistrationDialogState = {
   open: boolean;
@@ -97,6 +97,7 @@ export function useRegistrationForm() {
 
     if (selectedDate > today) {
       const latestDueDate = new Date(today);
+
       latestDueDate.setMonth(latestDueDate.getMonth() + 9);
       latestDueDate.setHours(0, 0, 0, 0);
 
@@ -135,7 +136,7 @@ export function useRegistrationForm() {
       return "Vui lòng nhập mã giới thiệu.";
     }
 
-    if (!isValidReferralCode(cleanReferralCode)) {
+    if (!isValidRegistrationReferralCode(cleanReferralCode)) {
       return "Mã giới thiệu không hợp lệ.";
     }
 

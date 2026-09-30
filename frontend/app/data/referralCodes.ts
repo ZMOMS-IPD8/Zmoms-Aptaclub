@@ -1,4 +1,5 @@
 export const REGISTRATION_REFERRAL_CODES: string[] = [
+  "MEDUA",
   "SAMMY",
   "A3K7QM",
   "C4R9TX",

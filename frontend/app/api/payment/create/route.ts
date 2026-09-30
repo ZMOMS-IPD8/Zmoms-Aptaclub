@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isValidReferralCode } from "../../../data/referralCodes";
+import { isValidPurchaseReferralCode } from "../../../data/referralCodes";
 import { checkMemberByPhone } from "../../../lib/pancake/member";
 import { createPancakeOrder } from "../../../lib/pancake/order";
 
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (referralCode && !isValidReferralCode(referralCode)) {
+    if (referralCode && !isValidPurchaseReferralCode(referralCode)) {
       return NextResponse.json(
         {
           success: false,
@@ -58,7 +58,6 @@ export async function POST(req: NextRequest) {
     }
 
     const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
-
     const apiKey = process.env.PANCAKE_CRM_API_KEY;
 
     if (!workspaceId || !apiKey) {
@@ -85,7 +84,6 @@ export async function POST(req: NextRequest) {
     }
 
     const lead = member.lead;
-
     const leadId = member.leadId;
 
     const paymentStatus = String(lead.trang_thai_thanh_toan ?? "").trim();
@@ -96,13 +94,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-
           alreadyPurchased: true,
-
           paymentStatus,
-
           orderCode: existingOrderCode || null,
-
           message:
             "Số điện thoại này đã thanh toán đơn hàng. Mẹ vui lòng nhắn tin qua Zalo OA để biết tình trạng đơn hàng.",
         },
@@ -118,21 +112,15 @@ export async function POST(req: NextRequest) {
 
     const pancakeOrder = await createPancakeOrder({
       combo,
-
       phone,
-
       fullName,
-
       orderCode,
-
       discountAmount,
     });
 
     const updatePayload: Record<string, string> = {
       id: leadId,
-
       trang_thai_thanh_toan: "Chưa thanh toán",
-
       ma_don_hang: orderCode,
     };
 
@@ -143,14 +131,11 @@ export async function POST(req: NextRequest) {
 
     const updateResponse = await fetch(updateUrl, {
       method: "POST",
-
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-
       body: JSON.stringify(updatePayload),
-
       cache: "no-store",
     });
 
@@ -169,13 +154,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-
           orderCreated: true,
-
           orderCode,
-
           trackingLink: pancakeOrder.trackingLink,
-
           message:
             updateResult.message ||
             updateResult.error ||
@@ -187,32 +168,21 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-
       orderCode,
-
       phone,
-
       referralCode,
-
       combo,
-
       originalAmount: pancakeOrder.originalAmount,
-
       discountAmount: pancakeOrder.discountAmount,
-
       amount: pancakeOrder.amount,
-
       paymentReference: pancakeOrder.paymentReference,
-
       paymentStatus: "Chưa thanh toán",
-
       payment: pancakeOrder.payment,
     });
   } catch (error) {
     return NextResponse.json(
       {
         success: false,
-
         message:
           error instanceof Error ? error.message : "Không thể tạo đơn hàng.",
       },
