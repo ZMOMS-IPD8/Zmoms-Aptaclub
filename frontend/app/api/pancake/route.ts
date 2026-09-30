@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isValidReferralCode } from "../../data/referralCodes";
+import { isValidRegistrationReferralCode } from "../../data/referralCodes";
 
 type PancakeLead = {
   id?: string;
@@ -91,6 +91,7 @@ function isEligibleBabyDate(babyDate: string): boolean {
 
   if (selectedDate > today) {
     const latestDueDate = new Date(today);
+
     latestDueDate.setMonth(latestDueDate.getMonth() + 9);
     latestDueDate.setHours(0, 0, 0, 0);
 
@@ -180,7 +181,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!isValidReferralCode(referralCode)) {
+    if (!isValidRegistrationReferralCode(referralCode)) {
       return NextResponse.json(
         {
           success: false,

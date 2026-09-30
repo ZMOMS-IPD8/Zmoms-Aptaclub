@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isValidReferralCode } from "../../data/referralCodes";
+import { isValidPurchaseReferralCode } from "../../data/referralCodes";
 import { checkMemberByPhone } from "../../lib/pancake/member";
 
 const REFERRAL_DISCOUNT = 300000;
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (hasReferralCode && !isValidReferralCode(referralCode)) {
+    if (hasReferralCode && !isValidPurchaseReferralCode(referralCode)) {
       return NextResponse.json(
         {
           success: false,
