@@ -18,6 +18,7 @@ export const REGISTRATION_REFERRAL_CODES: string[] = [
   "Z-GREEN01",
   "Z-HMN",
   "Z-KIDS",
+  "Z-MEDUA",
   "Z-PSAC",
   "Z-SAMMY",
   "Z-SHING",
