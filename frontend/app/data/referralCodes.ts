@@ -7,6 +7,8 @@ export const REGISTRATION_REFERRAL_CODES: string[] = [
   "C-05",
   "C-06",
   "C-07",
+  "C-08",
+  "C-09",
   "C-BVHP",
   "C-KEI",
   "C-SHING",
