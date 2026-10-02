@@ -22,13 +22,15 @@ export const REGISTRATION_REFERRAL_CODES: string[] = [
   "Z-GREEN",
   "Z-GREEN01",
   "Z-HMN",
-  "Z-KIDS",
+  "Z-KID",
   "Z-MEDUA",
   "Z-PSAC",
   "Z-SAMMY",
   "Z-SHING",
   "Z-SL",
   "Z-YHP",
+  "Z-KID1",
+  "Z-KID2",
 ];
 
 export const PURCHASE_REFERRAL_CODES: string[] = ["ABC123456"];
