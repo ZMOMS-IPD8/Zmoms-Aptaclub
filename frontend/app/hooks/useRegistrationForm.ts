@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { RegistrationData } from "../types/registration";
 import { isValidRegistrationReferralCode } from "../data/referralCodes";
+import referralEvents from "../data/referralEvents.json";
 
 export type RegistrationDialogState = {
   open: boolean;
@@ -12,12 +13,25 @@ export type RegistrationDialogState = {
   zaloUrl?: string;
 };
 
+function getEventCodes(referralCode: string): string[] {
+  const normalizedCode = referralCode.trim().toUpperCase();
+
+  if (!normalizedCode) {
+    return [];
+  }
+
+  const events = referralEvents as Record<string, string[]>;
+
+  return Array.isArray(events[normalizedCode]) ? events[normalizedCode] : [];
+}
+
 export function useRegistrationForm() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [province, setProvince] = useState("");
   const [babyDate, setBabyDate] = useState("");
-  const [referralCode, setReferralCode] = useState("");
+  const [referralCode, setReferralCodeState] = useState("");
+  const [eventCode, setEventCode] = useState("");
 
   const [consentMember, setConsentMember] = useState(false);
   const [consentAptaclub, setConsentAptaclub] = useState(false);
@@ -34,12 +48,31 @@ export function useRegistrationForm() {
     status: "success",
   });
 
+  const setReferralCode = (value: string) => {
+    const normalizedCode = value.toUpperCase();
+
+    setReferralCodeState(normalizedCode);
+
+    const events = getEventCodes(normalizedCode);
+
+    if (!events.includes(eventCode)) {
+      setEventCode("");
+    }
+  };
+
+  const availableEventCodes = getEventCodes(referralCode);
+
+  const hasReferralCode = referralCode.trim() !== "";
+  const hasEventCodes = availableEventCodes.length > 0;
+  const hasRequiredEventCode =
+    !hasReferralCode || !hasEventCodes || eventCode.trim() !== "";
+
   const canSubmit =
     fullName.trim() !== "" &&
     phone.trim() !== "" &&
-    referralCode.trim() !== "" &&
     province !== "" &&
     babyDate !== "" &&
+    hasRequiredEventCode &&
     consentMember &&
     !isSubmitting;
 
@@ -50,6 +83,7 @@ export function useRegistrationForm() {
       province,
       babyDate,
       referralCode: referralCode.trim().toUpperCase(),
+      eventCode: eventCode.trim().toUpperCase(),
       consentMember,
       consentAptaclub,
       consentMarketing,
@@ -131,13 +165,29 @@ export function useRegistrationForm() {
     }
 
     const cleanReferralCode = referralCode.trim().toUpperCase();
+    const cleanEventCode = eventCode.trim().toUpperCase();
 
-    if (!cleanReferralCode) {
-      return "Vui lòng nhập mã giới thiệu.";
+    if (
+      cleanReferralCode &&
+      !isValidRegistrationReferralCode(cleanReferralCode)
+    ) {
+      return "Mã giới thiệu không hợp lệ.";
     }
 
-    if (!isValidRegistrationReferralCode(cleanReferralCode)) {
-      return "Mã giới thiệu không hợp lệ.";
+    if (!cleanReferralCode && cleanEventCode) {
+      return "Vui lòng chọn mã giới thiệu trước khi chọn mã sự kiện.";
+    }
+
+    if (cleanReferralCode) {
+      const events = getEventCodes(cleanReferralCode);
+
+      if (events.length > 0 && !cleanEventCode) {
+        return "Vui lòng chọn mã sự kiện.";
+      }
+
+      if (cleanEventCode && !events.includes(cleanEventCode)) {
+        return "Mã sự kiện không phù hợp với mã giới thiệu.";
+      }
     }
 
     if (!province) {
@@ -197,6 +247,7 @@ export function useRegistrationForm() {
       formData.append("province", data.province);
       formData.append("babyDate", data.babyDate);
       formData.append("referralCode", data.referralCode);
+      formData.append("eventCode", data.eventCode);
 
       formData.append("consentMember", String(data.consentMember));
       formData.append("consentAptaclub", String(data.consentAptaclub));
@@ -245,6 +296,18 @@ export function useRegistrationForm() {
           title: "Mã giới thiệu không hợp lệ",
           message:
             result?.message || "Vui lòng kiểm tra lại mã giới thiệu của bạn.",
+          status: "warning",
+        });
+
+        return;
+      }
+
+      if (result?.status === "INVALID_EVENT_CODE") {
+        setDialog({
+          open: true,
+          title: "Mã sự kiện không hợp lệ",
+          message:
+            result?.message || "Mã sự kiện không phù hợp với mã giới thiệu.",
           status: "warning",
         });
 
@@ -337,12 +400,15 @@ export function useRegistrationForm() {
     province,
     babyDate,
     referralCode,
+    eventCode,
+    availableEventCodes,
 
     setFullName,
     setPhone,
     setProvince,
     setBabyDate,
     setReferralCode,
+    setEventCode,
 
     consentMember,
     consentAptaclub,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidRegistrationReferralCode } from "../../data/referralCodes";
+import referralEvents from "../../data/referralEvents.json";
 
 type PancakeLead = {
   id?: string;
@@ -38,6 +39,17 @@ function getFieldValue(value: unknown): string {
   }
 
   return "";
+}
+
+function getEventCodes(referralCode: string): string[] {
+  const normalizedCode = referralCode.trim().toUpperCase();
+  const events = referralEvents as Record<string, string[]>;
+
+  if (!normalizedCode) {
+    return [];
+  }
+
+  return Array.isArray(events[normalizedCode]) ? events[normalizedCode] : [];
 }
 
 function parseDate(value: string): Date | null {
@@ -155,6 +167,10 @@ export async function POST(req: NextRequest) {
       .trim()
       .toUpperCase();
 
+    const eventCode = String(formData.get("eventCode") ?? "")
+      .trim()
+      .toUpperCase();
+
     const consentAptaclub =
       String(formData.get("consentAptaclub") ?? "") === "true";
 
@@ -175,18 +191,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!referralCode) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "INVALID_REFERRAL_CODE",
-          message: "Vui lòng nhập mã giới thiệu.",
-        },
-        { status: 400 },
-      );
-    }
-
-    if (!isValidRegistrationReferralCode(referralCode)) {
+    if (referralCode && !isValidRegistrationReferralCode(referralCode)) {
       return NextResponse.json(
         {
           success: false,
@@ -195,6 +200,43 @@ export async function POST(req: NextRequest) {
         },
         { status: 400 },
       );
+    }
+
+    if (!referralCode && eventCode) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "INVALID_EVENT_CODE",
+          message: "Không thể chọn mã sự kiện khi chưa có mã giới thiệu.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (referralCode) {
+      const availableEventCodes = getEventCodes(referralCode);
+
+      if (availableEventCodes.length > 0 && !eventCode) {
+        return NextResponse.json(
+          {
+            success: false,
+            status: "INVALID_EVENT_CODE",
+            message: "Vui lòng chọn mã sự kiện.",
+          },
+          { status: 400 },
+        );
+      }
+
+      if (eventCode && !availableEventCodes.includes(eventCode)) {
+        return NextResponse.json(
+          {
+            success: false,
+            status: "INVALID_EVENT_CODE",
+            message: "Mã sự kiện không phù hợp với mã giới thiệu.",
+          },
+          { status: 400 },
+        );
+      }
     }
 
     const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
@@ -245,9 +287,12 @@ export async function POST(req: NextRequest) {
     const motherStatus = getMotherStatus(babyDate);
     const registrationTime = new Date().toISOString();
 
-    const teamThuThap = referralCode.startsWith("C")
+    const finalReferralCode = referralCode || "NHS-UNKNOWN";
+    const finalEventCode = eventCode || "SD";
+
+    const teamThuThap = finalReferralCode.startsWith("C")
       ? "CDB"
-      : referralCode.startsWith("Z")
+      : finalReferralCode.startsWith("Z") || finalReferralCode === "NHS-UNKNOWN"
         ? "ZM"
         : "";
 
@@ -272,8 +317,7 @@ export async function POST(req: NextRequest) {
     };
 
     const checkUrl =
-      `https://crm.pancake.vn/api/workspaces/` +
-      `${workspaceId}/lead/records` +
+      `https://crm.pancake.vn/api/workspaces/${workspaceId}/lead/records` +
       `?api_key=${encodeURIComponent(apiKey)}` +
       `&filter=${encodeURIComponent(JSON.stringify(filter))}`;
 
@@ -357,7 +401,8 @@ export async function POST(req: NextRequest) {
       tinh_trang_me: motherStatus,
       thoi_gian_dang_ky: registrationTime,
       thanh_pho: cleanProvince,
-      ma_gioi_thieu_dang_ky: referralCode,
+      ma_gioi_thieu_dang_ky: finalReferralCode,
+      ma_su_kien: finalEventCode,
       team_thu_thap: teamThuThap,
       dong_y_dang_ky_hoi_vien: "true",
       da_doc_chinh_sach_aptamil: consentDanone ? "true" : "false",
@@ -366,8 +411,7 @@ export async function POST(req: NextRequest) {
     };
 
     const updateUrl =
-      `https://crm.pancake.vn/api/workspaces/` +
-      `${workspaceId}/lead/records` +
+      `https://crm.pancake.vn/api/workspaces/${workspaceId}/lead/records` +
       `?api_key=${encodeURIComponent(apiKey)}`;
 
     const updateResponse = await fetch(updateUrl, {

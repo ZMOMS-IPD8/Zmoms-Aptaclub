@@ -13,12 +13,15 @@ export default function RegistrationForm() {
     province,
     babyDate,
     referralCode,
+    eventCode,
+    availableEventCodes,
 
     setFullName,
     setPhone,
     setProvince,
     setBabyDate,
     setReferralCode,
+    setEventCode,
 
     consentMember,
     consentAptaclub,
@@ -39,35 +42,37 @@ export default function RegistrationForm() {
 
   return (
     <>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="font-sans">
         <div className="px-4 pt-6 text-center sm:px-8 sm:pt-8 lg:px-10">
-          <h1 className="text-[22px] font-bold leading-8 text-[#222] sm:text-[28px]">
+          <h1 className="text-[22px] font-bold leading-8 text-[#EC068D] sm:text-[28px]">
             ĐĂNG KÝ HỘI VIÊN
           </h1>
 
-          <h2 className="mt-1 text-[18px] font-bold leading-7 text-[#222] sm:text-[22px]">
+          <h2 className="mt-1 text-[18px] font-bold leading-7 text-[#EC068D] sm:text-[22px]">
             &amp; PHIẾU ĐỒNG Ý CHIA SẺ DỮ LIỆU CÁ NHÂN
           </h2>
 
-          <p className="mt-4 text-[15px] font-bold italic leading-6 text-[#ec0a7d] sm:mt-5 sm:text-[18px]">
+          <p className="mt-4 text-[15px] font-bold italic leading-6 text-[#EC068D] sm:mt-5 sm:text-[18px]">
             Cộng đồng Mẹ Nuôi Con Thông Minh
             <br />
             trong 1.000 Ngày Vàng Đầu Đời
           </p>
 
-          <p className="mt-4 text-left text-[13px] leading-5 text-[#333] sm:mt-5 sm:text-[15px] sm:leading-6">
-            Chương trình hợp tác giữa <strong>Danone Việt Nam và Zmoms</strong>.
-            Vui lòng đọc kỹ thông tin và chủ động lựa chọn các nội dung đồng ý
+          <p className="mt-4 text-left text-[13px] leading-5 text-[#333333] sm:mt-5 sm:text-[15px] sm:leading-6">
+            Chương trình hợp tác giữa{" "}
+            <strong className="font-semibold text-[#222222]">
+              Danone Việt Nam và Zmoms
+            </strong>
+            . Vui lòng đọc kỹ thông tin và chủ động lựa chọn các nội dung đồng ý
             trước khi xác nhận.
           </p>
         </div>
 
         <div className="px-4 pb-6 pt-4 sm:px-8 sm:pb-8 sm:pt-5 lg:px-10">
           <div className="space-y-4">
-            {/* Họ tên */}
             <div>
-              <label className="mb-1.5 block text-[14px] font-medium text-[#222]">
-                Họ và tên <span className="text-[#ec0a7d]">*</span>
+              <label className="mb-1.5 block text-[14px] font-medium leading-5 text-[#222222]">
+                Họ và tên <span className="font-medium text-[#EC068D]">*</span>
               </label>
 
               <input
@@ -76,14 +81,14 @@ export default function RegistrationForm() {
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Nhập họ và tên của mẹ"
                 autoComplete="name"
-                className="h-12 w-full rounded-xl border border-[#d9dce3] bg-white px-4 text-[15px] outline-none transition placeholder:text-[#999] focus:border-[#ec0a7d] focus:ring-2 focus:ring-[#ec0a7d]/10 sm:h-14 sm:text-[16px]"
+                className="h-12 w-full rounded-xl border border-[#D9DCE3] bg-white px-4 font-sans text-[15px] text-[#222222] outline-none transition placeholder:text-[#999999] focus:border-[#EC068D] focus:ring-2 focus:ring-[#EC068D]/10 sm:h-14 sm:text-[16px]"
               />
             </div>
 
-            {/* Số điện thoại */}
             <div>
-              <label className="mb-1.5 block text-[14px] font-medium text-[#222]">
-                Số điện thoại Zalo <span className="text-[#ec0a7d]">*</span>
+              <label className="mb-1.5 block text-[14px] font-medium leading-5 text-[#222222]">
+                Số điện thoại Zalo{" "}
+                <span className="font-medium text-[#EC068D]">*</span>
               </label>
 
               <input
@@ -93,58 +98,82 @@ export default function RegistrationForm() {
                 placeholder="Nhập số điện thoại Zalo mẹ vừa nhập trong Zalo OA Zmoms"
                 inputMode="tel"
                 autoComplete="tel"
-                className="h-12 w-full rounded-xl border border-[#d9dce3] bg-white px-4 text-[15px] outline-none transition placeholder:text-[#999] focus:border-[#ec0a7d] focus:ring-2 focus:ring-[#ec0a7d]/10 sm:h-14 sm:text-[16px]"
+                className="h-12 w-full rounded-xl border border-[#D9DCE3] bg-white px-4 font-sans text-[15px] text-[#222222] outline-none transition placeholder:text-[#999999] focus:border-[#EC068D] focus:ring-2 focus:ring-[#EC068D]/10 sm:h-14 sm:text-[16px]"
               />
             </div>
 
-            {/* Mã giới thiệu */}
             <div>
-              <label className="mb-1.5 block text-[14px] font-medium text-[#222]">
-                Mã giới thiệu <span className="text-[#ec0a7d]">*</span>
+              <label className="mb-1.5 block text-[14px] font-medium leading-5 text-[#222222]">
+                Mã giới thiệu
               </label>
 
               <input
                 type="text"
                 value={referralCode}
-                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                placeholder="Nhập mã giới thiệu"
+                onChange={(e) => setReferralCode(e.target.value)}
+                placeholder="Nhập mã giới thiệu nếu có"
                 autoCapitalize="characters"
-                required
-                className="h-12 w-full rounded-xl border border-[#d9dce3] bg-white px-4 text-[15px] uppercase outline-none transition placeholder:text-[#999] focus:border-[#ec0a7d] focus:ring-2 focus:ring-[#ec0a7d]/10 sm:h-14 sm:text-[16px]"
+                className="h-12 w-full rounded-xl border border-[#D9DCE3] bg-white px-4 font-sans text-[15px] uppercase text-[#222222] outline-none transition placeholder:text-[#999999] focus:border-[#EC068D] focus:ring-2 focus:ring-[#EC068D]/10 sm:h-14 sm:text-[16px]"
               />
             </div>
 
-            {/* Tỉnh thành */}
+            {referralCode.trim() && availableEventCodes.length > 0 && (
+              <div>
+                <label className="mb-1.5 block text-[14px] font-medium leading-5 text-[#222222]">
+                  Mã sự kiện{" "}
+                  <span className="font-medium text-[#EC068D]">*</span>
+                </label>
+
+                <select
+                  value={eventCode}
+                  onChange={(e) => setEventCode(e.target.value)}
+                  required
+                  className="h-12 w-full appearance-none rounded-xl border border-[#D9DCE3] bg-white px-4 font-sans text-[15px] text-[#333333] outline-none transition focus:border-[#EC068D] focus:ring-2 focus:ring-[#EC068D]/10 sm:h-14 sm:text-[16px]"
+                >
+                  <option value="" className="text-[#999999]">
+                    Chọn mã sự kiện
+                  </option>
+
+                  {availableEventCodes.map((item) => (
+                    <option key={item} value={item} className="text-[#222222]">
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div>
-              <label className="mb-1.5 block text-[14px] font-medium text-[#222]">
-                Tỉnh / thành <span className="text-[#ec0a7d]">*</span>
+              <label className="mb-1.5 block text-[14px] font-medium leading-5 text-[#222222]">
+                Tỉnh / thành{" "}
+                <span className="font-medium text-[#EC068D]">*</span>
               </label>
 
               <select
                 value={province}
                 onChange={(e) => setProvince(e.target.value)}
-                className="h-12 w-full appearance-none rounded-xl border border-[#d9dce3] bg-white px-4 text-[15px] text-[#555] outline-none transition focus:border-[#ec0a7d] focus:ring-2 focus:ring-[#ec0a7d]/10 sm:h-14 sm:text-[16px]"
+                required
+                className="h-12 w-full appearance-none rounded-xl border border-[#D9DCE3] bg-white px-4 font-sans text-[15px] text-[#333333] outline-none transition focus:border-[#EC068D] focus:ring-2 focus:ring-[#EC068D]/10 sm:h-14 sm:text-[16px]"
               >
-                <option value="" disabled>
+                <option value="" disabled className="text-[#999999]">
                   Chọn tỉnh / thành nơi mẹ đang sinh sống
                 </option>
 
                 {PROVINCES.map((item) => (
-                  <option key={item} value={item}>
+                  <option key={item} value={item} className="text-[#222222]">
                     {item}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Ngày dự sinh / ngày sinh */}
             <div>
-              <label className="mb-1.5 block text-[14px] font-medium text-[#222]">
+              <label className="mb-1.5 block text-[14px] font-medium leading-5 text-[#222222]">
                 Ngày dự sinh / Sinh nhật bé{" "}
-                <span className="text-[#ec0a7d]">*</span>
+                <span className="font-medium text-[#EC068D]">*</span>
               </label>
 
-              <p className="mb-2 text-[12px] leading-4 text-[#777]">
+              <p className="mb-2 text-[12px] leading-4 text-[#777777]">
                 Nếu đang mang thai, mẹ chọn ngày dự sinh. Nếu bé đã chào đời,
                 chọn ngày sinh của bé.
               </p>
@@ -153,7 +182,8 @@ export default function RegistrationForm() {
                 type="date"
                 value={babyDate}
                 onChange={(e) => setBabyDate(e.target.value)}
-                className="h-12 w-full rounded-xl border border-[#d9dce3] bg-white px-4 text-[15px] text-[#555] outline-none transition focus:border-[#ec0a7d] focus:ring-2 focus:ring-[#ec0a7d]/10 sm:h-14 sm:text-[16px]"
+                required
+                className="h-12 w-full rounded-xl border border-[#D9DCE3] bg-white px-4 font-sans text-[15px] text-[#333333] outline-none transition focus:border-[#EC068D] focus:ring-2 focus:ring-[#EC068D]/10 sm:h-14 sm:text-[16px]"
               />
             </div>
           </div>
@@ -174,10 +204,10 @@ export default function RegistrationForm() {
           <button
             type="submit"
             disabled={!canSubmit}
-            className={`mt-6 h-12 w-full rounded-xl text-[15px] font-bold text-white transition sm:mt-7 sm:h-14 sm:rounded-2xl sm:text-[16px] ${
+            className={`mt-6 h-12 w-full rounded-xl font-sans text-[15px] font-bold text-white transition sm:mt-7 sm:h-14 sm:rounded-2xl sm:text-[16px] ${
               canSubmit
-                ? "bg-[#ec0a7d] shadow-[0_5px_15px_rgba(236,10,125,0.2)] hover:bg-[#d90870] active:scale-[0.99]"
-                : "cursor-not-allowed bg-[#d9d9d9]"
+                ? "bg-[#EC068D] shadow-[0_5px_15px_rgba(236,6,141,0.2)] hover:bg-[#D9057F] active:scale-[0.99]"
+                : "cursor-not-allowed bg-[#D9D9D9]"
             }`}
           >
             ĐĂNG KÝ HỘI VIÊN

@@ -4,6 +4,7 @@ export type RegistrationData = {
   province: string;
   babyDate: string;
   referralCode: string;
+  eventCode: string;
 
   consentMember: boolean;
   consentAptaclub: boolean;
