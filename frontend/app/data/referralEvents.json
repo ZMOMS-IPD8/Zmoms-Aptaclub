@@ -10,7 +10,7 @@
   "C-08": ["SD"],
   "C-09": ["SD"],
   "C-SL": ["SD"],
-  "Z-00": ["E-KPL"],
+  "Z-00": ["E-KPL", "SD"],
   "Z-GREEN": ["B-GR"],
   "Z-HMN": ["B-HMN"],
   "Z-MEDUA": ["SD"],
