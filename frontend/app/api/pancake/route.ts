@@ -144,20 +144,25 @@ function getPancakeErrorMessage(
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const formData = await req.formData();
 
-    const fullName = String(body?.fullName ?? "").trim();
-    const phone = String(body?.phone ?? "").trim();
-    const province = String(body?.province ?? "").trim();
-    const babyDate = String(body?.babyDate ?? "").trim();
+    const fullName = String(formData.get("fullName") ?? "").trim();
+    const phone = String(formData.get("phone") ?? "").trim();
+    const province = String(formData.get("province") ?? "").trim();
+    const babyDate = String(formData.get("babyDate") ?? "").trim();
 
-    const referralCode = String(body?.referralCode ?? "")
+    const referralCode = String(formData.get("referralCode") ?? "")
       .trim()
       .toUpperCase();
 
-    const consentAptaclub = body?.consentAptaclub === true;
-    const consentMarketing = body?.consentMarketing === true;
-    const consentDanone = body?.consentDanone === true;
+    const consentAptaclub =
+      String(formData.get("consentAptaclub") ?? "") === "true";
+
+    const consentMarketing =
+      String(formData.get("consentMarketing") ?? "") === "true";
+
+    const consentDanone =
+      String(formData.get("consentDanone") ?? "") === "true";
 
     if (!fullName || !phone || !province || !babyDate) {
       return NextResponse.json(

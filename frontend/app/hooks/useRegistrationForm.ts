@@ -190,12 +190,23 @@ export function useRegistrationForm() {
     try {
       setIsSubmitting(true);
 
+      const formData = new FormData();
+
+      formData.append("fullName", data.fullName);
+      formData.append("phone", data.phone);
+      formData.append("province", data.province);
+      formData.append("babyDate", data.babyDate);
+      formData.append("referralCode", data.referralCode);
+
+      formData.append("consentMember", String(data.consentMember));
+      formData.append("consentAptaclub", String(data.consentAptaclub));
+      formData.append("consentMarketing", String(data.consentMarketing));
+      formData.append("consentDanone", String(data.consentDanone));
+      formData.append("consentAptaclubZalo", String(data.consentAptaclubZalo));
+
       const response = await fetch("/api/pancake", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
+        body: formData,
       });
 
       const result = await response.json();
