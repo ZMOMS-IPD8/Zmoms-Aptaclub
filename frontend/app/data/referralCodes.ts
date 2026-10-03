@@ -32,6 +32,7 @@ export const REGISTRATION_REFERRAL_CODES: string[] = [
   "Z-KID1",
   "Z-KID2",
   "Z-KID3",
+  "Z-01",
 ];
 
 export const PURCHASE_REFERRAL_CODES: string[] = ["ABC123456"];
