@@ -100,7 +100,7 @@ export default function RegistrationForm() {
             {/* Mã giới thiệu */}
             <div>
               <label className="mb-1.5 block text-[14px] font-medium text-[#222]">
-                Mã giới thiệu
+                Mã giới thiệu <span className="text-[#ec0a7d]">*</span>
               </label>
 
               <input
@@ -109,6 +109,7 @@ export default function RegistrationForm() {
                 onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
                 placeholder="Nhập mã giới thiệu"
                 autoCapitalize="characters"
+                required
                 className="h-12 w-full rounded-xl border border-[#d9dce3] bg-white px-4 text-[15px] uppercase outline-none transition placeholder:text-[#999] focus:border-[#ec0a7d] focus:ring-2 focus:ring-[#ec0a7d]/10 sm:h-14 sm:text-[16px]"
               />
             </div>

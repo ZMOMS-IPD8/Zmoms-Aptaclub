@@ -37,6 +37,7 @@ export function useRegistrationForm() {
   const canSubmit =
     fullName.trim() !== "" &&
     phone.trim() !== "" &&
+    referralCode.trim() !== "" &&
     province !== "" &&
     babyDate !== "" &&
     consentMember &&
@@ -131,10 +132,11 @@ export function useRegistrationForm() {
 
     const cleanReferralCode = referralCode.trim().toUpperCase();
 
-    if (
-      cleanReferralCode &&
-      !isValidRegistrationReferralCode(cleanReferralCode)
-    ) {
+    if (!cleanReferralCode) {
+      return "Vui lòng nhập mã giới thiệu.";
+    }
+
+    if (!isValidRegistrationReferralCode(cleanReferralCode)) {
       return "Mã giới thiệu không hợp lệ.";
     }
 

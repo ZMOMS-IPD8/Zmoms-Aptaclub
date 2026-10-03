@@ -155,8 +155,6 @@ export async function POST(req: NextRequest) {
       .trim()
       .toUpperCase();
 
-    const finalReferralCode = referralCode || "NHS-UNKNOWN";
-
     const consentAptaclub = body?.consentAptaclub === true;
     const consentMarketing = body?.consentMarketing === true;
     const consentDanone = body?.consentDanone === true;
@@ -172,7 +170,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (referralCode && !isValidRegistrationReferralCode(referralCode)) {
+    if (!referralCode) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "INVALID_REFERRAL_CODE",
+          message: "Vui lòng nhập mã giới thiệu.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!isValidRegistrationReferralCode(referralCode)) {
       return NextResponse.json(
         {
           success: false,
@@ -231,9 +240,9 @@ export async function POST(req: NextRequest) {
     const motherStatus = getMotherStatus(babyDate);
     const registrationTime = new Date().toISOString();
 
-    const teamThuThap = finalReferralCode.startsWith("C")
+    const teamThuThap = referralCode.startsWith("C")
       ? "CDB"
-      : finalReferralCode.startsWith("Z") || finalReferralCode === "NHS-UNKNOWN"
+      : referralCode.startsWith("Z")
         ? "ZM"
         : "";
 
@@ -343,7 +352,7 @@ export async function POST(req: NextRequest) {
       tinh_trang_me: motherStatus,
       thoi_gian_dang_ky: registrationTime,
       thanh_pho: cleanProvince,
-      ma_gioi_thieu_dang_ky: finalReferralCode,
+      ma_gioi_thieu_dang_ky: referralCode,
       team_thu_thap: teamThuThap,
       dong_y_dang_ky_hoi_vien: "true",
       da_doc_chinh_sach_aptamil: consentDanone ? "true" : "false",
