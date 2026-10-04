@@ -33,7 +33,7 @@ export default function RegistrationForm() {
     setConsentMarketing,
     setConsentDanone,
 
-    canSubmit,
+    isSubmitting,
     handleSubmit,
 
     dialog,
@@ -203,14 +203,14 @@ export default function RegistrationForm() {
 
           <button
             type="submit"
-            disabled={!canSubmit}
+            disabled={isSubmitting}
             className={`mt-6 h-12 w-full rounded-xl font-sans text-[15px] font-bold text-white transition sm:mt-7 sm:h-14 sm:rounded-2xl sm:text-[16px] ${
-              canSubmit
-                ? "bg-[#EC068D] shadow-[0_5px_15px_rgba(236,6,141,0.2)] hover:bg-[#D9057F] active:scale-[0.99]"
-                : "cursor-not-allowed bg-[#D9D9D9]"
+              isSubmitting
+                ? "cursor-not-allowed bg-[#D9D9D9]"
+                : "bg-[#EC068D] shadow-[0_5px_15px_rgba(236,6,141,0.2)] hover:bg-[#D9057F] active:scale-[0.99]"
             }`}
           >
-            ĐĂNG KÝ HỘI VIÊN
+            {isSubmitting ? "ĐANG ĐĂNG KÝ..." : "ĐĂNG KÝ HỘI VIÊN"}
           </button>
         </div>
       </form>

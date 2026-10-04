@@ -62,20 +62,6 @@ export function useRegistrationForm() {
 
   const availableEventCodes = getEventCodes(referralCode);
 
-  const hasReferralCode = referralCode.trim() !== "";
-  const hasEventCodes = availableEventCodes.length > 0;
-  const hasRequiredEventCode =
-    !hasReferralCode || !hasEventCodes || eventCode.trim() !== "";
-
-  const canSubmit =
-    fullName.trim() !== "" &&
-    phone.trim() !== "" &&
-    province !== "" &&
-    babyDate !== "" &&
-    hasRequiredEventCode &&
-    consentMember &&
-    !isSubmitting;
-
   const getFormData = (): RegistrationData => {
     return {
       fullName: fullName.trim(),
@@ -119,8 +105,8 @@ export function useRegistrationForm() {
     return date;
   };
 
-  const isEligibleBabyDate = (babyDate: string): boolean => {
-    const selectedDate = parseDate(babyDate);
+  const isEligibleBabyDate = (value: string): boolean => {
+    const selectedDate = parseDate(value);
 
     if (!selectedDate) {
       return false;
@@ -149,7 +135,7 @@ export function useRegistrationForm() {
     return secondBirthday > today;
   };
 
-  const validate = () => {
+  const validate = (): string | null => {
     if (!fullName.trim()) {
       return "Vui lòng nhập họ và tên.";
     }
@@ -218,6 +204,10 @@ export function useRegistrationForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isSubmitting) {
+      return;
+    }
+
     const error = validate();
 
     if (error) {
@@ -228,10 +218,6 @@ export function useRegistrationForm() {
         status: "warning",
       });
 
-      return;
-    }
-
-    if (isSubmitting) {
       return;
     }
 
@@ -285,6 +271,18 @@ export function useRegistrationForm() {
             "Thông tin của bạn đã được đăng ký rồi. Vui lòng liên hệ ZMoms để được hỗ trợ.",
           status: "warning",
           zaloUrl: result?.zaloUrl,
+        });
+
+        return;
+      }
+
+      if (result?.status === "CONSENT_REQUIRED") {
+        setDialog({
+          open: true,
+          title: "Chưa đủ điều kiện đăng ký",
+          message:
+            result?.message || "Vui lòng đồng ý đăng ký hội viên để tiếp tục.",
+          status: "warning",
         });
 
         return;
@@ -422,7 +420,6 @@ export function useRegistrationForm() {
     setConsentDanone,
     setConsentAptaclubZalo,
 
-    canSubmit,
     isSubmitting,
     handleSubmit,
 

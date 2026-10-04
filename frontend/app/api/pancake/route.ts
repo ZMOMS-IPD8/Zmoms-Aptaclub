@@ -171,6 +171,9 @@ export async function POST(req: NextRequest) {
       .trim()
       .toUpperCase();
 
+    const consentMember =
+      String(formData.get("consentMember") ?? "") === "true";
+
     const consentAptaclub =
       String(formData.get("consentAptaclub") ?? "") === "true";
 
@@ -186,6 +189,17 @@ export async function POST(req: NextRequest) {
           success: false,
           status: "INVALID_DATA",
           message: "Thiếu thông tin bắt buộc.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!consentMember) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "CONSENT_REQUIRED",
+          message: "Vui lòng đồng ý đăng ký hội viên để tiếp tục.",
         },
         { status: 400 },
       );
@@ -404,7 +418,7 @@ export async function POST(req: NextRequest) {
       ma_gioi_thieu_dang_ky: finalReferralCode,
       ma_su_kien: finalEventCode,
       team_thu_thap: teamThuThap,
-      dong_y_dang_ky_hoi_vien: "true",
+      dong_y_dang_ky_hoi_vien: consentMember ? "true" : "false",
       da_doc_chinh_sach_aptamil: consentDanone ? "true" : "false",
       dong_y_nhan_thong_bao: consentMarketing ? "true" : "false",
       chia_se_de_dang_ky_aptaclub: consentAptaclub ? "true" : "false",
