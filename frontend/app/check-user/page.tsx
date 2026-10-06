@@ -15,6 +15,7 @@ export default function CheckUserPage() {
   const [result, setResult] = useState<CheckResult | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [updatingPurchase, setUpdatingPurchase] = useState(false);
 
   const handlePhoneChange = (value: string) => {
     setPhone(value.replace(/\D/g, "").slice(0, 10));
@@ -23,7 +24,7 @@ export default function CheckUserPage() {
   };
 
   const handleCheck = async () => {
-    if (loading) {
+    if (loading || updatingPurchase) {
       return;
     }
 
@@ -67,28 +68,66 @@ export default function CheckUserPage() {
     }
   };
 
-  const getStatusClass = (checked: boolean, value: boolean | undefined) => {
-    if (!checked) {
-      return "bg-gray-100 text-gray-400";
+  const handlePurchased = async () => {
+    if (
+      loading ||
+      updatingPurchase ||
+      !result?.registered ||
+      result.purchased
+    ) {
+      return;
     }
 
+    const cleanPhone = phone.replace(/\D/g, "");
+
+    if (!/^0\d{9}$/.test(cleanPhone)) {
+      setError("Mẹ vui lòng nhập số điện thoại hợp lệ.");
+      return;
+    }
+
+    try {
+      setUpdatingPurchase(true);
+      setError("");
+
+      const response = await fetch("/api/check-user/purchased", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: cleanPhone,
+        }),
+      });
+
+      const data = (await response.json()) as CheckResult;
+
+      if (!response.ok || !data.success) {
+        setError(
+          data.message ||
+            "Không thể cập nhật tình trạng mua hàng. Mẹ vui lòng thử lại.",
+        );
+        return;
+      }
+
+      setResult((current) => ({
+        ...(current ?? {}),
+        success: true,
+        status: data.status,
+        registered: true,
+        purchased: true,
+        message: data.message,
+      }));
+    } catch {
+      setError(
+        "Có lỗi xảy ra khi cập nhật tình trạng mua hàng. Mẹ vui lòng thử lại.",
+      );
+    } finally {
+      setUpdatingPurchase(false);
+    }
+  };
+
+  const getStatusClass = (value: boolean | undefined) => {
     return value ? "bg-[#E8F8FD] text-[#18A8DC]" : "bg-red-50 text-red-600";
-  };
-
-  const getRegistrationText = () => {
-    if (!result) {
-      return "CHƯA KIỂM TRA";
-    }
-
-    return result.registered ? "ĐÃ ĐĂNG KÝ" : "CHƯA ĐĂNG KÝ";
-  };
-
-  const getPurchaseText = () => {
-    if (!result) {
-      return "CHƯA KIỂM TRA";
-    }
-
-    return result.purchased ? "ĐÃ MUA HÀNG" : "CHƯA MUA HÀNG";
   };
 
   return (
@@ -120,7 +159,7 @@ export default function CheckUserPage() {
               autoComplete="tel"
               value={phone}
               maxLength={10}
-              disabled={loading}
+              disabled={loading || updatingPurchase}
               placeholder="Nhập số điện thoại"
               onChange={(e) => handlePhoneChange(e.target.value)}
               onKeyDown={(e) => {
@@ -143,7 +182,7 @@ export default function CheckUserPage() {
           <button
             type="button"
             onClick={handleCheck}
-            disabled={loading}
+            disabled={loading || updatingPurchase}
             className="mt-5 h-12 w-full rounded-xl bg-[#12335B] text-sm font-bold text-white transition hover:bg-[#0D2949] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "ĐANG KIỂM TRA..." : "KIỂM TRA"}
@@ -163,11 +202,10 @@ export default function CheckUserPage() {
 
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusClass(
-                      true,
                       result.registered,
                     )}`}
                   >
-                    {getRegistrationText()}
+                    {result.registered ? "ĐÃ ĐĂNG KÝ" : "CHƯA ĐĂNG KÝ"}
                   </span>
                 </div>
 
@@ -178,14 +216,24 @@ export default function CheckUserPage() {
 
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusClass(
-                      true,
                       result.purchased,
                     )}`}
                   >
-                    {getPurchaseText()}
+                    {result.purchased ? "ĐÃ MUA HÀNG" : "CHƯA MUA HÀNG"}
                   </span>
                 </div>
               </div>
+
+              {result.registered && !result.purchased && (
+                <button
+                  type="button"
+                  onClick={handlePurchased}
+                  disabled={updatingPurchase}
+                  className="mt-4 h-12 w-full rounded-xl bg-[#18A8DC] text-sm font-bold text-white transition hover:bg-[#1099CB] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {updatingPurchase ? "ĐANG CẬP NHẬT..." : "ĐÃ MUA"}
+                </button>
+              )}
 
               <div className="mt-4 rounded-xl bg-white px-4 py-3 text-center">
                 {result.registered && result.purchased && (
