@@ -9,13 +9,11 @@ export const REGISTRATION_REFERRAL_CODES: string[] = [
   "C-07",
   "C-08",
   "C-09",
-  "C-SL",
   "Z-00",
   "Z-GREEN",
   "Z-HMN",
   "Z-MEDUA",
   "Z-SAMMY",
-  "Z-SL",
   "Z-YHP",
   "Z-03",
 ];
