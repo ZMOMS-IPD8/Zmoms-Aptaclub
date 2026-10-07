@@ -16,6 +16,7 @@ export const REGISTRATION_REFERRAL_CODES: string[] = [
   "Z-SAMMY",
   "Z-YHP",
   "Z-03",
+  "Z-TPHP",
 ];
 
 export const PURCHASE_REFERRAL_CODES: string[] = ["ABC123456"];
