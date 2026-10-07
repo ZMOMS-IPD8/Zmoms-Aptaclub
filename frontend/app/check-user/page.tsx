@@ -235,26 +235,36 @@ export default function CheckUserPage() {
                 </button>
               )}
 
-              <div className="mt-4 rounded-xl bg-white px-4 py-3 text-center">
-                {result.registered && result.purchased && (
-                  <p className="text-sm font-semibold text-[#18A8DC]">
-                    Mẹ đã đăng ký hội viên và đã mua hàng thành công.
-                  </p>
-                )}
+              {result.registered && result.purchased && (
+                <p className="text-sm font-semibold text-[#18A8DC]">
+                  Mẹ đã đăng ký hội viên và đã mua hàng thành công.
+                </p>
+              )}
 
-                {result.registered && !result.purchased && (
-                  <p className="text-sm font-medium leading-5 text-gray-600">
-                    Mẹ đã đăng ký hội viên nhưng chưa có đơn hàng giao thành
-                    công.
-                  </p>
-                )}
+              {result.registered && !result.purchased && (
+                <p className="text-sm font-medium leading-5 text-gray-600">
+                  Mẹ đã đăng ký hội viên nhưng chưa có đơn hàng giao thành công.
+                </p>
+              )}
 
-                {!result.registered && (
-                  <p className="text-sm font-medium leading-5 text-gray-600">
-                    Số điện thoại này chưa có thông tin đăng ký hội viên.
+              {!result.registered && result.purchased && (
+                <div className="rounded-xl bg-amber-50 px-4 py-3">
+                  <p className="text-sm font-bold leading-5 text-amber-700">
+                    Mẹ đã nhận hàng thành công nhưng chưa đăng ký hội viên.
                   </p>
-                )}
-              </div>
+
+                  <p className="mt-1 text-sm leading-5 text-amber-600">
+                    Mẹ vui lòng đăng ký hội viên để được cập nhật thông tin và
+                    hưởng các quyền lợi dành cho hội viên.
+                  </p>
+                </div>
+              )}
+
+              {!result.registered && !result.purchased && (
+                <p className="text-sm font-medium leading-5 text-gray-600">
+                  Số điện thoại này chưa có thông tin đăng ký hội viên.
+                </p>
+              )}
             </div>
           )}
 

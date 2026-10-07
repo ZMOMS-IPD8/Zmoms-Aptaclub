@@ -37,7 +37,8 @@ export async function POST(req: NextRequest) {
 
     const member = await checkMemberByPhone(cleanPhone);
 
-    if (!member.registered || !member.lead) {
+    // Không có Lead
+    if (!member.lead) {
       return NextResponse.json({
         success: true,
         status: "CHECKED",
@@ -46,15 +47,19 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Có Lead → luôn kiểm tra tình trạng giao hàng
     const deliveryStatus = getFieldValue(member.lead.trang_thai_giao_hang);
 
     const purchased = deliveryStatus.toLowerCase() === "giao thành công";
 
+    const registered = Boolean(member.registered);
+
     return NextResponse.json({
       success: true,
       status: "CHECKED",
-      registered: true,
+      registered,
       purchased,
+      deliveryStatus,
     });
   } catch (error) {
     return NextResponse.json(
