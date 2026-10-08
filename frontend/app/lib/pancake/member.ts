@@ -43,42 +43,20 @@ export type MemberCheckResult =
       fullName: "";
     };
 
-export type UserCheckResult = {
-  success: true;
-  phone: string;
-  registered: boolean;
-  purchased: boolean;
-  purchasedWithoutRegistration: boolean;
-  member: MemberCheckResult;
-  deliveredOrder: PancakeLead | null;
-};
-
 function getFieldValue(value: unknown): string {
   if (typeof value === "string") {
     return value.trim();
   }
 
-  if (typeof value === "number" || typeof value === "boolean") {
+  if (typeof value === "number") {
     return String(value).trim();
   }
 
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => getFieldValue(item))
-      .filter(Boolean)
-      .join(", ")
-      .trim();
-  }
-
   if (value && typeof value === "object" && "value" in value) {
-    return getFieldValue((value as { value?: unknown }).value);
+    return String((value as { value?: unknown }).value ?? "").trim();
   }
 
   return "";
-}
-
-function normalizePhone(value: unknown): string {
-  return getFieldValue(value).replace(/\D/g, "");
 }
 
 async function parsePancakeResponse(
@@ -114,17 +92,15 @@ function getPancakeErrorMessage(
   return `Pancake CRM trả lỗi HTTP ${response.status}.`;
 }
 
-function getLeadId(lead: PancakeLead): string {
-  return String(lead.id || lead.lead_id || lead.record_id || "").trim();
-}
+export async function checkMemberByPhone(
+  phone: string,
+): Promise<MemberCheckResult> {
+  const cleanPhone = String(phone).trim().replace(/\D/g, "");
 
-function isSuccessfulDelivery(lead: PancakeLead): boolean {
-  return (
-    getFieldValue(lead.trang_thai_giao_hang).toLowerCase() === "giao thành công"
-  );
-}
+  if (!/^0\d{9}$/.test(cleanPhone)) {
+    throw new Error("Số điện thoại không hợp lệ.");
+  }
 
-function getPancakeConfig() {
   const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
   const apiKey = process.env.PANCAKE_CRM_API_KEY;
 
@@ -132,31 +108,23 @@ function getPancakeConfig() {
     throw new Error("Chưa cấu hình Pancake CRM API.");
   }
 
-  return {
-    workspaceId,
-    apiKey,
+  const filter = {
+    is_group: false,
+    fields: [
+      {
+        field_name: "so_dien_thoai_dang_ky",
+        type: "$enter_value",
+        value: cleanPhone,
+        is_filter_exclude: false,
+      },
+    ],
   };
-}
 
-function buildFindUrl(
-  workspaceId: string,
-  apiKey: string,
-  filter: Record<string, unknown>,
-): string {
-  return (
+  const findUrl =
     `https://crm.pancake.vn/api/workspaces/` +
     `${workspaceId}/lead/records` +
     `?api_key=${encodeURIComponent(apiKey)}` +
-    `&filter=${encodeURIComponent(JSON.stringify(filter))}`
-  );
-}
-
-async function fetchLeads(
-  filter: Record<string, unknown>,
-): Promise<PancakeLead[]> {
-  const { workspaceId, apiKey } = getPancakeConfig();
-
-  const findUrl = buildFindUrl(workspaceId, apiKey, filter);
+    `&filter=${encodeURIComponent(JSON.stringify(filter))}`;
 
   const response = await fetch(findUrl, {
     method: "GET",
@@ -172,43 +140,9 @@ async function fetchLeads(
     throw new Error(getPancakeErrorMessage(result, response));
   }
 
-  return Array.isArray(result?.data?.entries) ? result.data.entries : [];
-}
+  const leads = Array.isArray(result?.data?.entries) ? result.data.entries : [];
 
-export async function checkMemberByPhone(
-  phone: string,
-): Promise<MemberCheckResult> {
-  const cleanPhone = normalizePhone(phone);
-
-  if (!/^0\d{9}$/.test(cleanPhone)) {
-    throw new Error("Số điện thoại không hợp lệ.");
-  }
-
-  const filter = {
-    is_group: false,
-    fields: [
-      {
-        field_name: "so_dien_thoai_dang_ky",
-        type: "$enter_value",
-        value: cleanPhone,
-        is_filter_exclude: false,
-      },
-    ],
-  };
-
-  const leads = await fetchLeads(filter);
-
-  const registeredLead = leads.find((lead) => {
-    const registeredPhone = normalizePhone(lead.so_dien_thoai_dang_ky);
-    const fullName = getFieldValue(lead.ho_va_ten_lien_he);
-    const leadId = getLeadId(lead);
-
-    return (
-      registeredPhone === cleanPhone && Boolean(fullName) && Boolean(leadId)
-    );
-  });
-
-  if (!registeredLead) {
+  if (leads.length === 0) {
     return {
       success: true,
       registered: false,
@@ -219,71 +153,34 @@ export async function checkMemberByPhone(
     };
   }
 
+  const lead = leads[0];
+
+  const leadId = lead?.id || lead?.lead_id || lead?.record_id || "";
+
+  const registeredPhone =
+    getFieldValue(lead?.so_dien_thoai_dang_ky) ||
+    getFieldValue(lead?.phone_number) ||
+    cleanPhone;
+
+  const fullName = getFieldValue(lead?.ho_va_ten_lien_he);
+
+  if (!fullName || !leadId) {
+    return {
+      success: true,
+      registered: false,
+      lead: null,
+      leadId: null,
+      phone: registeredPhone,
+      fullName: "",
+    };
+  }
+
   return {
     success: true,
     registered: true,
-    lead: registeredLead,
-    leadId: getLeadId(registeredLead),
-    phone: cleanPhone,
-    fullName: getFieldValue(registeredLead.ho_va_ten_lien_he),
-  };
-}
-
-export async function findDeliveredOrderByPhone(
-  phone: string,
-): Promise<PancakeLead | null> {
-  const cleanPhone = normalizePhone(phone);
-
-  if (!/^0\d{9}$/.test(cleanPhone)) {
-    throw new Error("Số điện thoại không hợp lệ.");
-  }
-
-  const filter = {
-    is_group: false,
-    fields: [
-      {
-        field_name: "phone_number",
-        type: "$enter_value",
-        value: cleanPhone,
-        is_filter_exclude: false,
-      },
-    ],
-  };
-
-  const leads = await fetchLeads(filter);
-
-  const deliveredLead = leads.find((lead) => {
-    const orderPhone = normalizePhone(lead.phone_number);
-
-    return orderPhone === cleanPhone && isSuccessfulDelivery(lead);
-  });
-
-  return deliveredLead ?? null;
-}
-
-export async function checkUserByPhone(
-  phone: string,
-): Promise<UserCheckResult> {
-  const cleanPhone = normalizePhone(phone);
-
-  if (!/^0\d{9}$/.test(cleanPhone)) {
-    throw new Error("Số điện thoại không hợp lệ.");
-  }
-
-  const member = await checkMemberByPhone(cleanPhone);
-
-  const deliveredOrder = await findDeliveredOrderByPhone(cleanPhone);
-
-  const registered = member.registered;
-  const purchased = Boolean(deliveredOrder);
-
-  return {
-    success: true,
-    phone: cleanPhone,
-    registered,
-    purchased,
-    purchasedWithoutRegistration: purchased && !registered,
-    member,
-    deliveredOrder,
+    lead,
+    leadId: String(leadId),
+    phone: registeredPhone,
+    fullName,
   };
 }

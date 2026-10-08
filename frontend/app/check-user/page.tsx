@@ -20,7 +20,9 @@ export default function CheckUserPage() {
   const [updatingPurchase, setUpdatingPurchase] = useState(false);
 
   const handlePhoneChange = (value: string) => {
-    setPhone(value.replace(/\D/g, "").slice(0, 10));
+    const cleanPhone = value.replace(/\D/g, "").slice(0, 10);
+
+    setPhone(cleanPhone);
     setError("");
     setResult(null);
   };
@@ -111,16 +113,30 @@ export default function CheckUserPage() {
         return;
       }
 
-      setResult((current) => ({
-        ...(current ?? {}),
-        success: true,
-        status: data.status,
-        registered: true,
-        purchased: true,
-        purchasedWithoutRegistration: false,
-        deliveryStatus: "Giao thành công",
-        message: data.message,
-      }));
+      setResult((current) => {
+        if (!current) {
+          return {
+            success: true,
+            status: data.status,
+            registered: true,
+            purchased: true,
+            purchasedWithoutRegistration: false,
+            deliveryStatus: "Giao thành công",
+            message: data.message,
+          };
+        }
+
+        return {
+          ...current,
+          success: true,
+          status: data.status,
+          registered: true,
+          purchased: true,
+          purchasedWithoutRegistration: false,
+          deliveryStatus: "Giao thành công",
+          message: data.message,
+        };
+      });
     } catch {
       setError(
         "Có lỗi xảy ra khi cập nhật tình trạng mua hàng. Mẹ vui lòng thử lại.",

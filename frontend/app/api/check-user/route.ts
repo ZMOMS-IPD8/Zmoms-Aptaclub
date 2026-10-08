@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  checkMemberByPhone,
-  findDeliveredOrderByPhone,
-} from "../../lib/pancake/member";
+import { checkUserByPhone } from "../../lib/pancake/pancake-user-check";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,14 +19,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const member = await checkMemberByPhone(cleanPhone);
-    const deliveredOrder = await findDeliveredOrderByPhone(cleanPhone);
+    const result = await checkUserByPhone(cleanPhone);
 
-    const registered = member.registered;
-    const purchased = Boolean(deliveredOrder);
-    const purchasedWithoutRegistration = purchased && !registered;
-
-    if (registered && purchased) {
+    if (result.registered && result.purchased) {
       return NextResponse.json({
         success: true,
         status: "REGISTERED_AND_PURCHASED",
@@ -40,7 +32,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (purchasedWithoutRegistration) {
+    if (result.purchasedWithoutRegistration) {
       return NextResponse.json({
         success: true,
         status: "PURCHASED_WITHOUT_REGISTRATION",
@@ -51,7 +43,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (registered && !purchased) {
+    if (result.registered && !result.purchased) {
       return NextResponse.json({
         success: true,
         status: "REGISTERED_NOT_PURCHASED",
