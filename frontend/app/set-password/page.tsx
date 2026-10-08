@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 type SetPasswordResponse = {
@@ -11,7 +11,7 @@ type SetPasswordResponse = {
   full_name?: string;
 };
 
-export default function SetPasswordPage() {
+function SetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -153,5 +153,19 @@ export default function SetPasswordPage() {
         </form>
       </div>
     </main>
+  );
+}
+
+export default function SetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+          <div className="text-sm font-medium text-gray-600">Đang tải...</div>
+        </main>
+      }
+    >
+      <SetPasswordContent />
+    </Suspense>
   );
 }
