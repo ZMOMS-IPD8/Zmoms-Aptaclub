@@ -1,6 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import OrderForm from "../check-user/components/check-user/OrderForm";
+import { useOrder } from "../check-user/hooks/useOrder";
+
+type SessionResponse = {
+  success: boolean;
+  status?: string;
+  message?: string;
+  employee_id?: string;
+  full_name?: string;
+};
 
 type CheckResult = {
   success: boolean;
@@ -13,32 +24,96 @@ type CheckResult = {
 };
 
 export default function CheckUserPage() {
+  const router = useRouter();
+
+  const [employeeId, setEmployeeId] = useState("");
+  const [fullName, setFullName] = useState("");
+
   const [phone, setPhone] = useState("");
   const [result, setResult] = useState<CheckResult | null>(null);
   const [error, setError] = useState("");
+
+  const [loadingSession, setLoadingSession] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [updatingPurchase, setUpdatingPurchase] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const [orderingMode, setOrderingMode] = useState(false);
+
+  const [receiverName, setReceiverName] = useState("");
+  const [shippingPhone, setShippingPhone] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
+
+  const {
+    ordering,
+    ordered,
+    error: orderError,
+    setError: setOrderError,
+    submitOrder,
+  } = useOrder();
+
+  useEffect(() => {
+    async function loadSession() {
+      try {
+        const response = await fetch("/api/auth/session", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        const data = (await response.json()) as SessionResponse;
+
+        if (!response.ok || !data.success) {
+          router.replace("/login");
+          return;
+        }
+
+        setEmployeeId(data.employee_id || "");
+        setFullName(data.full_name || "");
+      } catch {
+        router.replace("/login");
+      } finally {
+        setLoadingSession(false);
+      }
+    }
+
+    loadSession();
+  }, [router]);
 
   const handlePhoneChange = (value: string) => {
+    if (orderingMode) {
+      return;
+    }
+
     const cleanPhone = value.replace(/\D/g, "").slice(0, 10);
 
     setPhone(cleanPhone);
     setError("");
     setResult(null);
+    setOrderingMode(false);
+
+    setReceiverName("");
+    setShippingPhone("");
+    setShippingAddress("");
+    setOrderError("");
   };
 
   const handleCheck = async () => {
-    if (loading || updatingPurchase) {
+    if (loading || ordering) {
       return;
     }
 
     setError("");
+    setOrderError("");
     setResult(null);
+    setOrderingMode(false);
+
+    setReceiverName("");
+    setShippingPhone("");
+    setShippingAddress("");
 
     const cleanPhone = phone.replace(/\D/g, "");
 
     if (!/^0\d{9}$/.test(cleanPhone)) {
-      setError("Mẹ vui lòng nhập số điện thoại hợp lệ.");
+      setError("Vui lòng nhập số điện thoại hợp lệ.");
       return;
     }
 
@@ -58,91 +133,72 @@ export default function CheckUserPage() {
       const data = (await response.json()) as CheckResult;
 
       if (!response.ok || !data.success) {
+        if (response.status === 401) {
+          router.replace("/login");
+          return;
+        }
+
         setError(
-          data.message || "Không thể kiểm tra thông tin. Mẹ vui lòng thử lại.",
+          data.message || "Không thể kiểm tra thông tin. Vui lòng thử lại.",
         );
+
         return;
       }
 
       setResult(data);
     } catch {
-      setError("Có lỗi xảy ra khi kiểm tra thông tin. Mẹ vui lòng thử lại.");
+      setError("Có lỗi xảy ra khi kiểm tra thông tin. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePurchased = async () => {
-    if (
-      loading ||
-      updatingPurchase ||
-      !result?.registered ||
-      result.purchased
-    ) {
+  const handleStartOrder = () => {
+    if (!result?.registered || ordering) {
       return;
     }
 
-    const cleanPhone = phone.replace(/\D/g, "");
+    setError("");
+    setOrderError("");
+    setShippingPhone(phone);
+    setOrderingMode(true);
+  };
 
-    if (!/^0\d{9}$/.test(cleanPhone)) {
-      setError("Mẹ vui lòng nhập số điện thoại hợp lệ.");
+  const handleSubmitOrder = async () => {
+    if (ordering || !result?.registered || !fullName) {
       return;
     }
+
+    setError("");
+    setOrderError("");
+
+    const orderResult = await submitOrder({
+      registrationPhone: phone,
+      receiverName,
+      shippingPhone,
+      shippingAddress,
+      maNguoiBan: fullName,
+    });
+
+    if (!orderResult?.success) {
+      return;
+    }
+  };
+
+  const handleLogout = async () => {
+    if (loggingOut) {
+      return;
+    }
+
+    setLoggingOut(true);
 
     try {
-      setUpdatingPurchase(true);
-      setError("");
-
-      const response = await fetch("/api/check-user/purchased", {
+      await fetch("/api/auth/logout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          phone: cleanPhone,
-        }),
       });
-
-      const data = (await response.json()) as CheckResult;
-
-      if (!response.ok || !data.success) {
-        setError(
-          data.message ||
-            "Không thể cập nhật tình trạng mua hàng. Mẹ vui lòng thử lại.",
-        );
-        return;
-      }
-
-      setResult((current) => {
-        if (!current) {
-          return {
-            success: true,
-            status: data.status,
-            registered: true,
-            purchased: true,
-            purchasedWithoutRegistration: false,
-            deliveryStatus: "Giao thành công",
-            message: data.message,
-          };
-        }
-
-        return {
-          ...current,
-          success: true,
-          status: data.status,
-          registered: true,
-          purchased: true,
-          purchasedWithoutRegistration: false,
-          deliveryStatus: "Giao thành công",
-          message: data.message,
-        };
-      });
-    } catch {
-      setError(
-        "Có lỗi xảy ra khi cập nhật tình trạng mua hàng. Mẹ vui lòng thử lại.",
-      );
     } finally {
-      setUpdatingPurchase(false);
+      router.replace("/login");
+      router.refresh();
     }
   };
 
@@ -150,20 +206,60 @@ export default function CheckUserPage() {
     return value ? "bg-[#E8F8FD] text-[#18A8DC]" : "bg-red-50 text-red-600";
   };
 
-  return (
-    <main className="min-h-screen bg-[#F5F9FC] px-4 py-8 sm:px-6 sm:py-12">
-      <div className="mx-auto w-full max-w-[560px]">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-extrabold leading-tight text-[#12335B] sm:text-3xl">
-            KIỂM TRA THÔNG TIN
-          </h1>
+  if (loadingSession) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#F5F9FC] px-4">
+        <div className="text-sm font-medium text-[#12335B]">Đang tải...</div>
+      </main>
+    );
+  }
 
-          <p className="mt-2 text-sm text-gray-500">
-            Kiểm tra thông tin đăng ký và mua hàng
-          </p>
-        </div>
+  return (
+    <main className="min-h-screen bg-[#F5F9FC] px-4 py-6 sm:px-6 sm:py-10">
+      <div className="mx-auto w-full max-w-[560px]">
+        <header className="mb-6 rounded-3xl bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Tài khoản nhân viên
+              </p>
+
+              <h1 className="mt-1 truncate text-xl font-extrabold text-[#12335B] sm:text-2xl">
+                Xin chào{fullName ? `, ${fullName}` : ""}
+              </h1>
+
+              {employeeId && (
+                <p className="mt-1 text-sm text-gray-500">
+                  Mã nhân viên:{" "}
+                  <span className="font-semibold text-[#12335B]">
+                    {employeeId}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="shrink-0 rounded-lg border border-[#D8E1EB] px-3 py-2 text-xs font-semibold text-[#12335B] transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loggingOut ? "Đang thoát..." : "Đăng xuất"}
+            </button>
+          </div>
+        </header>
 
         <section className="w-full rounded-3xl bg-white p-5 shadow-sm sm:p-8">
+          <div className="mb-6 text-center">
+            <h2 className="text-2xl font-extrabold leading-tight text-[#12335B] sm:text-3xl">
+              KIỂM TRA THÔNG TIN
+            </h2>
+
+            <p className="mt-2 text-sm text-gray-500">
+              Kiểm tra thông tin đăng ký và đặt hàng
+            </p>
+          </div>
+
           <div>
             <label
               htmlFor="phone"
@@ -179,11 +275,11 @@ export default function CheckUserPage() {
               autoComplete="tel"
               value={phone}
               maxLength={10}
-              disabled={loading || updatingPurchase}
+              disabled={loading || ordering || orderingMode || ordered}
               placeholder="Nhập số điện thoại"
-              onChange={(e) => handlePhoneChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
+              onChange={(event) => handlePhoneChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !orderingMode && !ordered) {
                   handleCheck();
                 }
               }}
@@ -202,7 +298,7 @@ export default function CheckUserPage() {
           <button
             type="button"
             onClick={handleCheck}
-            disabled={loading || updatingPurchase}
+            disabled={loading || ordering || orderingMode || ordered}
             className="mt-5 h-12 w-full rounded-xl bg-[#12335B] text-sm font-bold text-white transition hover:bg-[#0D2949] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "ĐANG KIỂM TRA..." : "KIỂM TRA"}
@@ -228,64 +324,65 @@ export default function CheckUserPage() {
                     {result.registered ? "ĐÃ ĐĂNG KÝ" : "CHƯA ĐĂNG KÝ"}
                   </span>
                 </div>
-
-                <div className="flex items-center justify-between gap-4 rounded-2xl border border-[#E3EAF0] bg-white px-4 py-4">
-                  <span className="text-sm font-semibold text-[#12335B]">
-                    Tình trạng mua hàng
-                  </span>
-
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusClass(
-                      result.purchased,
-                    )}`}
-                  >
-                    {result.purchased ? "ĐÃ MUA HÀNG" : "CHƯA MUA HÀNG"}
-                  </span>
-                </div>
               </div>
 
               {result.purchasedWithoutRegistration && (
                 <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3">
                   <p className="text-sm font-bold leading-5 text-amber-700">
-                    Mẹ đã mua hàng nhưng chưa đăng ký hội viên.
+                    Đã mua hàng nhưng chưa đăng ký hội viên.
                   </p>
 
                   <p className="mt-1 text-sm leading-5 text-amber-600">
-                    Vui lòng hướng dẫn mẹ đăng ký hội viên để được cập nhật
-                    thông tin và hưởng các quyền lợi dành cho hội viên.
+                    Vui lòng hướng dẫn khách hàng đăng ký hội viên để được cập
+                    nhật thông tin và hưởng quyền lợi dành cho hội viên.
                   </p>
                 </div>
               )}
 
-              {result.registered && !result.purchased && (
+              {result.registered && !orderingMode && !ordered && (
                 <button
                   type="button"
-                  onClick={handlePurchased}
-                  disabled={updatingPurchase}
+                  onClick={handleStartOrder}
+                  disabled={ordering}
                   className="mt-4 h-12 w-full rounded-xl bg-[#18A8DC] text-sm font-bold text-white transition hover:bg-[#1099CB] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {updatingPurchase ? "ĐANG CẬP NHẬT..." : "ĐÃ MUA"}
+                  ĐẶT HÀNG
                 </button>
               )}
 
-              {result.registered && result.purchased && (
-                <p className="mt-4 text-sm font-semibold text-[#18A8DC]">
-                  Mẹ đã đăng ký hội viên và đã mua hàng thành công.
-                </p>
+              {orderingMode && !ordered && (
+                <OrderForm
+                  receiverName={receiverName}
+                  shippingPhone={shippingPhone}
+                  shippingAddress={shippingAddress}
+                  disabled={ordering}
+                  loading={ordering}
+                  error={orderError}
+                  onReceiverNameChange={setReceiverName}
+                  onShippingPhoneChange={setShippingPhone}
+                  onShippingAddressChange={setShippingAddress}
+                  onSubmit={handleSubmitOrder}
+                />
               )}
 
-              {result.registered && !result.purchased && (
-                <p className="mt-4 text-sm font-medium leading-5 text-gray-600">
-                  Mẹ đã đăng ký hội viên nhưng chưa có đơn hàng giao thành công.
-                </p>
+              {ordered && (
+                <div className="mt-4 rounded-xl bg-[#E8F8FD] px-4 py-4">
+                  <p className="text-sm font-bold leading-5 text-[#18A8DC]">
+                    ĐẶT HÀNG THÀNH CÔNG
+                  </p>
+
+                  <p className="mt-1 text-sm leading-5 text-[#18A8DC]">
+                    Thông tin nhận hàng đã được cập nhật thành công trên hệ
+                    thống.
+                  </p>
+                </div>
               )}
 
               {!result.registered &&
                 !result.purchased &&
                 !result.purchasedWithoutRegistration && (
                   <p className="mt-4 text-sm font-medium leading-5 text-gray-600">
-                    Số điện thoại này chưa có thông tin đăng ký hội viên và chưa
-                    ghi nhận đơn hàng giao thành công.
+                    Số điện thoại này chưa có thông tin đăng ký hội viên.
                   </p>
                 )}
             </div>
