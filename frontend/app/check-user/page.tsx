@@ -7,6 +7,8 @@ type CheckResult = {
   status?: string;
   registered?: boolean;
   purchased?: boolean;
+  purchasedWithoutRegistration?: boolean;
+  deliveryStatus?: string;
   message?: string;
 };
 
@@ -115,6 +117,8 @@ export default function CheckUserPage() {
         status: data.status,
         registered: true,
         purchased: true,
+        purchasedWithoutRegistration: false,
+        deliveryStatus: "Giao thành công",
         message: data.message,
       }));
     } catch {
@@ -224,6 +228,19 @@ export default function CheckUserPage() {
                 </div>
               </div>
 
+              {result.purchasedWithoutRegistration && (
+                <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3">
+                  <p className="text-sm font-bold leading-5 text-amber-700">
+                    Mẹ đã mua hàng nhưng chưa đăng ký hội viên.
+                  </p>
+
+                  <p className="mt-1 text-sm leading-5 text-amber-600">
+                    Vui lòng hướng dẫn mẹ đăng ký hội viên để được cập nhật
+                    thông tin và hưởng các quyền lợi dành cho hội viên.
+                  </p>
+                </div>
+              )}
+
               {result.registered && !result.purchased && (
                 <button
                   type="button"
@@ -236,35 +253,25 @@ export default function CheckUserPage() {
               )}
 
               {result.registered && result.purchased && (
-                <p className="text-sm font-semibold text-[#18A8DC]">
+                <p className="mt-4 text-sm font-semibold text-[#18A8DC]">
                   Mẹ đã đăng ký hội viên và đã mua hàng thành công.
                 </p>
               )}
 
               {result.registered && !result.purchased && (
-                <p className="text-sm font-medium leading-5 text-gray-600">
+                <p className="mt-4 text-sm font-medium leading-5 text-gray-600">
                   Mẹ đã đăng ký hội viên nhưng chưa có đơn hàng giao thành công.
                 </p>
               )}
 
-              {!result.registered && result.purchased && (
-                <div className="rounded-xl bg-amber-50 px-4 py-3">
-                  <p className="text-sm font-bold leading-5 text-amber-700">
-                    Mẹ đã nhận hàng thành công nhưng chưa đăng ký hội viên.
+              {!result.registered &&
+                !result.purchased &&
+                !result.purchasedWithoutRegistration && (
+                  <p className="mt-4 text-sm font-medium leading-5 text-gray-600">
+                    Số điện thoại này chưa có thông tin đăng ký hội viên và chưa
+                    ghi nhận đơn hàng giao thành công.
                   </p>
-
-                  <p className="mt-1 text-sm leading-5 text-amber-600">
-                    Mẹ vui lòng đăng ký hội viên để được cập nhật thông tin và
-                    hưởng các quyền lợi dành cho hội viên.
-                  </p>
-                </div>
-              )}
-
-              {!result.registered && !result.purchased && (
-                <p className="text-sm font-medium leading-5 text-gray-600">
-                  Số điện thoại này chưa có thông tin đăng ký hội viên.
-                </p>
-              )}
+                )}
             </div>
           )}
 

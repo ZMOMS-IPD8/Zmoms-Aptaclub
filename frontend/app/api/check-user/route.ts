@@ -1,21 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkMemberByPhone } from "../../lib/pancake/member";
-
-function getFieldValue(value: unknown): string {
-  if (typeof value === "string") {
-    return value.trim();
-  }
-
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value).trim();
-  }
-
-  if (value && typeof value === "object" && "value" in value) {
-    return String((value as { value?: unknown }).value ?? "").trim();
-  }
-
-  return "";
-}
+import {
+  checkMemberByPhone,
+  findDeliveredOrderByPhone,
+} from "../../lib/pancake/member";
 
 export async function POST(req: NextRequest) {
   try {
@@ -36,30 +23,52 @@ export async function POST(req: NextRequest) {
     }
 
     const member = await checkMemberByPhone(cleanPhone);
+    const deliveredOrder = await findDeliveredOrderByPhone(cleanPhone);
 
-    // Không có Lead
-    if (!member.lead) {
+    const registered = member.registered;
+    const purchased = Boolean(deliveredOrder);
+    const purchasedWithoutRegistration = purchased && !registered;
+
+    if (registered && purchased) {
       return NextResponse.json({
         success: true,
-        status: "CHECKED",
-        registered: false,
-        purchased: false,
+        status: "REGISTERED_AND_PURCHASED",
+        registered: true,
+        purchased: true,
+        purchasedWithoutRegistration: false,
+        deliveryStatus: "Giao thành công",
       });
     }
 
-    // Có Lead → luôn kiểm tra tình trạng giao hàng
-    const deliveryStatus = getFieldValue(member.lead.trang_thai_giao_hang);
+    if (purchasedWithoutRegistration) {
+      return NextResponse.json({
+        success: true,
+        status: "PURCHASED_WITHOUT_REGISTRATION",
+        registered: false,
+        purchased: true,
+        purchasedWithoutRegistration: true,
+        deliveryStatus: "Giao thành công",
+      });
+    }
 
-    const purchased = deliveryStatus.toLowerCase() === "giao thành công";
-
-    const registered = Boolean(member.registered);
+    if (registered && !purchased) {
+      return NextResponse.json({
+        success: true,
+        status: "REGISTERED_NOT_PURCHASED",
+        registered: true,
+        purchased: false,
+        purchasedWithoutRegistration: false,
+        deliveryStatus: "",
+      });
+    }
 
     return NextResponse.json({
       success: true,
-      status: "CHECKED",
-      registered,
-      purchased,
-      deliveryStatus,
+      status: "NOT_REGISTERED_NOT_PURCHASED",
+      registered: false,
+      purchased: false,
+      purchasedWithoutRegistration: false,
+      deliveryStatus: "",
     });
   } catch (error) {
     return NextResponse.json(
