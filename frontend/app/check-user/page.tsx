@@ -28,17 +28,13 @@ export default function CheckUserPage() {
 
   const [employeeId, setEmployeeId] = useState("");
   const [fullName, setFullName] = useState("");
-
   const [phone, setPhone] = useState("");
   const [result, setResult] = useState<CheckResult | null>(null);
   const [error, setError] = useState("");
-
   const [loadingSession, setLoadingSession] = useState(true);
   const [loading, setLoading] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-
   const [orderingMode, setOrderingMode] = useState(false);
-
   const [receiverName, setReceiverName] = useState("");
   const [shippingPhone, setShippingPhone] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
@@ -79,9 +75,7 @@ export default function CheckUserPage() {
   }, [router]);
 
   const handlePhoneChange = (value: string) => {
-    if (orderingMode) {
-      return;
-    }
+    if (orderingMode || ordered) return;
 
     const cleanPhone = value.replace(/\D/g, "").slice(0, 10);
 
@@ -89,7 +83,6 @@ export default function CheckUserPage() {
     setError("");
     setResult(null);
     setOrderingMode(false);
-
     setReceiverName("");
     setShippingPhone("");
     setShippingAddress("");
@@ -97,15 +90,11 @@ export default function CheckUserPage() {
   };
 
   const handleCheck = async () => {
-    if (loading || ordering) {
-      return;
-    }
+    if (loading || ordering || orderingMode || ordered) return;
 
     setError("");
     setOrderError("");
     setResult(null);
-    setOrderingMode(false);
-
     setReceiverName("");
     setShippingPhone("");
     setShippingAddress("");
@@ -141,7 +130,6 @@ export default function CheckUserPage() {
         setError(
           data.message || "Không thể kiểm tra thông tin. Vui lòng thử lại.",
         );
-
         return;
       }
 
@@ -154,7 +142,7 @@ export default function CheckUserPage() {
   };
 
   const handleStartOrder = () => {
-    if (!result?.registered || ordering) {
+    if (!result?.registered || result.purchased || ordering || ordered) {
       return;
     }
 
@@ -165,30 +153,30 @@ export default function CheckUserPage() {
   };
 
   const handleSubmitOrder = async () => {
-    if (ordering || !result?.registered || !fullName) {
+    if (
+      ordering ||
+      ordered ||
+      !result?.registered ||
+      result.purchased ||
+      !fullName
+    ) {
       return;
     }
 
     setError("");
     setOrderError("");
 
-    const orderResult = await submitOrder({
+    await submitOrder({
       registrationPhone: phone,
       receiverName,
       shippingPhone,
       shippingAddress,
       maNguoiBan: fullName,
     });
-
-    if (!orderResult?.success) {
-      return;
-    }
   };
 
   const handleLogout = async () => {
-    if (loggingOut) {
-      return;
-    }
+    if (loggingOut) return;
 
     setLoggingOut(true);
 
@@ -279,7 +267,12 @@ export default function CheckUserPage() {
               placeholder="Nhập số điện thoại"
               onChange={(event) => handlePhoneChange(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" && !orderingMode && !ordered) {
+                if (
+                  event.key === "Enter" &&
+                  !loading &&
+                  !orderingMode &&
+                  !ordered
+                ) {
                   handleCheck();
                 }
               }}
@@ -324,7 +317,33 @@ export default function CheckUserPage() {
                     {result.registered ? "ĐÃ ĐĂNG KÝ" : "CHƯA ĐĂNG KÝ"}
                   </span>
                 </div>
+
+                <div className="flex items-center justify-between gap-4 rounded-2xl border border-[#E3EAF0] bg-white px-4 py-4">
+                  <span className="text-sm font-semibold text-[#12335B]">
+                    Tình trạng mua hàng
+                  </span>
+
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusClass(
+                      result.purchased,
+                    )}`}
+                  >
+                    {result.purchased ? "ĐÃ MUA HÀNG" : "CHƯA MUA HÀNG"}
+                  </span>
+                </div>
               </div>
+
+              {result.purchased && (
+                <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3">
+                  <p className="text-sm font-bold leading-5 text-amber-700">
+                    Số điện thoại này đã được ghi nhận mua hàng.
+                  </p>
+
+                  <p className="mt-1 text-sm leading-5 text-amber-600">
+                    Không thể tạo đơn hàng mới cho số điện thoại này.
+                  </p>
+                </div>
+              )}
 
               {result.purchasedWithoutRegistration && (
                 <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3">
@@ -339,18 +358,21 @@ export default function CheckUserPage() {
                 </div>
               )}
 
-              {result.registered && !orderingMode && !ordered && (
-                <button
-                  type="button"
-                  onClick={handleStartOrder}
-                  disabled={ordering}
-                  className="mt-4 h-12 w-full rounded-xl bg-[#18A8DC] text-sm font-bold text-white transition hover:bg-[#1099CB] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  ĐẶT HÀNG
-                </button>
-              )}
+              {result.registered &&
+                !result.purchased &&
+                !orderingMode &&
+                !ordered && (
+                  <button
+                    type="button"
+                    onClick={handleStartOrder}
+                    disabled={ordering}
+                    className="mt-4 h-12 w-full rounded-xl bg-[#18A8DC] text-sm font-bold text-white transition hover:bg-[#1099CB] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    ĐẶT HÀNG
+                  </button>
+                )}
 
-              {orderingMode && !ordered && (
+              {orderingMode && !result.purchased && !ordered && (
                 <OrderForm
                   receiverName={receiverName}
                   shippingPhone={shippingPhone}

@@ -7,8 +7,9 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const phone = String(body?.phone ?? "").trim();
-    const cleanPhone = phone.replace(/\D/g, "");
+    const cleanPhone = String(body?.phone ?? "")
+      .trim()
+      .replace(/\D/g, "");
 
     if (!/^0\d{9}$/.test(cleanPhone)) {
       return NextResponse.json(
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (!result.registered && result.purchased) {
+    if (result.purchasedWithoutRegistration) {
       return NextResponse.json({
         success: true,
         status: "PURCHASED_WITHOUT_REGISTRATION",
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (result.registered) {
+    if (result.registered && !result.purchased) {
       return NextResponse.json({
         success: true,
         status: "REGISTERED_NOT_PURCHASED",

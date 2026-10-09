@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkMemberByPhone } from "../../../lib/pancake/member";
+import { checkUserByPhone } from "../../../lib/pancake/pancake-user-check";
 
 type OrderBody = {
   registrationPhone: string;
@@ -98,9 +98,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const member = await checkMemberByPhone(cleanRegistrationPhone);
+    const checkResult = await checkUserByPhone(cleanRegistrationPhone);
 
-    if (!member.registered || !member.lead) {
+    if (!checkResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "CHECK_FAILED",
+          message: "Không thể kiểm tra thông tin hội viên trên Pancake.",
+        },
+        { status: 502 },
+      );
+    }
+
+    if (!checkResult.registered || !checkResult.member.lead) {
       return NextResponse.json(
         {
           success: false,
@@ -111,7 +122,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const leadId = member.leadId;
+    if (checkResult.purchased) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "ALREADY_PURCHASED",
+          purchased: true,
+          message: "Số điện thoại này đã mua hàng, không thể đặt hàng lại.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const leadId = checkResult.member.leadId;
 
     if (!leadId) {
       return NextResponse.json(
@@ -148,6 +171,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(updatePayload),
+      cache: "no-store",
     });
 
     const updateText = await updateResponse.text();

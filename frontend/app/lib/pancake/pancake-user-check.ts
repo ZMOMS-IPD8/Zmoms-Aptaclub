@@ -4,14 +4,11 @@ type PancakeLead = {
   id?: string;
   lead_id?: string;
   record_id?: string;
-
   name?: string | null;
   phone_number?: string | null;
   so_dien_thoai_dang_ky?: string | null;
   trang_thai_giao_hang?: string | null;
-
-  ho_va_ten_lien_he?: string | null | { value?: string | null };
-
+  ho_va_ten_lien_he?: string | null | { value?: unknown };
   [key: string]: unknown;
 };
 
@@ -24,7 +21,6 @@ type PancakeResponse = {
   };
   message?: string;
   error?: string;
-
   [key: string]: unknown;
 };
 
@@ -48,11 +44,7 @@ function getFieldValue(value: unknown): string {
   }
 
   if (Array.isArray(value)) {
-    return value
-      .map((item) => getFieldValue(item))
-      .filter(Boolean)
-      .join(", ")
-      .trim();
+    return value.map(getFieldValue).filter(Boolean).join(", ").trim();
   }
 
   if (value && typeof value === "object" && "value" in value) {
@@ -64,6 +56,14 @@ function getFieldValue(value: unknown): string {
 
 function normalizePhone(value: unknown): string {
   return getFieldValue(value).replace(/\D/g, "");
+}
+
+function isSuccessfulDelivery(lead: PancakeLead): boolean {
+  return (
+    getFieldValue(lead.trang_thai_giao_hang)
+      .normalize("NFC")
+      .toLocaleLowerCase("vi-VN") === "giao thành công"
+  );
 }
 
 async function parsePancakeResponse(
@@ -99,12 +99,6 @@ function getPancakeErrorMessage(
   return `Pancake CRM trả lỗi HTTP ${response.status}.`;
 }
 
-function isSuccessfulDelivery(lead: PancakeLead): boolean {
-  return (
-    getFieldValue(lead.trang_thai_giao_hang).toLowerCase() === "giao thành công"
-  );
-}
-
 function getPancakeConfig() {
   const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
   const apiKey = process.env.PANCAKE_CRM_API_KEY;
@@ -113,10 +107,7 @@ function getPancakeConfig() {
     throw new Error("Chưa cấu hình Pancake CRM API.");
   }
 
-  return {
-    workspaceId,
-    apiKey,
-  };
+  return { workspaceId, apiKey };
 }
 
 function buildFindUrl(
@@ -137,9 +128,7 @@ async function fetchLeads(
 ): Promise<PancakeLead[]> {
   const { workspaceId, apiKey } = getPancakeConfig();
 
-  const findUrl = buildFindUrl(workspaceId, apiKey, filter);
-
-  const response = await fetch(findUrl, {
+  const response = await fetch(buildFindUrl(workspaceId, apiKey, filter), {
     method: "GET",
     headers: {
       Accept: "application/json",
@@ -179,13 +168,13 @@ export async function findDeliveredOrderByPhone(
 
   const leads = await fetchLeads(filter);
 
-  const deliveredLead = leads.find((lead) => {
-    const orderPhone = normalizePhone(lead.phone_number);
-
-    return orderPhone === cleanPhone && isSuccessfulDelivery(lead);
-  });
-
-  return deliveredLead ?? null;
+  return (
+    leads.find(
+      (lead) =>
+        normalizePhone(lead.phone_number) === cleanPhone &&
+        isSuccessfulDelivery(lead),
+    ) ?? null
+  );
 }
 
 export async function checkUserByPhone(
@@ -199,24 +188,28 @@ export async function checkUserByPhone(
 
   const member = await checkMemberByPhone(cleanPhone);
 
-  let deliveredOrder = await findDeliveredOrderByPhone(cleanPhone);
-  if (member.registered && !deliveredOrder) {
-    const memberOrderPhone = normalizePhone(member.lead.phone_number);
+  if (member.registered) {
+    const purchased = isSuccessfulDelivery(member.lead);
 
-    if (memberOrderPhone && memberOrderPhone !== cleanPhone) {
-      deliveredOrder = await findDeliveredOrderByPhone(memberOrderPhone);
-    }
+    return {
+      success: true,
+      phone: cleanPhone,
+      registered: true,
+      purchased,
+      purchasedWithoutRegistration: false,
+      member,
+      deliveredOrder: purchased ? member.lead : null,
+    };
   }
 
-  const registered = member.registered;
-  const purchased = Boolean(deliveredOrder);
+  const deliveredOrder = await findDeliveredOrderByPhone(cleanPhone);
 
   return {
     success: true,
     phone: cleanPhone,
-    registered,
-    purchased,
-    purchasedWithoutRegistration: !registered && purchased,
+    registered: false,
+    purchased: Boolean(deliveredOrder),
+    purchasedWithoutRegistration: Boolean(deliveredOrder),
     member,
     deliveredOrder,
   };
