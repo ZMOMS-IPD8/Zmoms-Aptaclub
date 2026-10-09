@@ -101,7 +101,7 @@ function getPancakeErrorMessage(
 
 function isSuccessfulDelivery(lead: PancakeLead): boolean {
   return (
-    getFieldValue(lead.trang_thai_giao_hang).toLowerCase() === "Giao thành công"
+    getFieldValue(lead.trang_thai_giao_hang).toLowerCase() === "giao thành công"
   );
 }
 
@@ -199,7 +199,14 @@ export async function checkUserByPhone(
 
   const member = await checkMemberByPhone(cleanPhone);
 
-  const deliveredOrder = await findDeliveredOrderByPhone(cleanPhone);
+  let deliveredOrder = await findDeliveredOrderByPhone(cleanPhone);
+  if (member.registered && !deliveredOrder) {
+    const memberOrderPhone = normalizePhone(member.lead.phone_number);
+
+    if (memberOrderPhone && memberOrderPhone !== cleanPhone) {
+      deliveredOrder = await findDeliveredOrderByPhone(memberOrderPhone);
+    }
+  }
 
   const registered = member.registered;
   const purchased = Boolean(deliveredOrder);
@@ -209,7 +216,7 @@ export async function checkUserByPhone(
     phone: cleanPhone,
     registered,
     purchased,
-    purchasedWithoutRegistration: purchased && !registered,
+    purchasedWithoutRegistration: !registered && purchased,
     member,
     deliveredOrder,
   };

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkUserByPhone } from "../../lib/pancake/pancake-user-check";
 
+const DELIVERY_STATUS = "Giao thành công";
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -28,22 +30,22 @@ export async function POST(req: NextRequest) {
         registered: true,
         purchased: true,
         purchasedWithoutRegistration: false,
-        deliveryStatus: "Giao thành công",
+        deliveryStatus: DELIVERY_STATUS,
       });
     }
 
-    if (result.purchasedWithoutRegistration) {
+    if (!result.registered && result.purchased) {
       return NextResponse.json({
         success: true,
         status: "PURCHASED_WITHOUT_REGISTRATION",
         registered: false,
         purchased: true,
         purchasedWithoutRegistration: true,
-        deliveryStatus: "Giao thành công",
+        deliveryStatus: DELIVERY_STATUS,
       });
     }
 
-    if (result.registered && !result.purchased) {
+    if (result.registered) {
       return NextResponse.json({
         success: true,
         status: "REGISTERED_NOT_PURCHASED",
