@@ -101,7 +101,7 @@ function getPancakeErrorMessage(
 
 function isSuccessfulDelivery(lead: PancakeLead): boolean {
   return (
-    getFieldValue(lead.trang_thai_giao_hang).toLowerCase() === "giao thành công"
+    getFieldValue(lead.trang_thai_giao_hang).toLowerCase() === "Giao thành công"
   );
 }
 
