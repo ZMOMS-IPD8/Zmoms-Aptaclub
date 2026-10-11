@@ -27,5 +27,6 @@
   "Z-SAMMY": ["S-SM"],
   "Z-YHP": ["B-YHP"],
   "Z-TPHP": ["B-TPHP"],
-  "Z-HBB": ["S-HBB"]
+  "Z-HBB": ["S-HBB"],
+  "Z-HN": ["L-BVHN"]
 }
