@@ -1,17 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkMemberByPhone } from "../../lib/pancake/member";
 
-function getFieldValue(value: unknown): string {
-  if (typeof value === "string") {
-    return value.trim();
-  }
+export const runtime = "nodejs";
 
-  if (typeof value === "number") {
+const EBOOK_NAME = "CHECKLIST 100 KỸ NĂNG CHO BÉ";
+
+type ApiResult = {
+  success?: unknown;
+  status?: unknown;
+  message?: unknown;
+  error?: unknown;
+  [key: string]: unknown;
+};
+
+function getFieldValue(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number") {
     return String(value).trim();
   }
 
   if (value && typeof value === "object" && "value" in value) {
-    return String((value as { value?: unknown }).value ?? "").trim();
+    const fieldValue = (value as { value?: unknown }).value;
+
+    if (typeof fieldValue === "string" || typeof fieldValue === "number") {
+      return String(fieldValue).trim();
+    }
   }
 
   return "";
@@ -31,91 +43,129 @@ async function parseResponse(response: Response): Promise<unknown> {
   }
 }
 
-function getPancakeMessage(result: unknown): string {
-  if (!result || typeof result !== "object") {
-    return "Pancake không thể cập nhật thông tin nhận Ebook.";
+function isApiResult(value: unknown): value is ApiResult {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function getApiMessage(result: unknown, fallback: string): string {
+  if (!isApiResult(result)) {
+    return fallback;
   }
 
-  const data = result as {
-    message?: unknown;
-    error?: unknown;
-  };
-
-  if (typeof data.message === "string" && data.message.trim()) {
-    return data.message.trim();
+  if (typeof result.message === "string" && result.message.trim()) {
+    return result.message.trim();
   }
 
-  if (typeof data.error === "string" && data.error.trim()) {
-    return data.error.trim();
+  if (typeof result.error === "string" && result.error.trim()) {
+    return result.error.trim();
   }
 
-  return "Pancake không thể cập nhật thông tin nhận Ebook.";
+  return fallback;
+}
+
+function isExplicitApiFailure(result: unknown): boolean {
+  if (!isApiResult(result)) {
+    return false;
+  }
+
+  if (result.success === false) {
+    return true;
+  }
+
+  if (typeof result.error === "string" && result.error.trim()) {
+    return true;
+  }
+
+  const status = String(result.status ?? "")
+    .trim()
+    .toUpperCase();
+
+  return [
+    "ERROR",
+    "FAILED",
+    "FAILURE",
+    "INVALID_ACTION",
+    "UNAUTHORIZED",
+    "SERVER_ERROR",
+  ].includes(status);
 }
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function jsonError(
+  status: number,
+  code: string,
+  message: string,
+  extra: Record<string, unknown> = {},
+) {
+  return NextResponse.json(
+    {
+      success: false,
+      status: code,
+      message,
+      ...extra,
+    },
+    { status },
+  );
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    let body: unknown;
 
-    const phone = String(body?.phone ?? "").trim();
-    const email = String(body?.email ?? "")
+    try {
+      body = await req.json();
+    } catch {
+      return jsonError(400, "INVALID_REQUEST", "Dữ liệu gửi lên không hợp lệ.");
+    }
+
+    if (!isApiResult(body)) {
+      return jsonError(400, "INVALID_REQUEST", "Dữ liệu gửi lên không hợp lệ.");
+    }
+
+    const phone = String(body.phone ?? "").trim();
+    const email = String(body.email ?? "")
       .trim()
       .toLowerCase();
 
     const cleanPhone = phone.replace(/\D/g, "");
 
     if (!/^0\d{9}$/.test(cleanPhone)) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "INVALID_PHONE",
-          message: "Số điện thoại không đúng định dạng.",
-        },
-        { status: 400 },
+      return jsonError(
+        400,
+        "INVALID_PHONE",
+        "Số điện thoại không đúng định dạng.",
       );
     }
 
     if (!isValidEmail(email)) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "INVALID_EMAIL",
-          message: "Email không đúng định dạng.",
-        },
-        { status: 400 },
-      );
+      return jsonError(400, "INVALID_EMAIL", "Email không đúng định dạng.");
     }
 
     const member = await checkMemberByPhone(cleanPhone);
 
     if (!member.registered || !member.lead) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "MEMBER_NOT_FOUND",
-          message: "Số điện thoại này chưa đăng ký hội viên.",
-        },
-        { status: 404 },
+      return jsonError(
+        404,
+        "MEMBER_NOT_FOUND",
+        "Số điện thoại này chưa đăng ký hội viên.",
       );
     }
 
     const leadId = String(member.leadId ?? "").trim();
 
     if (!leadId) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "INVALID_LEAD_ID",
-          message: "Không xác định được thông tin hội viên.",
-        },
-        { status: 400 },
+      return jsonError(
+        400,
+        "INVALID_LEAD_ID",
+        "Không xác định được thông tin hội viên.",
       );
     }
 
     const existingEmail = getFieldValue(member.lead.email_nhan_ebook);
+
     const existingReceivedAt = getFieldValue(member.lead.thoi_gian_nhan_ebook);
 
     if (existingEmail) {
@@ -135,66 +185,67 @@ export async function POST(req: NextRequest) {
     const gasSecret = process.env.EBOOK_APPS_SCRIPT_SECRET;
 
     if (!workspaceId || !apiKey) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "CONFIG_ERROR",
-          message: "Chưa cấu hình Pancake CRM API.",
-        },
-        { status: 500 },
-      );
+      return jsonError(500, "CONFIG_ERROR", "Chưa cấu hình Pancake CRM API.");
     }
 
     if (!gasUrl || !gasSecret) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "CONFIG_ERROR",
-          message: "Chưa cấu hình Google Apps Script.",
-        },
-        { status: 500 },
+      return jsonError(
+        500,
+        "CONFIG_ERROR",
+        "Chưa cấu hình Google Apps Script.",
       );
     }
 
     const registrationTime = new Date().toISOString();
 
-    const gasResponse = await fetch(gasUrl, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        secret: gasSecret,
-        leadId,
-        phone: cleanPhone,
-        email,
-        ebook: "CHECKLIST 100 KỸ NĂNG CHO BÉ",
-      }),
-    });
+    let gasResponse: Response;
+    let gasResult: unknown;
 
-    const gasResult = await parseResponse(gasResponse);
-
-    const gasSuccess =
-      gasResult && typeof gasResult === "object" && "success" in gasResult
-        ? Boolean((gasResult as { success?: unknown }).success)
-        : false;
-
-    if (!gasResponse.ok || !gasSuccess) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "EBOOK_SHARE_FAILED",
-          message:
-            gasResult && typeof gasResult === "object" && "message" in gasResult
-              ? String(
-                  (gasResult as { message?: unknown }).message ??
-                    "Không thể chia sẻ Ebook.",
-                )
-              : "Không thể chia sẻ Ebook.",
-          leadId,
+    try {
+      gasResponse = await fetch(gasUrl, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
         },
-        { status: 502 },
+        cache: "no-store",
+        body: JSON.stringify({
+          secret: gasSecret,
+          action: "share_ebook",
+          leadId,
+          phone: cleanPhone,
+          email,
+          ebook: EBOOK_NAME,
+        }),
+      });
+
+      gasResult = await parseResponse(gasResponse);
+    } catch {
+      return jsonError(
+        502,
+        "EBOOK_SHARE_FAILED",
+        "Không thể kết nối dịch vụ chia sẻ Ebook. Mẹ vui lòng thử lại.",
+        { leadId },
+      );
+    }
+
+    if (
+      !gasResponse.ok ||
+      !isApiResult(gasResult) ||
+      gasResult.success !== true ||
+      isExplicitApiFailure(gasResult)
+    ) {
+      return jsonError(
+        502,
+        "EBOOK_SHARE_FAILED",
+        getApiMessage(gasResult, "Google Apps Script không thể chia sẻ Ebook."),
+        {
+          leadId,
+          upstreamStatus: gasResponse.status,
+          upstreamCode: isApiResult(gasResult)
+            ? String(gasResult.status ?? "")
+            : "",
+        },
       );
     }
 
@@ -206,30 +257,52 @@ export async function POST(req: NextRequest) {
 
     const updateUrl =
       `https://crm.pancake.vn/api/workspaces/` +
-      `${workspaceId}/lead/records` +
+      `${encodeURIComponent(workspaceId)}/lead/records` +
       `?api_key=${encodeURIComponent(apiKey)}`;
 
-    const updateResponse = await fetch(updateUrl, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(updatePayload),
-    });
+    let updateResponse: Response;
+    let updateResult: unknown;
 
-    const updateResult = await parseResponse(updateResponse);
-
-    if (!updateResponse.ok) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "PANCAKE_UPDATE_FAILED",
-          message: getPancakeMessage(updateResult),
-          pancakeStatus: updateResponse.status,
-          pancakeResponse: updateResult,
+    try {
+      updateResponse = await fetch(updateUrl, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
         },
-        { status: updateResponse.status },
+        cache: "no-store",
+        body: JSON.stringify(updatePayload),
+      });
+
+      updateResult = await parseResponse(updateResponse);
+    } catch {
+      return jsonError(
+        502,
+        "PANCAKE_UPDATE_FAILED",
+        "Ebook có thể đã được chia sẻ, nhưng chưa cập nhật được hồ sơ. Vui lòng kiểm tra Pancake trước khi thử lại.",
+        {
+          leadId,
+          email,
+          ebookShared: true,
+        },
+      );
+    }
+
+    if (!updateResponse.ok || isExplicitApiFailure(updateResult)) {
+      return jsonError(
+        502,
+        "PANCAKE_UPDATE_FAILED",
+        "Ebook có thể đã được chia sẻ, nhưng Pancake chưa xác nhận cập nhật thành công. Vui lòng kiểm tra hồ sơ trước khi thử lại.",
+        {
+          leadId,
+          email,
+          ebookShared: true,
+          pancakeStatus: updateResponse.status,
+          pancakeMessage: getApiMessage(
+            updateResult,
+            "Pancake chưa xác nhận cập nhật thành công.",
+          ),
+        },
       );
     }
 
@@ -242,13 +315,10 @@ export async function POST(req: NextRequest) {
       receivedAt: registrationTime,
     });
   } catch {
-    return NextResponse.json(
-      {
-        success: false,
-        status: "SERVER_ERROR",
-        message: "Có lỗi xảy ra khi xử lý yêu cầu. Mẹ vui lòng thử lại.",
-      },
-      { status: 500 },
+    return jsonError(
+      500,
+      "SERVER_ERROR",
+      "Có lỗi xảy ra khi xử lý yêu cầu. Mẹ vui lòng thử lại.",
     );
   }
 }
