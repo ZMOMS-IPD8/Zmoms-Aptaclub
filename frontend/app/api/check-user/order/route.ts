@@ -1,231 +1,389 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkUserByPhone } from "../../../lib/pancake/pancake-user-check";
+import { submitOrderToAppsScript } from "@/lib/google-apps-script/order";
+
+export const dynamic = "force-dynamic";
 
 type OrderBody = {
-  registrationPhone: string;
-  receiverName: string;
-  shippingPhone: string;
-  shippingAddress: string;
-  maNguoiBan: string;
+  registrationPhone?: string;
+  receiverName?: string;
+  shippingPhone?: string;
+  shippingAddress?: string;
+  nguoiBan?: string;
+  salesSource?: string;
+  bank?: string;
 };
+
+type PancakeUpdateResponse = {
+  success?: boolean;
+  message?: string;
+};
+
+const ALLOWED_SOURCES = ["PG", "SPA", "Tiêm Chủng", "Nữ Hộ Sinh"];
+const ALLOWED_BANKS = ["Techcombank", "Vietcombank"];
+
+function jsonError(
+  status: number,
+  code: string,
+  message: string,
+  extra: Record<string, unknown> = {},
+) {
+  return NextResponse.json(
+    {
+      success: false,
+      status: code,
+      message,
+      ...extra,
+    },
+    {
+      status,
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    },
+  );
+}
+
+function normalizePhone(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .replace(/\D/g, "");
+}
+
+function normalizeText(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function jsonSuccess(data: Record<string, unknown>) {
+  return NextResponse.json(data, {
+    status: 200,
+    headers: {
+      "Cache-Control": "no-store",
+    },
+  });
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as OrderBody;
+    let body: OrderBody;
 
-    const cleanRegistrationPhone = String(body.registrationPhone ?? "")
-      .trim()
-      .replace(/\D/g, "");
+    try {
+      const parsed: unknown = await req.json();
 
-    const cleanReceiverName = String(body.receiverName ?? "").trim();
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return jsonError(
+          400,
+          "INVALID_BODY",
+          "Thông tin lên đơn không hợp lệ. Vui lòng kiểm tra lại.",
+        );
+      }
 
-    const cleanShippingPhone = String(body.shippingPhone ?? "")
-      .trim()
-      .replace(/\D/g, "");
-
-    const cleanShippingAddress = String(body.shippingAddress ?? "").trim();
-
-    const cleanMaNguoiBan = String(body.maNguoiBan ?? "")
-      .trim()
-      .toUpperCase();
-
-    if (!/^0\d{9}$/.test(cleanRegistrationPhone)) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "INVALID_PHONE",
-          message: "Số điện thoại đăng ký không hợp lệ.",
-        },
-        { status: 400 },
+      body = parsed as OrderBody;
+    } catch {
+      return jsonError(
+        400,
+        "INVALID_BODY",
+        "Thông tin lên đơn không hợp lệ. Vui lòng kiểm tra lại.",
       );
     }
 
-    if (!cleanReceiverName) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "INVALID_RECEIVER_NAME",
-          message: "Vui lòng nhập tên người nhận.",
-        },
-        { status: 400 },
+    const registrationPhone = normalizePhone(body.registrationPhone);
+    const receiverName = normalizeText(body.receiverName);
+    const shippingPhone = normalizePhone(body.shippingPhone);
+    const shippingAddress = normalizeText(body.shippingAddress);
+    const nguoiBan = normalizeText(body.nguoiBan);
+    const salesSource = normalizeText(body.salesSource);
+    const bank = normalizeText(body.bank);
+
+    if (!/^0\d{9}$/.test(registrationPhone)) {
+      return jsonError(
+        400,
+        "INVALID_PHONE",
+        "Số điện thoại đăng ký không hợp lệ.",
       );
     }
 
-    if (!/^0\d{9}$/.test(cleanShippingPhone)) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "INVALID_SHIPPING_PHONE",
-          message: "Số điện thoại nhận hàng không hợp lệ.",
-        },
-        { status: 400 },
+    if (!receiverName) {
+      return jsonError(
+        400,
+        "INVALID_RECEIVER_NAME",
+        "Vui lòng nhập tên người nhận.",
       );
     }
 
-    if (!cleanShippingAddress) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "INVALID_ADDRESS",
-          message: "Vui lòng nhập địa chỉ nhận hàng.",
-        },
-        { status: 400 },
+    if (!/^0\d{9}$/.test(shippingPhone)) {
+      return jsonError(
+        400,
+        "INVALID_SHIPPING_PHONE",
+        "Số điện thoại nhận hàng phải gồm 10 chữ số và bắt đầu bằng 0.",
       );
     }
 
-    if (!cleanMaNguoiBan) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "INVALID_SELLER",
-          message: "Không xác định được mã người bán.",
-        },
-        { status: 400 },
+    if (!shippingAddress) {
+      return jsonError(
+        400,
+        "INVALID_ADDRESS",
+        "Vui lòng nhập địa chỉ nhận hàng.",
       );
     }
 
-    const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
-    const apiKey = process.env.PANCAKE_CRM_API_KEY;
-
-    if (!workspaceId || !apiKey) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "SERVER_ERROR",
-          message: "Chưa cấu hình Pancake CRM API.",
-        },
-        { status: 500 },
+    if (!nguoiBan) {
+      return jsonError(
+        400,
+        "INVALID_SELLER",
+        "Chưa xác định được người bán. Vui lòng đăng nhập lại.",
       );
     }
 
-    const checkResult = await checkUserByPhone(cleanRegistrationPhone);
+    if (!ALLOWED_SOURCES.includes(salesSource)) {
+      return jsonError(
+        400,
+        "INVALID_SALES_SOURCE",
+        "Vui lòng chọn nguồn bán hợp lệ.",
+      );
+    }
+
+    if (!ALLOWED_BANKS.includes(bank)) {
+      return jsonError(400, "INVALID_BANK", "Vui lòng chọn ngân hàng hợp lệ.");
+    }
+
+    if (!process.env.PANCAKE_WORKSPACE_ID || !process.env.PANCAKE_CRM_API_KEY) {
+      return jsonError(
+        503,
+        "ORDER_UNAVAILABLE",
+        "Hiện chưa thể xử lý lên đơn hàng. Vui lòng thử lại sau.",
+      );
+    }
+
+    let checkResult: Awaited<ReturnType<typeof checkUserByPhone>>;
+
+    try {
+      checkResult = await checkUserByPhone(registrationPhone);
+    } catch {
+      return jsonError(
+        502,
+        "MEMBER_CHECK_FAILED",
+        "Chưa thể kiểm tra thông tin hội viên. Vui lòng thử lại.",
+      );
+    }
 
     if (!checkResult.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "CHECK_FAILED",
-          message: "Không thể kiểm tra thông tin hội viên trên Pancake.",
-        },
-        { status: 502 },
+      return jsonError(
+        502,
+        "MEMBER_CHECK_FAILED",
+        "Chưa thể kiểm tra thông tin hội viên. Vui lòng thử lại.",
       );
     }
 
-    if (!checkResult.registered || !checkResult.member.lead) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "NOT_REGISTERED",
-          message: "Số điện thoại chưa đăng ký hội viên.",
-        },
-        { status: 403 },
+    if (!checkResult.registered || !checkResult.member?.lead) {
+      return jsonError(
+        403,
+        "NOT_REGISTERED",
+        "Số điện thoại chưa đăng ký hội viên.",
       );
     }
 
     if (checkResult.purchased) {
-      return NextResponse.json(
+      return jsonError(
+        409,
+        "ALREADY_PURCHASED",
+        "Khách hàng đã mua hàng. Không thể lên đơn mới cho số điện thoại này.",
         {
-          success: false,
-          status: "ALREADY_PURCHASED",
           purchased: true,
-          message: "Số điện thoại này đã mua hàng, không thể đặt hàng lại.",
+          leadFound: true,
+          pancakeUpdated: false,
+          sheetSaved: false,
         },
-        { status: 409 },
       );
     }
 
-    const leadId = checkResult.member.leadId;
+    const leadId = String(checkResult.member.leadId ?? "").trim();
 
     if (!leadId) {
-      return NextResponse.json(
+      return jsonError(
+        404,
+        "LEAD_NOT_FOUND",
+        "Chưa tìm thấy thông tin khách hàng. Vui lòng kiểm tra lại.",
         {
-          success: false,
-          status: "LEAD_NOT_FOUND",
-          message: "Không tìm thấy Lead trên Pancake.",
+          leadFound: false,
+          pancakeUpdated: false,
+          sheetSaved: false,
         },
-        { status: 404 },
       );
     }
 
     const orderDate = new Date().toISOString();
+    const loaiDon = bank === "Techcombank" ? "Tặng" : "Bán";
+
+    const note =
+      registrationPhone !== shippingPhone
+        ? `SĐT nhận hàng: ${shippingPhone}`
+        : "";
 
     const updatePayload: Record<string, string> = {
       id: leadId,
-      ten_nguoi_nhan: cleanReceiverName,
-      so_dien_thoai_giao_hang: cleanShippingPhone,
-      dia_chi_nhan_hang: cleanShippingAddress,
+      ten_nguoi_nhan: receiverName,
+      so_dien_thoai_giao_hang: shippingPhone,
+      dia_chi_nhan_hang: shippingAddress,
       ngay_dat_hang: orderDate,
-      ma_nguoi_ban: cleanMaNguoiBan,
+      nguoi_ban: nguoiBan,
+      nguon_mua_hang: salesSource,
+      loai_don: loaiDon,
       trang_thai_giao_hang: "Giao thành công",
     };
+
+    const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
+    const apiKey = process.env.PANCAKE_CRM_API_KEY;
 
     const updateUrl =
       `https://crm.pancake.vn/api/workspaces/` +
       `${workspaceId}/lead/records` +
-      `?api_key=${encodeURIComponent(apiKey)}`;
+      `?api_key=${encodeURIComponent(apiKey!)}`;
 
-    const updateResponse = await fetch(updateUrl, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(updatePayload),
-      cache: "no-store",
-    });
-
-    const updateText = await updateResponse.text();
-
-    let updateResult: Record<string, unknown> = {};
+    let updateResponse: Response;
 
     try {
-      updateResult = updateText
-        ? (JSON.parse(updateText) as Record<string, unknown>)
-        : {};
+      updateResponse = await fetch(updateUrl, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatePayload),
+        cache: "no-store",
+      });
     } catch {
-      updateResult = {};
-    }
-
-    if (!updateResponse.ok) {
-      return NextResponse.json(
+      return jsonError(
+        502,
+        "ORDER_UPDATE_FAILED",
+        "Chưa thể cập nhật thông tin đơn hàng. Vui lòng thử lại sau.",
         {
-          success: false,
-          status: "UPDATE_FAILED",
           leadFound: true,
           leadId,
-          message:
-            typeof updateResult.message === "string"
-              ? updateResult.message
-              : "Không thể cập nhật thông tin đặt hàng trên Pancake.",
+          pancakeUpdated: false,
+          sheetSaved: false,
         },
-        { status: updateResponse.status },
       );
     }
 
-    return NextResponse.json({
+    let updateResult: PancakeUpdateResponse;
+
+    try {
+      const updateText = await updateResponse.text();
+
+      if (!updateText.trim()) {
+        throw new Error("EMPTY_RESPONSE");
+      }
+
+      const parsed: unknown = JSON.parse(updateText);
+
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("INVALID_RESPONSE");
+      }
+
+      updateResult = parsed as PancakeUpdateResponse;
+    } catch {
+      return jsonError(
+        502,
+        "ORDER_UPDATE_FAILED",
+        "Chưa xác nhận được kết quả cập nhật đơn hàng. Vui lòng kiểm tra trạng thái đơn trước khi thử lại.",
+        {
+          leadFound: true,
+          leadId,
+          pancakeUpdated: false,
+          sheetSaved: false,
+        },
+      );
+    }
+
+    if (!updateResponse.ok || updateResult.success !== true) {
+      return jsonError(
+        502,
+        "ORDER_UPDATE_FAILED",
+        "Chưa thể cập nhật thông tin đơn hàng. Vui lòng thử lại sau.",
+        {
+          leadFound: true,
+          leadId,
+          pancakeUpdated: false,
+          sheetSaved: false,
+        },
+      );
+    }
+
+    let sheetResult: Awaited<ReturnType<typeof submitOrderToAppsScript>>;
+
+    try {
+      sheetResult = await submitOrderToAppsScript({
+        registrationPhone,
+        receiverName,
+        shippingPhone,
+        shippingAddress,
+        maNguoiBan: nguoiBan,
+        salesSource,
+        bank,
+        loaiDon,
+        pancakeId: leadId,
+        note,
+      });
+    } catch {
+      return jsonError(
+        502,
+        "ORDER_SAVE_INCOMPLETE",
+        "Thông tin đơn hàng chưa được lưu hoàn tất. Vui lòng kiểm tra trạng thái đơn trước khi thực hiện lại.",
+        {
+          leadFound: true,
+          leadId,
+          pancakeUpdated: true,
+          sheetSaved: false,
+          orderDate,
+        },
+      );
+    }
+
+    if (
+      !sheetResult ||
+      sheetResult.success !== true ||
+      typeof sheetResult.rowNumber !== "number"
+    ) {
+      return jsonError(
+        502,
+        "ORDER_SAVE_INCOMPLETE",
+        "Thông tin đơn hàng chưa được lưu hoàn tất. Vui lòng kiểm tra trạng thái đơn trước khi thực hiện lại.",
+        {
+          leadFound: true,
+          leadId,
+          pancakeUpdated: true,
+          sheetSaved: false,
+          orderDate,
+        },
+      );
+    }
+
+    return jsonSuccess({
       success: true,
       status: "ORDERED",
       leadFound: true,
       leadId,
-      registrationPhone: cleanRegistrationPhone,
-      receiverName: cleanReceiverName,
-      shippingPhone: cleanShippingPhone,
-      shippingAddress: cleanShippingAddress,
+      pancakeUpdated: true,
+      sheetSaved: true,
+      rowNumber: sheetResult.rowNumber,
+      registrationPhone,
+      receiverName,
+      shippingPhone,
+      shippingAddress,
+      nguoiBan,
+      salesSource,
+      bank,
+      loaiDon,
+      note,
       orderDate,
-      maNguoiBan: cleanMaNguoiBan,
-      message: "Đã cập nhật thông tin đặt hàng trên Pancake.",
+      message: "Lên đơn hàng thành công.",
     });
-  } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        status: "SERVER_ERROR",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Có lỗi xảy ra khi cập nhật thông tin đặt hàng.",
-      },
-      { status: 500 },
+  } catch {
+    return jsonError(
+      500,
+      "ORDER_FAILED",
+      "Chưa thể hoàn tất lên đơn hàng. Vui lòng kiểm tra trạng thái đơn trước khi thử lại.",
     );
   }
 }

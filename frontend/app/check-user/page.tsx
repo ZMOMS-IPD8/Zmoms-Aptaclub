@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import OrderForm from "../check-user/components/check-user/OrderForm";
-import { useOrder } from "../check-user/hooks/useOrder";
+
+import OrderManagementHeader from "./components/order-management/OrderManagementHeader";
+import OrderPeriodFilter, {
+  type OrderPeriod,
+} from "./components/order-management/OrderPeriodFilter";
+import OrderList from "./components/order-management/OrderList";
+import CreateOrderDialog from "./components/order-management/CreateOrderDialog";
 
 type SessionResponse = {
   success: boolean;
@@ -13,408 +18,198 @@ type SessionResponse = {
   full_name?: string;
 };
 
-type CheckResult = {
-  success: boolean;
-  status?: string;
-  registered?: boolean;
-  purchased?: boolean;
-  purchasedWithoutRegistration?: boolean;
-  deliveryStatus?: string;
-  message?: string;
-};
-
 export default function CheckUserPage() {
   const router = useRouter();
 
   const [employeeId, setEmployeeId] = useState("");
   const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [result, setResult] = useState<CheckResult | null>(null);
-  const [error, setError] = useState("");
-  const [loadingSession, setLoadingSession] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [orderingMode, setOrderingMode] = useState(false);
-  const [receiverName, setReceiverName] = useState("");
-  const [shippingPhone, setShippingPhone] = useState("");
-  const [shippingAddress, setShippingAddress] = useState("");
 
-  const {
-    ordering,
-    ordered,
-    error: orderError,
-    setError: setOrderError,
-    submitOrder,
-  } = useOrder();
+  const [loadingSession, setLoadingSession] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+
+  const [period, setPeriod] = useState<OrderPeriod>("today");
+  const [orderDialogOpen, setOrderDialogOpen] = useState(false);
+
+  const logoutInProgressRef = useRef(false);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function loadSession() {
       try {
         const response = await fetch("/api/auth/session", {
           method: "GET",
           cache: "no-store",
+          signal: controller.signal,
+          headers: {
+            Accept: "application/json",
+          },
         });
 
-        const data = (await response.json()) as SessionResponse;
-
-        if (!response.ok || !data.success) {
+        if (!response.ok) {
           router.replace("/login");
           return;
         }
 
-        setEmployeeId(data.employee_id || "");
-        setFullName(data.full_name || "");
+        const data: unknown = await response.json();
+
+        if (
+          !data ||
+          typeof data !== "object" ||
+          !("success" in data) ||
+          data.success !== true
+        ) {
+          router.replace("/login");
+          return;
+        }
+
+        if (controller.signal.aborted) return;
+
+        const session = data as SessionResponse;
+
+        setEmployeeId(
+          typeof session.employee_id === "string"
+            ? session.employee_id.trim()
+            : "",
+        );
+
+        setFullName(
+          typeof session.full_name === "string" ? session.full_name.trim() : "",
+        );
       } catch {
-        router.replace("/login");
+        if (!controller.signal.aborted) {
+          router.replace("/login");
+        }
       } finally {
-        setLoadingSession(false);
+        if (!controller.signal.aborted) {
+          setLoadingSession(false);
+        }
       }
     }
 
-    loadSession();
+    void loadSession();
+
+    return () => {
+      controller.abort();
+    };
   }, [router]);
 
-  const handlePhoneChange = (value: string) => {
-    if (orderingMode || ordered) return;
+  const handleLogout = useCallback(async () => {
+    if (logoutInProgressRef.current) return;
 
-    const cleanPhone = value.replace(/\D/g, "").slice(0, 10);
-
-    setPhone(cleanPhone);
-    setError("");
-    setResult(null);
-    setOrderingMode(false);
-    setReceiverName("");
-    setShippingPhone("");
-    setShippingAddress("");
-    setOrderError("");
-  };
-
-  const handleCheck = async () => {
-    if (loading || ordering || orderingMode || ordered) return;
-
-    setError("");
-    setOrderError("");
-    setResult(null);
-    setReceiverName("");
-    setShippingPhone("");
-    setShippingAddress("");
-
-    const cleanPhone = phone.replace(/\D/g, "");
-
-    if (!/^0\d{9}$/.test(cleanPhone)) {
-      setError("Vui lòng nhập số điện thoại hợp lệ.");
-      return;
-    }
+    logoutInProgressRef.current = true;
+    setLoggingOut(true);
+    setLogoutError("");
+    setOrderDialogOpen(false);
 
     try {
-      setLoading(true);
-
-      const response = await fetch("/api/check-user", {
+      const response = await fetch("/api/auth/logout", {
         method: "POST",
+        cache: "no-store",
         headers: {
-          "Content-Type": "application/json",
+          Accept: "application/json",
         },
-        body: JSON.stringify({
-          phone: cleanPhone,
-        }),
       });
 
-      const data = (await response.json()) as CheckResult;
-
-      if (!response.ok || !data.success) {
-        if (response.status === 401) {
-          router.replace("/login");
-          return;
-        }
-
-        setError(
-          data.message || "Không thể kiểm tra thông tin. Vui lòng thử lại.",
-        );
+      if (!response.ok) {
+        setLogoutError("Đăng xuất chưa thành công. Vui lòng thử lại.");
         return;
       }
 
-      setResult(data);
-    } catch {
-      setError("Có lỗi xảy ra khi kiểm tra thông tin. Vui lòng thử lại.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStartOrder = () => {
-    if (!result?.registered || result.purchased || ordering || ordered) {
-      return;
-    }
-
-    setError("");
-    setOrderError("");
-    setShippingPhone(phone);
-    setOrderingMode(true);
-  };
-
-  const handleSubmitOrder = async () => {
-    if (
-      ordering ||
-      ordered ||
-      !result?.registered ||
-      result.purchased ||
-      !fullName
-    ) {
-      return;
-    }
-
-    setError("");
-    setOrderError("");
-
-    await submitOrder({
-      registrationPhone: phone,
-      receiverName,
-      shippingPhone,
-      shippingAddress,
-      maNguoiBan: fullName,
-    });
-  };
-
-  const handleLogout = async () => {
-    if (loggingOut) return;
-
-    setLoggingOut(true);
-
-    try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-      });
-    } finally {
       router.replace("/login");
       router.refresh();
+    } catch {
+      setLogoutError("Chưa thể đăng xuất. Vui lòng thử lại.");
+    } finally {
+      logoutInProgressRef.current = false;
+      setLoggingOut(false);
     }
-  };
-
-  const getStatusClass = (value: boolean | undefined) => {
-    return value ? "bg-[#E8F8FD] text-[#18A8DC]" : "bg-red-50 text-red-600";
-  };
+  }, [router]);
 
   if (loadingSession) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#F5F9FC] px-4">
-        <div className="text-sm font-medium text-[#12335B]">Đang tải...</div>
+        <div
+          role="status"
+          className="flex items-center gap-3 text-sm font-medium text-[#12335B]"
+        >
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#D8E1EB] border-t-[#18A8DC]" />
+          Đang tải thông tin tài khoản...
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#F5F9FC] px-4 py-6 sm:px-6 sm:py-10">
-      <div className="mx-auto w-full max-w-[560px]">
-        <header className="mb-6 rounded-3xl bg-white p-5 shadow-sm sm:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                Tài khoản nhân viên
+    <main className="min-h-screen bg-[#F5F9FC] px-4 py-5 sm:px-6 sm:py-8">
+      <div className="mx-auto w-full max-w-7xl">
+        <OrderManagementHeader
+          employeeId={employeeId}
+          fullName={fullName}
+          loggingOut={loggingOut}
+          onLogout={handleLogout}
+        />
+
+        {logoutError && (
+          <div
+            role="alert"
+            className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600"
+          >
+            {logoutError}
+          </div>
+        )}
+
+        <section className="mb-6 rounded-2xl border border-[#E5EBF2] bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#18A8DC]">
+                Quản lý bán hàng
               </p>
 
-              <h1 className="mt-1 truncate text-xl font-extrabold text-[#12335B] sm:text-2xl">
-                Xin chào{fullName ? `, ${fullName}` : ""}
-              </h1>
+              <h2 className="mt-1 text-2xl font-extrabold text-[#12335B] sm:text-3xl">
+                Quản lý đơn hàng
+              </h2>
 
-              {employeeId && (
-                <p className="mt-1 text-sm text-gray-500">
-                  Mã nhân viên:{" "}
-                  <span className="font-semibold text-[#12335B]">
-                    {employeeId}
-                  </span>
-                </p>
-              )}
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
+                Theo dõi danh sách đơn hàng và lên đơn cho khách hàng đủ điều
+                kiện.
+              </p>
             </div>
 
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={() => setOrderDialogOpen(true)}
               disabled={loggingOut}
-              className="shrink-0 rounded-lg border border-[#D8E1EB] px-3 py-2 text-xs font-semibold text-[#12335B] transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#12335B] px-6 text-sm font-bold text-white shadow-sm transition hover:bg-[#0D2949] focus:outline-none focus:ring-4 focus:ring-[#12335B]/15 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loggingOut ? "Đang thoát..." : "Đăng xuất"}
+              <span aria-hidden="true" className="text-xl leading-none">
+                +
+              </span>
+              Lên đơn hàng
             </button>
           </div>
-        </header>
 
-        <section className="w-full rounded-3xl bg-white p-5 shadow-sm sm:p-8">
-          <div className="mb-6 text-center">
-            <h2 className="text-2xl font-extrabold leading-tight text-[#12335B] sm:text-3xl">
-              KIỂM TRA THÔNG TIN
-            </h2>
-
-            <p className="mt-2 text-sm text-gray-500">
-              Kiểm tra thông tin đăng ký và đặt hàng
+          <div className="mt-6 border-t border-[#E8EDF3] pt-5">
+            <p className="mb-3 text-sm font-semibold text-[#12335B]">
+              Thời gian
             </p>
+
+            <OrderPeriodFilter value={period} onChange={setPeriod} />
           </div>
-
-          <div>
-            <label
-              htmlFor="phone"
-              className="mb-2 block text-sm font-semibold text-[#12335B]"
-            >
-              Số điện thoại
-            </label>
-
-            <input
-              id="phone"
-              type="tel"
-              inputMode="numeric"
-              autoComplete="tel"
-              value={phone}
-              maxLength={10}
-              disabled={loading || ordering || orderingMode || ordered}
-              placeholder="Nhập số điện thoại"
-              onChange={(event) => handlePhoneChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (
-                  event.key === "Enter" &&
-                  !loading &&
-                  !orderingMode &&
-                  !ordered
-                ) {
-                  handleCheck();
-                }
-              }}
-              className="h-12 w-full rounded-xl border border-[#D8E1EB] px-4 text-sm font-medium text-[#12335B] outline-none placeholder:text-gray-400 focus:border-[#18A8DC] focus:ring-2 focus:ring-[#18A8DC]/10 disabled:bg-gray-100"
-            />
-          </div>
-
-          {error && (
-            <div className="mt-4 rounded-xl bg-red-50 px-4 py-3">
-              <p className="text-sm font-medium leading-5 text-red-600">
-                {error}
-              </p>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handleCheck}
-            disabled={loading || ordering || orderingMode || ordered}
-            className="mt-5 h-12 w-full rounded-xl bg-[#12335B] text-sm font-bold text-white transition hover:bg-[#0D2949] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? "ĐANG KIỂM TRA..." : "KIỂM TRA"}
-          </button>
-
-          {result && (
-            <div className="mt-6 rounded-2xl bg-[#F8FBFD] p-4">
-              <p className="mb-4 text-center text-sm font-bold text-[#12335B]">
-                KẾT QUẢ KIỂM TRA
-              </p>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-4 rounded-2xl border border-[#E3EAF0] bg-white px-4 py-4">
-                  <span className="text-sm font-semibold text-[#12335B]">
-                    Đăng ký hội viên
-                  </span>
-
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusClass(
-                      result.registered,
-                    )}`}
-                  >
-                    {result.registered ? "ĐÃ ĐĂNG KÝ" : "CHƯA ĐĂNG KÝ"}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between gap-4 rounded-2xl border border-[#E3EAF0] bg-white px-4 py-4">
-                  <span className="text-sm font-semibold text-[#12335B]">
-                    Tình trạng mua hàng
-                  </span>
-
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusClass(
-                      result.purchased,
-                    )}`}
-                  >
-                    {result.purchased ? "ĐÃ MUA HÀNG" : "CHƯA MUA HÀNG"}
-                  </span>
-                </div>
-              </div>
-
-              {result.purchased && (
-                <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3">
-                  <p className="text-sm font-bold leading-5 text-amber-700">
-                    Số điện thoại này đã được ghi nhận mua hàng.
-                  </p>
-
-                  <p className="mt-1 text-sm leading-5 text-amber-600">
-                    Không thể tạo đơn hàng mới cho số điện thoại này.
-                  </p>
-                </div>
-              )}
-
-              {result.purchasedWithoutRegistration && (
-                <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3">
-                  <p className="text-sm font-bold leading-5 text-amber-700">
-                    Đã mua hàng nhưng chưa đăng ký hội viên.
-                  </p>
-
-                  <p className="mt-1 text-sm leading-5 text-amber-600">
-                    Vui lòng hướng dẫn khách hàng đăng ký hội viên để được cập
-                    nhật thông tin và hưởng quyền lợi dành cho hội viên.
-                  </p>
-                </div>
-              )}
-
-              {result.registered &&
-                !result.purchased &&
-                !orderingMode &&
-                !ordered && (
-                  <button
-                    type="button"
-                    onClick={handleStartOrder}
-                    disabled={ordering}
-                    className="mt-4 h-12 w-full rounded-xl bg-[#18A8DC] text-sm font-bold text-white transition hover:bg-[#1099CB] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    ĐẶT HÀNG
-                  </button>
-                )}
-
-              {orderingMode && !result.purchased && !ordered && (
-                <OrderForm
-                  receiverName={receiverName}
-                  shippingPhone={shippingPhone}
-                  shippingAddress={shippingAddress}
-                  disabled={ordering}
-                  loading={ordering}
-                  error={orderError}
-                  onReceiverNameChange={setReceiverName}
-                  onShippingPhoneChange={setShippingPhone}
-                  onShippingAddressChange={setShippingAddress}
-                  onSubmit={handleSubmitOrder}
-                />
-              )}
-
-              {ordered && (
-                <div className="mt-4 rounded-xl bg-[#E8F8FD] px-4 py-4">
-                  <p className="text-sm font-bold leading-5 text-[#18A8DC]">
-                    ĐẶT HÀNG THÀNH CÔNG
-                  </p>
-
-                  <p className="mt-1 text-sm leading-5 text-[#18A8DC]">
-                    Thông tin nhận hàng đã được cập nhật thành công trên hệ
-                    thống.
-                  </p>
-                </div>
-              )}
-
-              {!result.registered &&
-                !result.purchased &&
-                !result.purchasedWithoutRegistration && (
-                  <p className="mt-4 text-sm font-medium leading-5 text-gray-600">
-                    Số điện thoại này chưa có thông tin đăng ký hội viên.
-                  </p>
-                )}
-            </div>
-          )}
-
-          <p className="mt-5 text-center text-xs leading-5 text-gray-400">
-            Vui lòng nhập đúng số điện thoại để kiểm tra thông tin.
-          </p>
         </section>
+
+        <OrderList period={period} />
       </div>
+
+      {orderDialogOpen && !loggingOut && (
+        <CreateOrderDialog
+          key="create-order-dialog"
+          open={orderDialogOpen}
+          fullName={fullName}
+          onClose={() => setOrderDialogOpen(false)}
+        />
+      )}
     </main>
   );
 }

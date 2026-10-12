@@ -20,10 +20,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   async function submitLogin(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
+
+    if (isSubmitting) return;
 
     setError("");
 
@@ -37,6 +40,7 @@ export default function LoginPage() {
       return;
     }
 
+    setIsSubmitting(true);
     setLoading(true);
 
     try {
@@ -46,7 +50,7 @@ export default function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          employee_id: employeeId,
+          employee_id: employeeId.trim(),
           password,
         }),
       });
@@ -70,19 +74,18 @@ export default function LoginPage() {
         });
 
         router.push(`/set-password?${params.toString()}`);
-
         return;
       }
 
       setError(result.message || "Đăng nhập thất bại.");
     } catch {
       setError("Không thể kết nối đến hệ thống. Vui lòng thử lại.");
-    } finally {
-      setLoading(false);
     }
   }
 
   async function handleSetupPassword() {
+    if (isSubmitting) return;
+
     setError("");
 
     if (!employeeId.trim()) {
@@ -90,6 +93,7 @@ export default function LoginPage() {
       return;
     }
 
+    setIsSubmitting(true);
     setSetupLoading(true);
 
     try {
@@ -99,7 +103,7 @@ export default function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          employee_id: employeeId,
+          employee_id: employeeId.trim(),
           password: "",
         }),
       });
@@ -117,7 +121,6 @@ export default function LoginPage() {
         });
 
         router.push(`/set-password?${params.toString()}`);
-
         return;
       }
 
@@ -126,12 +129,10 @@ export default function LoginPage() {
       );
     } catch {
       setError("Không thể kết nối đến hệ thống. Vui lòng thử lại.");
-    } finally {
-      setSetupLoading(false);
     }
   }
 
-  const isLoading = loading || setupLoading;
+  const isLoading = loading || setupLoading || isSubmitting;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
@@ -161,7 +162,7 @@ export default function LoginPage() {
               placeholder="Ví dụ: NV001"
               autoComplete="username"
               disabled={isLoading}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900 disabled:bg-gray-100"
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100"
             />
           </div>
 
@@ -181,13 +182,21 @@ export default function LoginPage() {
               placeholder="Nhập mật khẩu"
               autoComplete="current-password"
               disabled={isLoading}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900 disabled:bg-gray-100"
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-gray-900 focus:ring-1 focus:ring-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100"
             />
           </div>
 
           {error && (
-            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div
+              role="alert"
+              className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600"
+            >
               {error}
+              {isSubmitting && (
+                <p className="mt-1 text-xs text-red-500">
+                  Thao tác đã bị khóa. Vui lòng tải lại trang nếu cần thử lại.
+                </p>
+              )}
             </div>
           )}
 
@@ -196,7 +205,13 @@ export default function LoginPage() {
             disabled={isLoading || !employeeId.trim() || !password}
             className="w-full rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+            {loading
+              ? "Đang đăng nhập..."
+              : setupLoading
+                ? "Đang xử lý..."
+                : isSubmitting
+                  ? "Đang xử lý..."
+                  : "Đăng nhập"}
           </button>
 
           <div className="relative">
@@ -217,7 +232,11 @@ export default function LoginPage() {
             disabled={isLoading || !employeeId.trim()}
             className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {setupLoading ? "Đang kiểm tra..." : "Thiết lập mật khẩu lần đầu"}
+            {setupLoading
+              ? "Đang kiểm tra..."
+              : isSubmitting
+                ? "Đang xử lý..."
+                : "Thiết lập mật khẩu lần đầu"}
           </button>
         </form>
       </div>
