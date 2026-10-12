@@ -33,6 +33,16 @@ const inputClass =
 
 const labelClass = "mb-2 block text-sm font-semibold text-[#12335B]";
 
+function normalizeSearch(value: string): string {
+  return value
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLocaleLowerCase("vi");
+}
+
 export default function OrderForm({
   receiverName,
   shippingPhone,
@@ -50,6 +60,14 @@ export default function OrderForm({
 
   const [province, setProvince] = useState("");
   const [ward, setWard] = useState("");
+
+  // Giá trị hiển thị trực tiếp trong ô nhập/chọn.
+  const [provinceSearch, setProvinceSearch] = useState("");
+  const [wardSearch, setWardSearch] = useState("");
+
+  const [provinceOpen, setProvinceOpen] = useState(false);
+  const [wardOpen, setWardOpen] = useState(false);
+
   const [salesSource, setSalesSource] = useState("");
   const [bank, setBank] = useState("");
 
@@ -64,6 +82,16 @@ export default function OrderForm({
   const wardRequestRef = useRef<AbortController | null>(null);
 
   const isDisabled = disabled || loading;
+
+  const filteredProvinces = provinces.filter((item) =>
+    normalizeSearch(getUnitLabel(item)).includes(
+      normalizeSearch(provinceSearch),
+    ),
+  );
+
+  const filteredWards = wards.filter((item) =>
+    normalizeSearch(getUnitLabel(item)).includes(normalizeSearch(wardSearch)),
+  );
 
   const loadProvinces = useCallback(async (controller: AbortController) => {
     try {
@@ -127,12 +155,22 @@ export default function OrderForm({
 
     setLoadingProvinces(true);
     setLoadingWards(false);
+
     setProvinceError("");
     setWardError("");
+
     setProvinces([]);
     setWards([]);
+
     setProvince("");
     setWard("");
+
+    setProvinceSearch("");
+    setWardSearch("");
+
+    setProvinceOpen(false);
+    setWardOpen(false);
+
     setFormError("");
 
     await loadProvinces(controller);
@@ -145,6 +183,10 @@ export default function OrderForm({
     setProvince(value);
     setWard("");
     setWards([]);
+
+    setWardSearch("");
+    setWardOpen(false);
+
     setWardError("");
     setFormError("");
     setLoadingWards(false);
@@ -209,8 +251,12 @@ export default function OrderForm({
 
     setLoadingWards(true);
     setWardError("");
+
     setWard("");
+    setWardSearch("");
+    setWardOpen(false);
     setWards([]);
+
     setFormError("");
 
     try {
@@ -234,6 +280,37 @@ export default function OrderForm({
         setLoadingWards(false);
         wardRequestRef.current = null;
       }
+    }
+  };
+
+  const handleProvinceInputChange = (value: string) => {
+    setProvinceSearch(value);
+    setProvinceOpen(true);
+    setFormError("");
+
+    // Nếu người dùng sửa nội dung, yêu cầu chọn lại kết quả hợp lệ.
+    if (province) {
+      setProvince("");
+      setWard("");
+      setWardSearch("");
+      setWardOpen(false);
+      setWards([]);
+      setWardError("");
+
+      wardRequestRef.current?.abort();
+      wardRequestRef.current = null;
+      setLoadingWards(false);
+    }
+  };
+
+  const handleWardInputChange = (value: string) => {
+    setWardSearch(value);
+    setWardOpen(true);
+    setFormError("");
+
+    // Không giữ mã phường/xã cũ khi người dùng sửa nội dung.
+    if (ward) {
+      setWard("");
     }
   };
 
@@ -267,7 +344,8 @@ export default function OrderForm({
     }
 
     if (!province) {
-      setFormError("Vui lòng chọn tỉnh/thành phố.");
+      setFormError("Vui lòng chọn tỉnh/thành phố từ danh sách gợi ý.");
+      setProvinceOpen(true);
       return;
     }
 
@@ -282,7 +360,8 @@ export default function OrderForm({
     }
 
     if (!ward) {
-      setFormError("Vui lòng chọn phường/xã.");
+      setFormError("Vui lòng chọn phường/xã từ danh sách gợi ý.");
+      setWardOpen(true);
       return;
     }
 
@@ -342,6 +421,7 @@ export default function OrderForm({
       </div>
 
       <div className="space-y-5">
+        {/* 1. Thông tin người nhận */}
         <section className="space-y-4">
           <h4 className="border-b border-[#E8EDF3] pb-2 text-sm font-bold text-[#12335B]">
             1. Thông tin người nhận
@@ -394,38 +474,123 @@ export default function OrderForm({
           </div>
         </section>
 
+        {/* 2. Địa chỉ nhận hàng */}
         <section className="space-y-4">
           <h4 className="border-b border-[#E8EDF3] pb-2 text-sm font-bold text-[#12335B]">
             2. Địa chỉ nhận hàng
           </h4>
 
+          {/* Tỉnh / Thành phố: nhập và chọn ngay trên cùng một ô */}
           <div>
             <label htmlFor="shipping-province" className={labelClass}>
               Tỉnh / Thành phố
             </label>
 
-            <select
-              id="shipping-province"
-              value={province}
-              required
-              disabled={isDisabled || loadingProvinces}
-              onChange={(event) => {
-                void handleProvinceChange(event.target.value);
-              }}
-              className={`${inputClass} ${!province ? "text-gray-400" : ""}`}
-            >
-              <option value="">
-                {loadingProvinces
-                  ? "Đang tải tỉnh/thành..."
-                  : "Chọn tỉnh / thành phố"}
-              </option>
+            <div className="relative">
+              <input
+                id="shipping-province"
+                type="text"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={provinceOpen}
+                aria-controls="province-options"
+                autoComplete="off"
+                value={provinceSearch}
+                required
+                disabled={isDisabled || loadingProvinces}
+                onFocus={() => setProvinceOpen(true)}
+                onBlur={() => setProvinceOpen(false)}
+                onChange={(event) =>
+                  handleProvinceInputChange(event.target.value)
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    setProvinceOpen(false);
+                  }
 
-              {provinces.map((item) => (
-                <option key={item.code} value={String(item.code)}>
-                  {getUnitLabel(item)}
-                </option>
-              ))}
-            </select>
+                  if (
+                    event.key === "Enter" &&
+                    provinceOpen &&
+                    filteredProvinces.length === 1
+                  ) {
+                    event.preventDefault();
+
+                    const item = filteredProvinces[0];
+
+                    setProvinceSearch(getUnitLabel(item));
+                    setProvinceOpen(false);
+                    void handleProvinceChange(String(item.code));
+                  }
+                }}
+                placeholder={
+                  loadingProvinces
+                    ? "Đang tải tỉnh/thành phố..."
+                    : "Nhập hoặc chọn tỉnh / thành phố"
+                }
+                className={inputClass}
+              />
+
+              {provinceSearch && !isDisabled && (
+                <button
+                  type="button"
+                  aria-label="Xóa tỉnh/thành phố"
+                  disabled={loadingProvinces}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    handleProvinceInputChange("");
+                    setProvinceOpen(true);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#1188B4] disabled:opacity-50"
+                >
+                  Xóa
+                </button>
+              )}
+
+              {provinceOpen &&
+                !loadingProvinces &&
+                !provinceError &&
+                !isDisabled && (
+                  <div
+                    id="province-options"
+                    role="listbox"
+                    aria-label="Danh sách tỉnh/thành phố"
+                    className="absolute z-30 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-[#D8E1EB] bg-white p-1 shadow-lg"
+                  >
+                    {filteredProvinces.length > 0 ? (
+                      filteredProvinces.map((item) => {
+                        const value = String(item.code);
+                        const selected = province === value;
+
+                        return (
+                          <button
+                            key={item.code}
+                            type="button"
+                            role="option"
+                            aria-selected={selected}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              setProvinceSearch(getUnitLabel(item));
+                              setProvinceOpen(false);
+                              void handleProvinceChange(value);
+                            }}
+                            className={`w-full rounded-lg px-3 py-3 text-left text-sm transition hover:bg-[#EAF8FD] ${
+                              selected
+                                ? "bg-[#EAF8FD] font-semibold text-[#087EA4]"
+                                : "text-[#12335B]"
+                            }`}
+                          >
+                            {getUnitLabel(item)}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <p className="px-3 py-4 text-sm text-gray-500">
+                        Không tìm thấy tỉnh/thành phố phù hợp.
+                      </p>
+                    )}
+                  </div>
+                )}
+            </div>
 
             {provinceError && (
               <div className="mt-2">
@@ -443,40 +608,133 @@ export default function OrderForm({
                 </button>
               </div>
             )}
+
+            {province && !loadingWards && (
+              <p className="mt-1 text-xs text-gray-500">
+                Đã chọn tỉnh/thành phố.
+              </p>
+            )}
           </div>
 
+          {/* Phường / Xã: nhập và chọn ngay trên cùng một ô */}
           <div>
             <label htmlFor="shipping-ward" className={labelClass}>
               Phường / Xã
             </label>
 
-            <select
-              id="shipping-ward"
-              value={ward}
-              required
-              disabled={
-                isDisabled || !province || loadingWards || Boolean(wardError)
-              }
-              onChange={(event) => {
-                setWard(event.target.value);
-                setFormError("");
-              }}
-              className={`${inputClass} ${!ward ? "text-gray-400" : ""}`}
-            >
-              <option value="">
-                {!province
-                  ? "Vui lòng chọn tỉnh/thành trước"
-                  : loadingWards
-                    ? "Đang tải phường/xã..."
-                    : "Chọn phường / xã"}
-              </option>
+            <div className="relative">
+              <input
+                id="shipping-ward"
+                type="text"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={wardOpen}
+                aria-controls="ward-options"
+                autoComplete="off"
+                value={wardSearch}
+                required
+                disabled={
+                  isDisabled || !province || loadingWards || Boolean(wardError)
+                }
+                onFocus={() => {
+                  if (province && !loadingWards && !wardError) {
+                    setWardOpen(true);
+                  }
+                }}
+                onBlur={() => setWardOpen(false)}
+                onChange={(event) => handleWardInputChange(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    setWardOpen(false);
+                  }
 
-              {wards.map((item) => (
-                <option key={item.code} value={String(item.code)}>
-                  {getUnitLabel(item)}
-                </option>
-              ))}
-            </select>
+                  if (
+                    event.key === "Enter" &&
+                    wardOpen &&
+                    filteredWards.length === 1
+                  ) {
+                    event.preventDefault();
+
+                    const item = filteredWards[0];
+
+                    setWardSearch(getUnitLabel(item));
+                    setWard(String(item.code));
+                    setWardOpen(false);
+                  }
+                }}
+                placeholder={
+                  !province
+                    ? "Vui lòng chọn tỉnh/thành trước"
+                    : loadingWards
+                      ? "Đang tải phường/xã..."
+                      : "Nhập hoặc chọn phường / xã"
+                }
+                className={inputClass}
+              />
+
+              {wardSearch && !isDisabled && province && (
+                <button
+                  type="button"
+                  aria-label="Xóa phường/xã"
+                  disabled={loadingWards || Boolean(wardError)}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    handleWardInputChange("");
+                    setWardOpen(true);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#1188B4] disabled:opacity-50"
+                >
+                  Xóa
+                </button>
+              )}
+
+              {wardOpen &&
+                province &&
+                !loadingWards &&
+                !wardError &&
+                !isDisabled && (
+                  <div
+                    id="ward-options"
+                    role="listbox"
+                    aria-label="Danh sách phường/xã"
+                    className="absolute z-30 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-[#D8E1EB] bg-white p-1 shadow-lg"
+                  >
+                    {filteredWards.length > 0 ? (
+                      filteredWards.map((item) => {
+                        const value = String(item.code);
+                        const selected = ward === value;
+
+                        return (
+                          <button
+                            key={item.code}
+                            type="button"
+                            role="option"
+                            aria-selected={selected}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              setWardSearch(getUnitLabel(item));
+                              setWard(value);
+                              setWardOpen(false);
+                              setFormError("");
+                            }}
+                            className={`w-full rounded-lg px-3 py-3 text-left text-sm transition hover:bg-[#EAF8FD] ${
+                              selected
+                                ? "bg-[#EAF8FD] font-semibold text-[#087EA4]"
+                                : "text-[#12335B]"
+                            }`}
+                          >
+                            {getUnitLabel(item)}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <p className="px-3 py-4 text-sm text-gray-500">
+                        Không tìm thấy phường/xã phù hợp.
+                      </p>
+                    )}
+                  </div>
+                )}
+            </div>
 
             {wardError && (
               <div className="mt-2">
@@ -491,6 +749,10 @@ export default function OrderForm({
                   Tải lại phường/xã
                 </button>
               </div>
+            )}
+
+            {ward && (
+              <p className="mt-1 text-xs text-gray-500">Đã chọn phường/xã.</p>
             )}
           </div>
 
@@ -515,6 +777,7 @@ export default function OrderForm({
           </div>
         </section>
 
+        {/* 3. Thông tin bán hàng */}
         <section className="space-y-4">
           <h4 className="border-b border-[#E8EDF3] pb-2 text-sm font-bold text-[#12335B]">
             3. Thông tin bán hàng
