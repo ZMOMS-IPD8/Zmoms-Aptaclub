@@ -104,21 +104,21 @@ function isEligibleBabyDate(babyDate: string): boolean {
   if (selectedDate > today) {
     const latestDueDate = new Date(today);
 
-    latestDueDate.setMonth(latestDueDate.getMonth() + 9);
+    latestDueDate.setDate(latestDueDate.getDate() + 84);
     latestDueDate.setHours(0, 0, 0, 0);
 
     return selectedDate <= latestDueDate;
   }
 
-  const secondBirthday = new Date(
-    selectedDate.getFullYear() + 2,
-    selectedDate.getMonth(),
+  const threeMonthsLater = new Date(
+    selectedDate.getFullYear(),
+    selectedDate.getMonth() + 3,
     selectedDate.getDate(),
   );
 
-  secondBirthday.setHours(0, 0, 0, 0);
+  threeMonthsLater.setHours(0, 0, 0, 0);
 
-  return secondBirthday > today;
+  return threeMonthsLater > today;
 }
 
 async function parsePancakeResponse(
