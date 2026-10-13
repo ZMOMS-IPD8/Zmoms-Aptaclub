@@ -19,7 +19,8 @@ type PancakeUpdateResponse = {
   message?: string;
 };
 
-const ALLOWED_SOURCES = ["PG", "SPA", "Tiêm Chủng", "Nữ Hộ Sinh"];
+const ALLOWED_SOURCES = ["PG", "SPA", "Tiêm Chủng", "Nữ Hộ Sinh", "Co-Edu"];
+
 const ALLOWED_BANKS = ["Techcombank", "Vietcombank"];
 
 function jsonError(
@@ -135,11 +136,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!ALLOWED_SOURCES.includes(salesSource)) {
+    const sourceParts = salesSource.split(" - ");
+    const sourcePrefix = sourceParts[0]?.trim();
+    const sourceNote = sourceParts.slice(1).join(" - ").trim();
+
+    if (
+      !salesSource ||
+      !sourceNote ||
+      !ALLOWED_SOURCES.includes(sourcePrefix)
+    ) {
       return jsonError(
         400,
         "INVALID_SALES_SOURCE",
-        "Vui lòng chọn nguồn bán hợp lệ.",
+        "Vui lòng chọn nguồn bán và nhập nội dung ghi chú.",
       );
     }
 

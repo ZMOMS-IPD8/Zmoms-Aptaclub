@@ -20,12 +20,13 @@ type OrderFormProps = {
   onShippingAddressChange: (value: string) => void;
   onSubmit: (
     salesSource: string,
+    note: string,
     bank: string,
     fullShippingAddress: string,
   ) => void | Promise<void>;
 };
 
-const SALES_SOURCES = ["Event", "SPA", "Tiêm Chủng", "Nữ Hộ Sinh"];
+const SALES_SOURCES = ["PG", "SPA", "Tiêm Chủng", "Nữ Hộ Sinh", "Co-Edu"];
 const BANKS = ["Techcombank", "Vietcombank"];
 
 const inputClass =
@@ -61,7 +62,6 @@ export default function OrderForm({
   const [province, setProvince] = useState("");
   const [ward, setWard] = useState("");
 
-  // Giá trị hiển thị trực tiếp trong ô nhập/chọn.
   const [provinceSearch, setProvinceSearch] = useState("");
   const [wardSearch, setWardSearch] = useState("");
 
@@ -69,6 +69,7 @@ export default function OrderForm({
   const [wardOpen, setWardOpen] = useState(false);
 
   const [salesSource, setSalesSource] = useState("");
+  const [salesNote, setSalesNote] = useState("");
   const [bank, setBank] = useState("");
 
   const [loadingProvinces, setLoadingProvinces] = useState(true);
@@ -288,7 +289,7 @@ export default function OrderForm({
     setProvinceOpen(true);
     setFormError("");
 
-    // Nếu người dùng sửa nội dung, yêu cầu chọn lại kết quả hợp lệ.
+    // Khi sửa nội dung, yêu cầu chọn lại kết quả hợp lệ.
     if (province) {
       setProvince("");
       setWard("");
@@ -375,6 +376,12 @@ export default function OrderForm({
       return;
     }
 
+    // Ghi chú là trường riêng và luôn bắt buộc.
+    if (!salesNote.trim()) {
+      setFormError("Vui lòng nhập nội dung ghi chú.");
+      return;
+    }
+
     if (!BANKS.includes(bank)) {
       setFormError("Vui lòng chọn ngân hàng.");
       return;
@@ -400,7 +407,7 @@ export default function OrderForm({
     ].join(", ");
 
     try {
-      await onSubmit(salesSource, bank, fullShippingAddress);
+      await onSubmit(salesSource, salesNote.trim(), bank, fullShippingAddress);
     } catch {
       setFormError(
         "Chưa thể hoàn tất lên đơn hàng. Vui lòng kiểm tra thông tin và thử lại.",
@@ -480,7 +487,7 @@ export default function OrderForm({
             2. Địa chỉ nhận hàng
           </h4>
 
-          {/* Tỉnh / Thành phố: nhập và chọn ngay trên cùng một ô */}
+          {/* Tỉnh / Thành phố */}
           <div>
             <label htmlFor="shipping-province" className={labelClass}>
               Tỉnh / Thành phố
@@ -616,7 +623,7 @@ export default function OrderForm({
             )}
           </div>
 
-          {/* Phường / Xã: nhập và chọn ngay trên cùng một ô */}
+          {/* Phường / Xã */}
           <div>
             <label htmlFor="shipping-ward" className={labelClass}>
               Phường / Xã
@@ -807,6 +814,26 @@ export default function OrderForm({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label htmlFor="sales-note" className={labelClass}>
+              Nội dung ghi chú <span className="text-red-500">*</span>
+            </label>
+
+            <textarea
+              id="sales-note"
+              value={salesNote}
+              required
+              disabled={isDisabled}
+              onChange={(event) => {
+                setSalesNote(event.target.value);
+                setFormError("");
+              }}
+              placeholder="Nhập nội dung ghi chú"
+              rows={3}
+              className="w-full resize-y rounded-xl border border-[#D8E1EB] px-4 py-3 text-sm font-medium text-[#12335B] outline-none transition placeholder:text-gray-400 focus:border-[#18A8DC] focus:ring-2 focus:ring-[#18A8DC]/10 disabled:cursor-not-allowed disabled:bg-gray-100"
+            />
           </div>
 
           <div>

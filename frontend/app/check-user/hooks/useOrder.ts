@@ -20,10 +20,12 @@ type OrderData = {
   shippingAddress: string;
   nguoiBan: string;
   salesSource: string;
+  note: string;
   bank: string;
 };
 
-const SALES_SOURCES = ["PG", "SPA", "Tiêm Chủng", "Nữ Hộ Sinh"];
+const SALES_SOURCES = ["PG", "SPA", "Tiêm Chủng", "Nữ Hộ Sinh", "Co-Edu"];
+
 const BANKS = ["Techcombank", "Vietcombank"];
 
 function normalizePhone(value: unknown): string {
@@ -103,6 +105,7 @@ export function useOrder() {
       const shippingAddress = normalizeText(data.shippingAddress);
       const nguoiBan = normalizeText(data.nguoiBan);
       const salesSource = normalizeText(data.salesSource);
+      const note = normalizeText(data.note);
       const bank = normalizeText(data.bank);
 
       if (!/^0\d{9}$/.test(registrationPhone)) {
@@ -139,10 +142,17 @@ export function useOrder() {
         return null;
       }
 
+      if (!note) {
+        setError("Vui lòng nhập nội dung ghi chú.");
+        return null;
+      }
+
       if (!BANKS.includes(bank)) {
         setError("Vui lòng chọn Techcombank hoặc Vietcombank.");
         return null;
       }
+
+      const combinedSalesSource = `${salesSource} - ${note}`;
 
       submittingRef.current = true;
       setOrdering(true);
@@ -161,7 +171,7 @@ export function useOrder() {
             shippingPhone,
             shippingAddress,
             nguoiBan,
-            salesSource,
+            salesSource: combinedSalesSource,
             bank,
           }),
         });
@@ -202,6 +212,8 @@ export function useOrder() {
         }
 
         setOrdered(true);
+        setError("");
+
         return result;
       } catch {
         setError(

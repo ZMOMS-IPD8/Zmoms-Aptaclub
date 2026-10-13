@@ -22,7 +22,7 @@ type CheckResult = {
   message?: string;
 };
 
-const SALES_SOURCES = ["PG", "SPA", "Tiêm Chủng", "Nữ Hộ Sinh"];
+const SALES_SOURCES = ["PG", "SPA", "Tiêm Chủng", "Nữ Hộ Sinh", "Co-Edu"];
 const BANKS = ["Techcombank", "Vietcombank"];
 
 function getBusinessErrorMessage(message?: string): string {
@@ -212,6 +212,7 @@ export default function CreateOrderDialog({ open, fullName, onClose }: Props) {
 
   const handleSubmitOrder = async (
     salesSource: string,
+    note: string,
     bank: string,
     fullShippingAddress: string,
   ) => {
@@ -231,6 +232,9 @@ export default function CreateOrderDialog({ open, fullName, onClose }: Props) {
     const cleanShippingPhone = shippingPhone.replace(/\D/g, "");
     const cleanShippingAddress = fullShippingAddress.trim();
     const cleanFullName = fullName.trim();
+    const cleanSalesSource = salesSource.trim();
+    const cleanNote = note.trim();
+    const cleanBank = bank.trim();
 
     setError("");
     setOrderError("");
@@ -262,12 +266,17 @@ export default function CreateOrderDialog({ open, fullName, onClose }: Props) {
       return;
     }
 
-    if (!SALES_SOURCES.includes(salesSource)) {
+    if (!SALES_SOURCES.includes(cleanSalesSource)) {
       setOrderError("Vui lòng chọn nguồn bán hợp lệ.");
       return;
     }
 
-    if (!BANKS.includes(bank)) {
+    if (!cleanNote) {
+      setOrderError("Vui lòng nhập nội dung ghi chú.");
+      return;
+    }
+
+    if (!BANKS.includes(cleanBank)) {
       setOrderError("Vui lòng chọn ngân hàng.");
       return;
     }
@@ -279,8 +288,9 @@ export default function CreateOrderDialog({ open, fullName, onClose }: Props) {
         shippingPhone: cleanShippingPhone,
         shippingAddress: cleanShippingAddress,
         nguoiBan: cleanFullName,
-        salesSource,
-        bank,
+        salesSource: cleanSalesSource,
+        note: cleanNote,
+        bank: cleanBank,
       });
 
       if (
