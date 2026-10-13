@@ -4,6 +4,7 @@ type OrderAppsScriptResponse = {
   message?: string;
   orderId?: string;
   rowNumber?: number;
+  orderDate?: string;
 };
 
 export type OrderAppsScriptPayload = {
@@ -20,6 +21,22 @@ export type OrderAppsScriptPayload = {
   note?: string;
 };
 
+function normalizeText(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function isValidIsoDate(value: string): boolean {
+  const normalized = normalizeText(value);
+
+  if (!normalized) return false;
+
+  if (!/(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized)) {
+    return false;
+  }
+
+  return Number.isFinite(Date.parse(normalized));
+}
+
 function parseResponse(text: string): unknown {
   if (!text.trim()) return null;
 
@@ -33,7 +50,7 @@ function parseResponse(text: string): unknown {
 function getErrorMessage(result: unknown): string {
   if (typeof result === "string") {
     if (result.includes("<!DOCTYPE html") || result.includes("<html")) {
-      return "Google Apps Script trả về HTML thay vì JSON. Hãy kiểm tra URL /exec, quyền truy cập Web App và việc triển khai phiên bản mới.";
+      return "Google Apps Script trả về HTML thay vì JSON. Hãy kiểm tra URL /exec, quyền truy cập Web App và phiên bản triển khai.";
     }
 
     return (
@@ -52,6 +69,7 @@ function getErrorMessage(result: unknown): string {
   };
 
   const message = typeof data.message === "string" ? data.message.trim() : "";
+
   const status = typeof data.status === "string" ? data.status.trim() : "";
 
   return (
@@ -94,12 +112,11 @@ function validatePayload(payload: OrderAppsScriptPayload): void {
     throw new Error("Loại đơn phải là Tặng hoặc Bán.");
   }
 
-  const orderDate = payload.orderDate.trim();
+  if (!["Techcombank", "Vietcombank"].includes(payload.bank.trim())) {
+    throw new Error("Ngân hàng không hợp lệ.");
+  }
 
-  if (
-    !Number.isFinite(Date.parse(orderDate)) ||
-    !/[zZ]|[+-]\d{2}:\d{2}$/.test(orderDate)
-  ) {
+  if (!isValidIsoDate(payload.orderDate)) {
     throw new Error("Thời gian lên đơn không hợp lệ.");
   }
 }
@@ -123,6 +140,8 @@ export async function submitOrderToAppsScript(
 
   validatePayload(payload);
 
+  const normalizedOrderDate = new Date(payload.orderDate.trim()).toISOString();
+
   const normalizedPayload: OrderAppsScriptPayload = {
     registrationPhone: payload.registrationPhone.trim(),
     receiverName: payload.receiverName.trim(),
@@ -133,10 +152,10 @@ export async function submitOrderToAppsScript(
     bank: payload.bank.trim(),
     loaiDon: payload.loaiDon.trim(),
     pancakeId: payload.pancakeId.trim(),
-    orderDate: payload.orderDate.trim(),
+    orderDate: normalizedOrderDate,
     note:
       payload.registrationPhone.trim() !== payload.shippingPhone.trim()
-        ? String(payload.note || "").trim()
+        ? normalizeText(payload.note)
         : "",
   };
 
@@ -196,5 +215,6 @@ export async function submitOrderToAppsScript(
     message: data.message,
     orderId: data.orderId,
     rowNumber: data.rowNumber,
+    orderDate: normalizedOrderDate,
   };
 }

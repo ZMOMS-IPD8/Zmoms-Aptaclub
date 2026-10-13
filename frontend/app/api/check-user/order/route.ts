@@ -57,13 +57,25 @@ function normalizeText(value: unknown): string {
 }
 
 function isValidIsoDate(value: string): boolean {
-  if (!value || !/[zZ]|[+-]\d{2}:\d{2}$/.test(value)) {
-    return false;
-  }
+  if (!value) return false;
+
+  const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
+
+  if (!hasTimezone) return false;
 
   const timestamp = Date.parse(value);
 
   return Number.isFinite(timestamp);
+}
+
+function resolveOrderDate(value: unknown): string {
+  const normalized = normalizeText(value);
+
+  if (isValidIsoDate(normalized)) {
+    return new Date(normalized).toISOString();
+  }
+
+  return new Date().toISOString();
 }
 
 function jsonSuccess(data: Record<string, unknown>) {
@@ -106,7 +118,7 @@ export async function POST(req: NextRequest) {
     const nguoiBan = normalizeText(body.nguoiBan);
     const salesSource = normalizeText(body.salesSource);
     const bank = normalizeText(body.bank);
-    const orderDate = normalizeText(body.orderDate);
+    const orderDate = resolveOrderDate(body.orderDate);
 
     if (!/^0\d{9}$/.test(registrationPhone)) {
       return jsonError(
@@ -166,14 +178,6 @@ export async function POST(req: NextRequest) {
 
     if (!ALLOWED_BANKS.includes(bank)) {
       return jsonError(400, "INVALID_BANK", "Vui lòng chọn ngân hàng hợp lệ.");
-    }
-
-    if (!isValidIsoDate(orderDate)) {
-      return jsonError(
-        400,
-        "INVALID_ORDER_DATE",
-        "Thời gian lên đơn không hợp lệ. Vui lòng tải lại trang và thử lại.",
-      );
     }
 
     if (!process.env.PANCAKE_WORKSPACE_ID || !process.env.PANCAKE_CRM_API_KEY) {

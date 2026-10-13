@@ -55,7 +55,6 @@ function getBusinessErrorMessage(message: unknown): string {
     "server",
     "máy chủ",
     "database",
-    "database error",
     "internal server error",
     "stack trace",
     "token",
@@ -154,6 +153,11 @@ export function useOrder() {
 
       const combinedSalesSource = `${salesSource} - ${note}`;
       const orderDate = new Date().toISOString();
+
+      if (!Number.isFinite(Date.parse(orderDate))) {
+        setError("Không thể xác định thời gian lên đơn. Vui lòng thử lại.");
+        return null;
+      }
 
       submittingRef.current = true;
       setOrdering(true);
