@@ -12,7 +12,7 @@ export type OrderAppsScriptPayload = {
   receiverName: string;
   shippingPhone: string;
   shippingAddress: string;
-  maNguoiBan: string;
+  nguoiBan: string;
   salesSource: string;
   bank: string;
   loaiDon: string;
@@ -84,7 +84,7 @@ function validatePayload(payload: OrderAppsScriptPayload): void {
     ["receiverName", "Họ và tên người nhận"],
     ["shippingPhone", "Số điện thoại nhận hàng"],
     ["shippingAddress", "Địa chỉ nhận hàng"],
-    ["maNguoiBan", "Người bán"],
+    ["nguoiBan", "Người bán"],
     ["salesSource", "Nguồn bán"],
     ["bank", "Ngân hàng"],
     ["loaiDon", "Loại đơn"],
@@ -147,7 +147,7 @@ export async function submitOrderToAppsScript(
     receiverName: payload.receiverName.trim(),
     shippingPhone: payload.shippingPhone.trim(),
     shippingAddress: payload.shippingAddress.trim(),
-    maNguoiBan: payload.maNguoiBan.trim(),
+    nguoiBan: payload.nguoiBan.trim(),
     salesSource: payload.salesSource.trim(),
     bank: payload.bank.trim(),
     loaiDon: payload.loaiDon.trim(),

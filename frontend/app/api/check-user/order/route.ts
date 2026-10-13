@@ -353,7 +353,7 @@ export async function POST(req: NextRequest) {
         receiverName,
         shippingPhone,
         shippingAddress,
-        maNguoiBan: nguoiBan,
+        nguoiBan,
         salesSource,
         bank,
         loaiDon,
