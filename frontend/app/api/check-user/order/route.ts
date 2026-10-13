@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { checkUserByPhone } from "../../../lib/pancake/pancake-user-check";
 import { submitOrderToAppsScript } from "@/lib/google-apps-script/order";
 
@@ -19,8 +20,6 @@ type PancakeUpdateResponse = {
   success?: boolean;
   message?: string;
 };
-
-const ALLOWED_SOURCES = ["PG", "SPA", "Tiêm Chủng", "Nữ Hộ Sinh", "Co-Edu"];
 
 const ALLOWED_BANKS = ["Techcombank", "Vietcombank"];
 
@@ -63,9 +62,7 @@ function isValidIsoDate(value: string): boolean {
 
   if (!hasTimezone) return false;
 
-  const timestamp = Date.parse(value);
-
-  return Number.isFinite(timestamp);
+  return Number.isFinite(Date.parse(value));
 }
 
 function resolveOrderDate(value: unknown): string {
@@ -116,7 +113,11 @@ export async function POST(req: NextRequest) {
     const shippingPhone = normalizePhone(body.shippingPhone);
     const shippingAddress = normalizeText(body.shippingAddress);
     const nguoiBan = normalizeText(body.nguoiBan);
+
+    // Giữ nguyên nguồn bán đã được hook gộp cùng ghi chú.
+    // Không kiểm tra danh sách nguồn và không tách chuỗi.
     const salesSource = normalizeText(body.salesSource);
+
     const bank = normalizeText(body.bank);
     const orderDate = resolveOrderDate(body.orderDate);
 
@@ -160,27 +161,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const sourceParts = salesSource.split(" - ");
-    const sourcePrefix = sourceParts[0]?.trim();
-    const sourceNote = sourceParts.slice(1).join(" - ").trim();
-
-    if (
-      !salesSource ||
-      !sourceNote ||
-      !ALLOWED_SOURCES.includes(sourcePrefix)
-    ) {
-      return jsonError(
-        400,
-        "INVALID_SALES_SOURCE",
-        "Vui lòng chọn nguồn bán và nhập nội dung ghi chú.",
-      );
-    }
-
     if (!ALLOWED_BANKS.includes(bank)) {
       return jsonError(400, "INVALID_BANK", "Vui lòng chọn ngân hàng hợp lệ.");
     }
 
-    if (!process.env.PANCAKE_WORKSPACE_ID || !process.env.PANCAKE_CRM_API_KEY) {
+    const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
+    const apiKey = process.env.PANCAKE_CRM_API_KEY;
+
+    if (!workspaceId || !apiKey) {
       return jsonError(
         503,
         "ORDER_UNAVAILABLE",
@@ -264,13 +252,10 @@ export async function POST(req: NextRequest) {
       trang_thai_giao_hang: "Giao thành công",
     };
 
-    const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
-    const apiKey = process.env.PANCAKE_CRM_API_KEY;
-
     const updateUrl =
       `https://crm.pancake.vn/api/workspaces/` +
       `${workspaceId}/lead/records` +
-      `?api_key=${encodeURIComponent(apiKey!)}`;
+      `?api_key=${encodeURIComponent(apiKey)}`;
 
     let updateResponse: Response;
 

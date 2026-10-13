@@ -22,7 +22,6 @@ type CheckResult = {
   message?: string;
 };
 
-const SALES_SOURCES = ["PG", "SPA", "Tiêm Chủng", "Nữ Hộ Sinh", "Co-Edu"];
 const BANKS = ["Techcombank", "Vietcombank"];
 
 function getBusinessErrorMessage(message?: string): string {
@@ -266,8 +265,9 @@ export default function CreateOrderDialog({ open, fullName, onClose }: Props) {
       return;
     }
 
-    if (!SALES_SOURCES.includes(cleanSalesSource)) {
-      setOrderError("Vui lòng chọn nguồn bán hợp lệ.");
+    // Chỉ kiểm tra nguồn bán có giá trị, không giới hạn theo danh sách cố định.
+    if (!cleanSalesSource) {
+      setOrderError("Vui lòng chọn nguồn bán.");
       return;
     }
 

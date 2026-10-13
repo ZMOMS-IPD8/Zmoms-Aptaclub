@@ -24,9 +24,7 @@ type OrderData = {
   bank: string;
 };
 
-const SALES_SOURCES = ["PG", "SPA", "Tiêm Chủng", "Nữ Hộ Sinh", "Co-Edu"];
-
-const BANKS = ["Techcombank", "Vietcombank"];
+const BANKS = ["Techcombank", "Vietcombank"] as const;
 
 function normalizePhone(value: unknown): string {
   return String(value ?? "")
@@ -136,8 +134,9 @@ export function useOrder() {
         return null;
       }
 
-      if (!SALES_SOURCES.includes(salesSource)) {
-        setError("Vui lòng chọn nguồn bán hợp lệ.");
+      // Nguồn bán lấy trực tiếp từ value của field.
+      if (!salesSource) {
+        setError("Vui lòng chọn nguồn bán.");
         return null;
       }
 
@@ -146,12 +145,14 @@ export function useOrder() {
         return null;
       }
 
-      if (!BANKS.includes(bank)) {
+      if (!(BANKS as readonly string[]).includes(bank)) {
         setError("Vui lòng chọn Techcombank hoặc Vietcombank.");
         return null;
       }
 
+      // Gộp nguồn bán và ghi chú thành một giá trị.
       const combinedSalesSource = `${salesSource} - ${note}`;
+
       const orderDate = new Date().toISOString();
 
       if (!Number.isFinite(Date.parse(orderDate))) {

@@ -26,7 +26,8 @@ type OrderFormProps = {
   ) => void | Promise<void>;
 };
 
-const SALES_SOURCES = ["PG", "SPA", "Tiêm Chủng", "Nữ Hộ Sinh", "Co-Edu"];
+const SALES_SOURCES = ["SPA", "Tiêm Chủng", "Nữ Hộ Sinh", "Co-Edu", "Event"];
+
 const BANKS = ["Techcombank", "Vietcombank"];
 
 const inputClass =
@@ -371,12 +372,13 @@ export default function OrderForm({
       return;
     }
 
-    if (!SALES_SOURCES.includes(salesSource)) {
+    // Chỉ kiểm tra value nguồn bán có được chọn hay không.
+    // Không kiểm tra nguồn có thuộc danh sách cố định hay không.
+    if (!salesSource.trim()) {
       setFormError("Vui lòng chọn nguồn bán.");
       return;
     }
 
-    // Ghi chú là trường riêng và luôn bắt buộc.
     if (!salesNote.trim()) {
       setFormError("Vui lòng nhập nội dung ghi chú.");
       return;
@@ -407,7 +409,12 @@ export default function OrderForm({
     ].join(", ");
 
     try {
-      await onSubmit(salesSource, salesNote.trim(), bank, fullShippingAddress);
+      await onSubmit(
+        salesSource.trim(),
+        salesNote.trim(),
+        bank,
+        fullShippingAddress,
+      );
     } catch {
       setFormError(
         "Chưa thể hoàn tất lên đơn hàng. Vui lòng kiểm tra thông tin và thử lại.",
