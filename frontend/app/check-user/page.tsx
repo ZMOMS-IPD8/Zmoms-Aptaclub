@@ -4,9 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import OrderManagementHeader from "./components/order-management/OrderManagementHeader";
-import OrderPeriodFilter, {
-  type OrderPeriod,
-} from "./components/order-management/OrderPeriodFilter";
+import OrderPeriodFilter from "./components/order-management/OrderPeriodFilter";
 import OrderList from "./components/order-management/OrderList";
 import CreateOrderDialog from "./components/order-management/CreateOrderDialog";
 
@@ -28,10 +26,18 @@ export default function CheckUserPage() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
 
-  const [period, setPeriod] = useState<OrderPeriod>("today");
+  const [draftStartDate, setDraftStartDate] = useState("");
+  const [draftEndDate, setDraftEndDate] = useState("");
+
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
 
   const logoutInProgressRef = useRef(false);
+
+  const invalidDateRange =
+    Boolean(draftStartDate && draftEndDate) && draftStartDate > draftEndDate;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -127,14 +133,44 @@ export default function CheckUserPage() {
     }
   }, [router]);
 
+  const handleApplyDateFilter = useCallback(() => {
+    if (invalidDateRange || loggingOut) return;
+
+    setStartDate(draftStartDate);
+    setEndDate(draftEndDate);
+  }, [draftStartDate, draftEndDate, invalidDateRange, loggingOut]);
+
+  const handleClearDateFilter = useCallback(() => {
+    if (loggingOut) return;
+
+    setDraftStartDate("");
+    setDraftEndDate("");
+    setStartDate("");
+    setEndDate("");
+  }, [loggingOut]);
+
+  const handleOpenOrderDialog = useCallback(() => {
+    if (loggingOut) return;
+
+    setOrderDialogOpen(true);
+  }, [loggingOut]);
+
+  const handleCloseOrderDialog = useCallback(() => {
+    setOrderDialogOpen(false);
+  }, []);
+
   if (loadingSession) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#F5F9FC] px-4">
         <div
           role="status"
+          aria-live="polite"
           className="flex items-center gap-3 text-sm font-medium text-[#12335B]"
         >
-          <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#D8E1EB] border-t-[#18A8DC]" />
+          <span
+            aria-hidden="true"
+            className="h-5 w-5 animate-spin rounded-full border-2 border-[#D8E1EB] border-t-[#18A8DC]"
+          />
           Đang tải thông tin tài khoản...
         </div>
       </main>
@@ -172,14 +208,14 @@ export default function CheckUserPage() {
               </h2>
 
               <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-                Theo dõi danh sách đơn hàng và lên đơn cho khách hàng đủ điều
-                kiện.
+                Theo dõi danh sách đơn hàng, thống kê kết quả và lên đơn cho
+                khách hàng đủ điều kiện.
               </p>
             </div>
 
             <button
               type="button"
-              onClick={() => setOrderDialogOpen(true)}
+              onClick={handleOpenOrderDialog}
               disabled={loggingOut}
               className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#12335B] px-6 text-sm font-bold text-white shadow-sm transition hover:bg-[#0D2949] focus:outline-none focus:ring-4 focus:ring-[#12335B]/15 disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -191,15 +227,23 @@ export default function CheckUserPage() {
           </div>
 
           <div className="mt-6 border-t border-[#E8EDF3] pt-5">
-            <p className="mb-3 text-sm font-semibold text-[#12335B]">
-              Thời gian
-            </p>
-
-            <OrderPeriodFilter value={period} onChange={setPeriod} />
+            <OrderPeriodFilter
+              startDate={draftStartDate}
+              endDate={draftEndDate}
+              onStartDateChange={setDraftStartDate}
+              onEndDateChange={setDraftEndDate}
+              onApply={handleApplyDateFilter}
+              onClear={handleClearDateFilter}
+              loading={loggingOut}
+            />
           </div>
         </section>
 
-        <OrderList period={period} />
+        <OrderList
+          key={`${startDate}:${endDate}`}
+          startDate={startDate}
+          endDate={endDate}
+        />
       </div>
 
       {orderDialogOpen && !loggingOut && (
@@ -207,7 +251,7 @@ export default function CheckUserPage() {
           key="create-order-dialog"
           open={orderDialogOpen}
           fullName={fullName}
-          onClose={() => setOrderDialogOpen(false)}
+          onClose={handleCloseOrderDialog}
         />
       )}
     </main>
