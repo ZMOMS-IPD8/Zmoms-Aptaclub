@@ -16,6 +16,7 @@ export type OrderAppsScriptPayload = {
   bank: string;
   loaiDon: string;
   pancakeId: string;
+  orderDate: string;
   note?: string;
 };
 
@@ -51,7 +52,6 @@ function getErrorMessage(result: unknown): string {
   };
 
   const message = typeof data.message === "string" ? data.message.trim() : "";
-
   const status = typeof data.status === "string" ? data.status.trim() : "";
 
   return (
@@ -71,6 +71,7 @@ function validatePayload(payload: OrderAppsScriptPayload): void {
     ["bank", "Ngân hàng"],
     ["loaiDon", "Loại đơn"],
     ["pancakeId", "ID Pancake CRM"],
+    ["orderDate", "Thời gian lên đơn"],
   ];
 
   for (const [field, label] of requiredFields) {
@@ -91,6 +92,15 @@ function validatePayload(payload: OrderAppsScriptPayload): void {
 
   if (!["Tặng", "Bán"].includes(payload.loaiDon.trim())) {
     throw new Error("Loại đơn phải là Tặng hoặc Bán.");
+  }
+
+  const orderDate = payload.orderDate.trim();
+
+  if (
+    !Number.isFinite(Date.parse(orderDate)) ||
+    !/[zZ]|[+-]\d{2}:\d{2}$/.test(orderDate)
+  ) {
+    throw new Error("Thời gian lên đơn không hợp lệ.");
   }
 }
 
@@ -123,6 +133,7 @@ export async function submitOrderToAppsScript(
     bank: payload.bank.trim(),
     loaiDon: payload.loaiDon.trim(),
     pancakeId: payload.pancakeId.trim(),
+    orderDate: payload.orderDate.trim(),
     note:
       payload.registrationPhone.trim() !== payload.shippingPhone.trim()
         ? String(payload.note || "").trim()

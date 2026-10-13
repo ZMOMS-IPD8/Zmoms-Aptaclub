@@ -153,6 +153,7 @@ export function useOrder() {
       }
 
       const combinedSalesSource = `${salesSource} - ${note}`;
+      const orderDate = new Date().toISOString();
 
       submittingRef.current = true;
       setOrdering(true);
@@ -173,6 +174,7 @@ export function useOrder() {
             nguoiBan,
             salesSource: combinedSalesSource,
             bank,
+            orderDate,
           }),
         });
 

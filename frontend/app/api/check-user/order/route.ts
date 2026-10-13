@@ -12,6 +12,7 @@ type OrderBody = {
   nguoiBan?: string;
   salesSource?: string;
   bank?: string;
+  orderDate?: string;
 };
 
 type PancakeUpdateResponse = {
@@ -55,6 +56,16 @@ function normalizeText(value: unknown): string {
   return String(value ?? "").trim();
 }
 
+function isValidIsoDate(value: string): boolean {
+  if (!value || !/[zZ]|[+-]\d{2}:\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const timestamp = Date.parse(value);
+
+  return Number.isFinite(timestamp);
+}
+
 function jsonSuccess(data: Record<string, unknown>) {
   return NextResponse.json(data, {
     status: 200,
@@ -95,6 +106,7 @@ export async function POST(req: NextRequest) {
     const nguoiBan = normalizeText(body.nguoiBan);
     const salesSource = normalizeText(body.salesSource);
     const bank = normalizeText(body.bank);
+    const orderDate = normalizeText(body.orderDate);
 
     if (!/^0\d{9}$/.test(registrationPhone)) {
       return jsonError(
@@ -154,6 +166,14 @@ export async function POST(req: NextRequest) {
 
     if (!ALLOWED_BANKS.includes(bank)) {
       return jsonError(400, "INVALID_BANK", "Vui lòng chọn ngân hàng hợp lệ.");
+    }
+
+    if (!isValidIsoDate(orderDate)) {
+      return jsonError(
+        400,
+        "INVALID_ORDER_DATE",
+        "Thời gian lên đơn không hợp lệ. Vui lòng tải lại trang và thử lại.",
+      );
     }
 
     if (!process.env.PANCAKE_WORKSPACE_ID || !process.env.PANCAKE_CRM_API_KEY) {
@@ -221,7 +241,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const orderDate = new Date().toISOString();
     const loaiDon = bank === "Techcombank" ? "Tặng" : "Bán";
 
     const note =
@@ -271,6 +290,7 @@ export async function POST(req: NextRequest) {
           leadId,
           pancakeUpdated: false,
           sheetSaved: false,
+          orderDate,
         },
       );
     }
@@ -301,6 +321,7 @@ export async function POST(req: NextRequest) {
           leadId,
           pancakeUpdated: false,
           sheetSaved: false,
+          orderDate,
         },
       );
     }
@@ -315,6 +336,7 @@ export async function POST(req: NextRequest) {
           leadId,
           pancakeUpdated: false,
           sheetSaved: false,
+          orderDate,
         },
       );
     }
@@ -332,6 +354,7 @@ export async function POST(req: NextRequest) {
         bank,
         loaiDon,
         pancakeId: leadId,
+        orderDate,
         note,
       });
     } catch {
