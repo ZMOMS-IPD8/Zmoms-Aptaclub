@@ -130,9 +130,19 @@ export default function ProofImageSection({
         </label>
 
         <p className="mt-1.5 text-[12px] leading-5 text-[#777777]">
-          Chụp trực tiếp hình minh chứng. Hệ thống sẽ kiểm tra ảnh trước khi cho
-          phép đăng ký.
+          Vui lòng chụp một trong các loại hình ảnh minh chứng sau:
         </p>
+
+        <div className="mt-3 rounded-xl border border-[#F1D5E4] bg-white p-3">
+          <ol className="list-decimal space-y-2 pl-5 text-[12px] leading-5 text-[#606575]">
+            <li>Sổ khám thai hoặc tài liệu theo dõi thai kỳ.</li>
+            <li>Phiếu siêu âm thai hoặc hình ảnh siêu âm thai.</li>
+            <li>Sổ hoặc phiếu tiêm chủng.</li>
+            <li>Giấy khai sinh.</li>
+            <li>Ảnh chụp mẹ bầu lớn.</li>
+            <li>Ảnh chụp em bé thật.</li>
+          </ol>
+        </div>
       </div>
 
       <input
