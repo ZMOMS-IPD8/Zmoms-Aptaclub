@@ -1,9 +1,11 @@
 "use client";
 
+import { useState, type FormEvent } from "react";
 import { PROVINCES } from "../data/provinces";
 import ConsentSection from "./ConsentSection";
 import LegalInfo from "./LegalInfo";
 import RegistrationDialog from "./RegistrationDialog";
+import ProofImageSection from "./ProofImageSection";
 import { useRegistrationForm } from "../hooks/useRegistrationForm";
 
 export default function RegistrationForm() {
@@ -40,9 +42,27 @@ export default function RegistrationForm() {
     closeDialog,
   } = useRegistrationForm();
 
+  const [proofImage, setProofImage] = useState<File | null>(null);
+  const [isImageVerified, setIsImageVerified] = useState(false);
+
+  function handleProofImageChange(file: File | null) {
+    setProofImage(file);
+    setIsImageVerified(false);
+  }
+
+  async function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!proofImage || !isImageVerified || isSubmitting) {
+      return;
+    }
+
+    await handleSubmit(event);
+  }
+
   return (
     <>
-      <form onSubmit={handleSubmit} className="font-sans">
+      <form onSubmit={handleFormSubmit} className="font-sans">
         <div className="px-4 pt-6 text-center sm:px-8 sm:pt-8 lg:px-10">
           <h1 className="text-[22px] font-bold leading-8 text-[#EC068D] sm:text-[28px]">
             ĐĂNG KÝ HỘI VIÊN
@@ -81,6 +101,7 @@ export default function RegistrationForm() {
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Nhập họ và tên của mẹ"
                 autoComplete="name"
+                required
                 className="h-12 w-full rounded-xl border border-[#D9DCE3] bg-white px-4 font-sans text-[15px] text-[#222222] outline-none transition placeholder:text-[#999999] focus:border-[#EC068D] focus:ring-2 focus:ring-[#EC068D]/10 sm:h-14 sm:text-[16px]"
               />
             </div>
@@ -98,6 +119,7 @@ export default function RegistrationForm() {
                 placeholder="Nhập số điện thoại Zalo mẹ vừa nhập trong Zalo OA Zmoms"
                 inputMode="tel"
                 autoComplete="tel"
+                required
                 className="h-12 w-full rounded-xl border border-[#D9DCE3] bg-white px-4 font-sans text-[15px] text-[#222222] outline-none transition placeholder:text-[#999999] focus:border-[#EC068D] focus:ring-2 focus:ring-[#EC068D]/10 sm:h-14 sm:text-[16px]"
               />
             </div>
@@ -188,6 +210,13 @@ export default function RegistrationForm() {
             </div>
           </div>
 
+          <ProofImageSection
+            proofImage={proofImage}
+            setProofImage={handleProofImageChange}
+            isImageVerified={isImageVerified}
+            setIsImageVerified={setIsImageVerified}
+          />
+
           <LegalInfo />
 
           <ConsentSection
@@ -201,17 +230,19 @@ export default function RegistrationForm() {
             setConsentDanone={setConsentDanone}
           />
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={`mt-6 h-12 w-full rounded-xl font-sans text-[15px] font-bold text-white transition sm:mt-7 sm:h-14 sm:rounded-2xl sm:text-[16px] ${
-              isSubmitting
-                ? "cursor-not-allowed bg-[#D9D9D9]"
-                : "bg-[#EC068D] shadow-[0_5px_15px_rgba(236,6,141,0.2)] hover:bg-[#D9057F] active:scale-[0.99]"
-            }`}
-          >
-            {isSubmitting ? "ĐANG ĐĂNG KÝ..." : "ĐĂNG KÝ HỘI VIÊN"}
-          </button>
+          {isImageVerified && (
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`mt-6 h-12 w-full rounded-xl font-sans text-[15px] font-bold text-white transition sm:mt-7 sm:h-14 sm:rounded-2xl sm:text-[16px] ${
+                isSubmitting
+                  ? "cursor-not-allowed bg-[#D9D9D9]"
+                  : "bg-[#EC068D] shadow-[0_5px_15px_rgba(236,6,141,0.2)] hover:bg-[#D9057F] active:scale-[0.99]"
+              }`}
+            >
+              {isSubmitting ? "ĐANG ĐĂNG KÝ..." : "ĐĂNG KÝ HỘI VIÊN"}
+            </button>
+          )}
         </div>
       </form>
 
