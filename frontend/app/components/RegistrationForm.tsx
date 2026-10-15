@@ -57,7 +57,7 @@ export default function RegistrationForm() {
       return;
     }
 
-    await handleSubmit(event);
+    await handleSubmit(event, proofImage);
   }
 
   return (

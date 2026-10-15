@@ -201,10 +201,21 @@ export function useRegistrationForm() {
     return null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, proofImage: File) => {
     e.preventDefault();
 
     if (isSubmitting) {
+      return;
+    }
+
+    if (!(proofImage instanceof File) || proofImage.size === 0) {
+      setDialog({
+        open: true,
+        title: "Thiếu hình minh chứng",
+        message: "Vui lòng chụp và kiểm tra ảnh minh chứng trước khi đăng ký.",
+        status: "warning",
+      });
+
       return;
     }
 
@@ -240,6 +251,8 @@ export function useRegistrationForm() {
       formData.append("consentMarketing", String(data.consentMarketing));
       formData.append("consentDanone", String(data.consentDanone));
       formData.append("consentAptaclubZalo", String(data.consentAptaclubZalo));
+
+      formData.append("hinh_minh_chung", proofImage, proofImage.name);
 
       const response = await fetch("/api/pancake", {
         method: "POST",

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidRegistrationReferralCode } from "../../data/referralCodes";
 import referralEvents from "../../data/referralEvents.json";
+import { uploadProofImage } from "../../../lib/google-apps-script/uploadProofImage";
 
 type PancakeLead = {
   id?: string;
@@ -154,6 +155,16 @@ function getPancakeErrorMessage(
   return `Pancake CRM trả lỗi HTTP ${response.status}.`;
 }
 
+function isImageFile(value: FormDataEntryValue | null): value is File {
+  return (
+    value !== null &&
+    typeof value !== "string" &&
+    typeof value.size === "number" &&
+    typeof value.type === "string" &&
+    typeof value.arrayBuffer === "function"
+  );
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -183,6 +194,8 @@ export async function POST(req: NextRequest) {
     const consentDanone =
       String(formData.get("consentDanone") ?? "") === "true";
 
+    const proofImageEntry = formData.get("hinh_minh_chung");
+
     if (!fullName || !phone || !province || !babyDate) {
       return NextResponse.json(
         {
@@ -200,6 +213,46 @@ export async function POST(req: NextRequest) {
           success: false,
           status: "CONSENT_REQUIRED",
           message: "Vui lòng đồng ý đăng ký hội viên để tiếp tục.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!isImageFile(proofImageEntry) || proofImageEntry.size === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "PROOF_IMAGE_REQUIRED",
+          message: "Vui lòng chụp và gửi hình ảnh minh chứng.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const allowedImageTypes = new Set([
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+    ]);
+
+    if (!allowedImageTypes.has(proofImageEntry.type)) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "INVALID_IMAGE_TYPE",
+          message: "Ảnh phải có định dạng JPEG, PNG, WebP hoặc GIF.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (proofImageEntry.size > 10 * 1024 * 1024) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "IMAGE_TOO_LARGE",
+          message: "Dung lượng ảnh không được vượt quá 10 MB.",
         },
         { status: 400 },
       );
@@ -374,7 +427,6 @@ export async function POST(req: NextRequest) {
     }
 
     const lead = existingLeads[0];
-
     const existingContactName = getFieldValue(lead.ho_va_ten_lien_he);
 
     if (existingContactName) {
@@ -451,13 +503,75 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let uploadedImage: Awaited<ReturnType<typeof uploadProofImage>>;
+
+    try {
+      uploadedImage = await uploadProofImage({
+        image: proofImageEntry,
+        phone: cleanPhone,
+      });
+    } catch (error) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "IMAGE_UPLOAD_FAILED",
+          registrationUpdated: true,
+          message:
+            error instanceof Error
+              ? `Thông tin hội viên đã cập nhật nhưng ảnh chưa tải lên được: ${error.message}`
+              : "Thông tin hội viên đã cập nhật nhưng ảnh chưa tải lên được. Vui lòng liên hệ ZMoms để hỗ trợ.",
+          zaloUrl,
+        },
+        { status: 502 },
+      );
+    }
+
+    const imageUpdateResponse = await fetch(updateUrl, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: String(leadId),
+        hinh_minh_chung: uploadedImage.file_url,
+      }),
+    });
+
+    const imageUpdateResult = await parsePancakeResponse(imageUpdateResponse);
+
+    if (!imageUpdateResponse.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "IMAGE_LINK_UPDATE_FAILED",
+          registrationUpdated: true,
+          imageUploaded: true,
+          message:
+            "Thông tin hội viên đã cập nhật và ảnh đã tải lên Drive, nhưng chưa ghi được đường dẫn ảnh vào Pancake.",
+          zaloUrl,
+        },
+        { status: 502 },
+      );
+    }
+
     return NextResponse.json({
       success: true,
       status: "UPDATED",
-      message: "Thông tin của bạn đã được cập nhật thành công.",
+      message:
+        "Thông tin hội viên và hình minh chứng đã được cập nhật thành công.",
       eligibleForDanoneCRM,
       zaloUrl,
       pancake: updateResult,
+      proofImage: {
+        file_id: uploadedImage.file_id,
+        file_name: uploadedImage.file_name,
+        file_url: uploadedImage.file_url,
+        mime_type: uploadedImage.mime_type,
+        size: uploadedImage.size,
+        folder_id: uploadedImage.folder_id,
+      },
+      imagePancake: imageUpdateResult,
     });
   } catch (error) {
     return NextResponse.json(

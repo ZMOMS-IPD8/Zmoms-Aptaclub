@@ -1,15 +1,15 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
-const ALLOWED_IMAGE_TYPES = [
+const ALLOWED_IMAGE_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
   "image/gif",
-];
+]);
 
 type ProofImageSectionProps = {
   proofImage: File | null;
@@ -17,6 +17,31 @@ type ProofImageSectionProps = {
   isImageVerified: boolean;
   setIsImageVerified: (value: boolean) => void;
 };
+
+function ImagePreview({ file }: { file: File }) {
+  const imageRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    const url = URL.createObjectURL(file);
+    const image = imageRef.current;
+
+    if (image) {
+      image.src = url;
+    }
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [file]);
+
+  return (
+    <img
+      ref={imageRef}
+      alt="Ảnh minh chứng"
+      className="max-h-[360px] w-full object-contain"
+    />
+  );
+}
 
 export default function ProofImageSection({
   proofImage,
@@ -27,11 +52,6 @@ export default function ProofImageSection({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isCheckingImage, setIsCheckingImage] = useState(false);
   const [imageError, setImageError] = useState("");
-
-  const previewUrl = useMemo(
-    () => (proofImage ? URL.createObjectURL(proofImage) : ""),
-    [proofImage],
-  );
 
   function openCamera() {
     if (isCheckingImage) return;
@@ -53,7 +73,7 @@ export default function ProofImageSection({
     setIsImageVerified(false);
     setImageError("");
 
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
       setProofImage(null);
       setImageError("Ảnh phải có định dạng JPEG, PNG, WebP hoặc GIF.");
       event.target.value = "";
@@ -79,14 +99,26 @@ export default function ProofImageSection({
 
     try {
       const formData = new FormData();
-      formData.append("image", proofImage);
+      formData.append("image", proofImage, proofImage.name);
 
       const response = await fetch("/api/ai/check-image", {
         method: "POST",
         body: formData,
       });
 
-      const result = await response.json();
+      const responseText = await response.text();
+
+      let result: {
+        success?: boolean;
+        result?: string;
+        message?: string;
+      };
+
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        throw new Error("Phản hồi từ hệ thống không hợp lệ. Vui lòng thử lại.");
+      }
 
       if (!response.ok || result.success !== true) {
         setImageError(
@@ -103,9 +135,11 @@ export default function ProofImageSection({
       setImageError(
         "Hình không hợp lệ. Vui lòng chụp lại ảnh rõ ràng và đúng yêu cầu.",
       );
-    } catch {
+    } catch (error) {
       setImageError(
-        "Có lỗi khi kiểm tra ảnh. Vui lòng kiểm tra kết nối và thử lại.",
+        error instanceof Error
+          ? error.message
+          : "Có lỗi khi kiểm tra ảnh. Vui lòng kiểm tra kết nối và thử lại.",
       );
     } finally {
       setIsCheckingImage(false);
@@ -113,6 +147,8 @@ export default function ProofImageSection({
   }
 
   function handleRemoveImage() {
+    if (isCheckingImage) return;
+
     setProofImage(null);
     setIsImageVerified(false);
     setImageError("");
@@ -139,7 +175,7 @@ export default function ProofImageSection({
             <li>Phiếu siêu âm thai hoặc hình ảnh siêu âm thai.</li>
             <li>Sổ hoặc phiếu tiêm chủng.</li>
             <li>Giấy khai sinh.</li>
-            <li>Ảnh chụp mẹ bầu lớn.</li>
+            <li>Ảnh chụp mẹ bầu.</li>
             <li>Ảnh chụp em bé thật.</li>
           </ol>
         </div>
@@ -148,13 +184,14 @@ export default function ProofImageSection({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         capture="environment"
         hidden
         onChange={handleImageChange}
+        disabled={isCheckingImage}
       />
 
-      {previewUrl && proofImage ? (
+      {proofImage ? (
         <div className="mt-4 overflow-hidden rounded-xl border border-[#E8E8ED] bg-white p-3">
           <div className="flex items-center justify-between gap-2 pb-3">
             <span className="text-[12px] font-semibold text-[#27845D]">
@@ -165,11 +202,7 @@ export default function ProofImageSection({
           </div>
 
           <div className="flex min-h-40 items-center justify-center overflow-hidden rounded-lg bg-[#F7F7F9]">
-            <img
-              src={previewUrl}
-              alt="Ảnh minh chứng"
-              className="max-h-[360px] w-full object-contain"
-            />
+            <ImagePreview file={proofImage} />
           </div>
 
           <p className="mt-3 break-all text-[12px] text-[#777777]">
