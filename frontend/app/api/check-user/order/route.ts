@@ -356,13 +356,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (
-      !sheetResult ||
-      sheetResult.success !== true ||
-      typeof sheetResult.rowNumber !== "number" ||
-      !Number.isFinite(sheetResult.rowNumber) ||
-      sheetResult.rowNumber < 1
-    ) {
+    if (!sheetResult || sheetResult.success !== true) {
       return jsonError(
         502,
         "ORDER_SAVE_INCOMPLETE",
@@ -401,7 +395,7 @@ export async function POST(req: NextRequest) {
     return jsonError(
       500,
       "ORDER_FAILED",
-      "Chưa thể hoàn tất lên đơn hàng. Vui lòng kiểm tra trạng thái đơn trước khi thử lại.",
+      "Chưa thể hoàn tất lên đơn hàng. Vui lòng kiểm tra trạng thái đơn trước khi thực hiện lại.",
     );
   }
 }

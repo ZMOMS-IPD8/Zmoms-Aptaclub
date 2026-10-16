@@ -195,22 +195,19 @@ export async function submitOrderToAppsScript(
     throw new Error(getErrorMessage(data));
   }
 
-  if (
-    typeof data.rowNumber !== "number" ||
-    !Number.isFinite(data.rowNumber) ||
-    data.rowNumber < 1
-  ) {
-    throw new Error(
-      "Google Apps Script báo thành công nhưng không trả về số dòng hợp lệ.",
-    );
-  }
+  const rowNumber =
+    typeof data.rowNumber === "number" &&
+    Number.isFinite(data.rowNumber) &&
+    data.rowNumber >= 1
+      ? data.rowNumber
+      : undefined;
 
   return {
     success: true,
     status: data.status,
     message: data.message,
     orderId: data.orderId,
-    rowNumber: data.rowNumber,
+    rowNumber,
     orderDate: normalizedOrderDate,
   };
 }
