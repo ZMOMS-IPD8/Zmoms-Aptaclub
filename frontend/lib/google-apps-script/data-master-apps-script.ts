@@ -207,20 +207,15 @@ export async function submitDataMasterToAppsScript(
     throw new Error(getDataMasterErrorMessage(data));
   }
 
-  if (
-    typeof data.rowNumber !== "number" ||
-    !Number.isFinite(data.rowNumber) ||
-    data.rowNumber < 1
-  ) {
-    throw new Error(
-      "Google Apps Script báo thành công nhưng không trả về số dòng hợp lệ.",
-    );
-  }
-
   return {
     success: true,
     status: data.status,
     message: data.message,
-    rowNumber: data.rowNumber,
+    rowNumber:
+      typeof data.rowNumber === "number" &&
+      Number.isFinite(data.rowNumber) &&
+      data.rowNumber >= 1
+        ? data.rowNumber
+        : undefined,
   };
 }
