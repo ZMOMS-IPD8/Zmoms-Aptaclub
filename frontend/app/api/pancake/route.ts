@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isValidRegistrationReferralCode } from "../../data/referralCodes";
 import referralEvents from "../../data/referralEvents.json";
 import { uploadProofImage } from "../../../lib/google-apps-script/uploadProofImage";
+import { submitDataMasterToAppsScript } from "@/lib/google-apps-script/data-master-apps-script";
 
 type PancakeLead = {
   id?: string;
@@ -555,6 +556,41 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let dataMasterResult;
+
+    try {
+      dataMasterResult = await submitDataMasterToAppsScript({
+        pancakeId: String(leadId),
+        registeredAt: registrationTime,
+        fullName: cleanFullName,
+        phone: cleanPhone,
+        babyDate,
+        motherStatus: motherStatus || "",
+        province: cleanProvince,
+        memberConsent: consentMember ? "Có" : "Không",
+        aptamilPolicy: consentDanone ? "Có" : "Không",
+        notificationConsent: consentMarketing ? "Có" : "Không",
+        aptaclubConsent: consentAptaclub ? "Có" : "Không",
+        staffCode: finalReferralCode,
+        sourceCode: finalEventCode,
+      });
+    } catch (error) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "PANCAKE_SUCCESS_DATA_MASTER_FAILED",
+          registrationUpdated: true,
+          imageUploaded: true,
+          message:
+            error instanceof Error
+              ? `Pancake đã cập nhật thành công nhưng DATA_MASTER ghi thất bại: ${error.message}`
+              : "Pancake đã cập nhật thành công nhưng DATA_MASTER ghi thất bại.",
+          zaloUrl,
+        },
+        { status: 502 },
+      );
+    }
+
     return NextResponse.json({
       success: true,
       status: "UPDATED",
@@ -572,6 +608,7 @@ export async function POST(req: NextRequest) {
         folder_id: uploadedImage.folder_id,
       },
       imagePancake: imageUpdateResult,
+      dataMaster: dataMasterResult,
     });
   } catch (error) {
     return NextResponse.json(

@@ -16,7 +16,6 @@ export type OrderAppsScriptPayload = {
   salesSource: string;
   bank: string;
   loaiDon: string;
-  pancakeId: string;
   orderDate: string;
   note?: string;
 };
@@ -28,9 +27,7 @@ function normalizeText(value: unknown): string {
 function isValidIsoDate(value: string): boolean {
   const normalized = normalizeText(value);
 
-  if (!normalized) return false;
-
-  if (!/(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized)) {
+  if (!normalized || !/(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized)) {
     return false;
   }
 
@@ -59,7 +56,7 @@ function getErrorMessage(result: unknown): string {
     );
   }
 
-  if (!result || typeof result !== "object") {
+  if (!result || typeof result !== "object" || Array.isArray(result)) {
     return "Google Apps Script không trả về dữ liệu hợp lệ.";
   }
 
@@ -88,7 +85,6 @@ function validatePayload(payload: OrderAppsScriptPayload): void {
     ["salesSource", "Nguồn bán"],
     ["bank", "Ngân hàng"],
     ["loaiDon", "Loại đơn"],
-    ["pancakeId", "ID Pancake CRM"],
     ["orderDate", "Thời gian lên đơn"],
   ];
 
@@ -142,21 +138,21 @@ export async function submitOrderToAppsScript(
 
   const normalizedOrderDate = new Date(payload.orderDate.trim()).toISOString();
 
+  const registrationPhone = payload.registrationPhone.trim();
+  const shippingPhone = payload.shippingPhone.trim();
+
   const normalizedPayload: OrderAppsScriptPayload = {
-    registrationPhone: payload.registrationPhone.trim(),
+    registrationPhone,
     receiverName: payload.receiverName.trim(),
-    shippingPhone: payload.shippingPhone.trim(),
+    shippingPhone,
     shippingAddress: payload.shippingAddress.trim(),
     nguoiBan: payload.nguoiBan.trim(),
     salesSource: payload.salesSource.trim(),
     bank: payload.bank.trim(),
     loaiDon: payload.loaiDon.trim(),
-    pancakeId: payload.pancakeId.trim(),
     orderDate: normalizedOrderDate,
     note:
-      payload.registrationPhone.trim() !== payload.shippingPhone.trim()
-        ? normalizeText(payload.note)
-        : "",
+      registrationPhone !== shippingPhone ? normalizeText(payload.note) : "",
   };
 
   let response: Response;

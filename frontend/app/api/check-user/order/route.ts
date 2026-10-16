@@ -21,7 +21,7 @@ type PancakeUpdateResponse = {
   message?: string;
 };
 
-const ALLOWED_BANKS = ["Techcombank", "Vietcombank"];
+const ALLOWED_BANKS = ["Techcombank", "Vietcombank"] as const;
 
 function jsonError(
   status: number,
@@ -58,9 +58,9 @@ function normalizeText(value: unknown): string {
 function isValidIsoDate(value: string): boolean {
   if (!value) return false;
 
-  const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
-
-  if (!hasTimezone) return false;
+  if (!/(?:Z|[+-]\d{2}:\d{2})$/i.test(value)) {
+    return false;
+  }
 
   return Number.isFinite(Date.parse(value));
 }
@@ -113,11 +113,7 @@ export async function POST(req: NextRequest) {
     const shippingPhone = normalizePhone(body.shippingPhone);
     const shippingAddress = normalizeText(body.shippingAddress);
     const nguoiBan = normalizeText(body.nguoiBan);
-
-    // Giữ nguyên nguồn bán đã được hook gộp cùng ghi chú.
-    // Không kiểm tra danh sách nguồn và không tách chuỗi.
     const salesSource = normalizeText(body.salesSource);
-
     const bank = normalizeText(body.bank);
     const orderDate = resolveOrderDate(body.orderDate);
 
@@ -161,7 +157,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!ALLOWED_BANKS.includes(bank)) {
+    if (!ALLOWED_BANKS.includes(bank as (typeof ALLOWED_BANKS)[number])) {
       return jsonError(400, "INVALID_BANK", "Vui lòng chọn ngân hàng hợp lệ.");
     }
 
@@ -342,7 +338,6 @@ export async function POST(req: NextRequest) {
         salesSource,
         bank,
         loaiDon,
-        pancakeId: leadId,
         orderDate,
         note,
       });
@@ -350,7 +345,7 @@ export async function POST(req: NextRequest) {
       return jsonError(
         502,
         "ORDER_SAVE_INCOMPLETE",
-        "Thông tin đơn hàng chưa được lưu hoàn tất. Vui lòng kiểm tra trạng thái đơn trước khi thực hiện lại.",
+        "Pancake CRM đã được cập nhật nhưng chưa xác nhận lưu thành công vào Google Sheets. Vui lòng kiểm tra trạng thái trước khi thực hiện lại.",
         {
           leadFound: true,
           leadId,
@@ -364,12 +359,14 @@ export async function POST(req: NextRequest) {
     if (
       !sheetResult ||
       sheetResult.success !== true ||
-      typeof sheetResult.rowNumber !== "number"
+      typeof sheetResult.rowNumber !== "number" ||
+      !Number.isFinite(sheetResult.rowNumber) ||
+      sheetResult.rowNumber < 1
     ) {
       return jsonError(
         502,
         "ORDER_SAVE_INCOMPLETE",
-        "Thông tin đơn hàng chưa được lưu hoàn tất. Vui lòng kiểm tra trạng thái đơn trước khi thực hiện lại.",
+        "Pancake CRM đã được cập nhật nhưng chưa xác nhận lưu thành công vào Google Sheets. Vui lòng kiểm tra trạng thái trước khi thực hiện lại.",
         {
           leadFound: true,
           leadId,
