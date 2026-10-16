@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isValidPurchaseReferralCode } from "../../data/referralCodes";
+import { isValidPurchaseReferralCode } from "@/lib/referral-codes";
 import { checkMemberByPhone } from "../../lib/pancake/member";
 
 const REFERRAL_DISCOUNT = 300000;

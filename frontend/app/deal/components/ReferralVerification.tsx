@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { isValidPurchaseReferralCode } from "../../data/referralCodes";
+import { isValidPurchaseReferralCode } from "@/lib/referral-codes";
 
 type Props = {
   onVerified: (

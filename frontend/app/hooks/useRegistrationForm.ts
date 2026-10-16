@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import type { RegistrationData } from "../types/registration";
-import { isValidRegistrationReferralCode } from "../data/referralCodes";
-import referralEvents from "../data/referralEvents.json";
+import {
+  isValidRegistrationReferralCode,
+  getRegistrationReferralMapping,
+} from "@/lib/referral-codes";
 
 export type RegistrationDialogState = {
   open: boolean;
@@ -20,9 +22,7 @@ function getEventCodes(referralCode: string): string[] {
     return [];
   }
 
-  const events = referralEvents as Record<string, string[]>;
-
-  return Array.isArray(events[normalizedCode]) ? events[normalizedCode] : [];
+  return getRegistrationReferralMapping(normalizedCode);
 }
 
 export function useRegistrationForm() {
@@ -331,7 +331,7 @@ export function useRegistrationForm() {
           title: "Thông tin chưa phù hợp",
           message:
             result?.message ||
-            "Thông tin ngày dự sinh hoặc ngày sinh của bé chưa phù hợp để đăng ký.",
+            "Thông tin ngày dự sinh hoặc ngày sinh của bé chưa phù hợp.",
           status: "warning",
         });
 

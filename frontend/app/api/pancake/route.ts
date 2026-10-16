@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isValidRegistrationReferralCode } from "../../data/referralCodes";
-import referralEvents from "../../data/referralEvents.json";
+import {
+  isValidRegistrationReferralCode,
+  getRegistrationReferralMapping,
+} from "@/lib/referral-codes";
 import { uploadProofImage } from "../../../lib/google-apps-script/uploadProofImage";
 import { submitDataMasterToAppsScript } from "@/lib/google-apps-script/data-master-apps-script";
 
@@ -45,13 +47,12 @@ function getFieldValue(value: unknown): string {
 
 function getEventCodes(referralCode: string): string[] {
   const normalizedCode = referralCode.trim().toUpperCase();
-  const events = referralEvents as Record<string, string[]>;
 
   if (!normalizedCode) {
     return [];
   }
 
-  return Array.isArray(events[normalizedCode]) ? events[normalizedCode] : [];
+  return getRegistrationReferralMapping(normalizedCode);
 }
 
 function parseDate(value: string): Date | null {
