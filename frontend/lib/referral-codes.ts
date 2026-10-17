@@ -20,6 +20,7 @@ export const REGISTRATION_REFERRAL_MAPPING: Record<string, string[]> = {
   "Z-04": ["SD"],
   "Z-05": ["SD"],
   "Z-06": ["SD"],
+  "Z-07": ["E-PSHD"],
   "Z-GREEN": ["B-GR"],
   "Z-HMN": ["SD"],
   "Z-MEDUA": ["SD"],
