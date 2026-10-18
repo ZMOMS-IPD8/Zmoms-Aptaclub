@@ -26,7 +26,14 @@ type OrderFormProps = {
   ) => void | Promise<void>;
 };
 
-const SALES_SOURCES = ["SPA", "Tiêm Chủng", "Nữ Hộ Sinh", "Co-Edu", "Event"];
+const SALES_SOURCES = [
+  "SPA",
+  "Tiêm Chủng",
+  "Nữ Hộ Sinh",
+  "CoEdu",
+  "Event",
+  "CoLead",
+];
 
 const BANKS = ["Techcombank", "Vietcombank"];
 
