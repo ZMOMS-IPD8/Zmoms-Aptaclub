@@ -8,7 +8,7 @@ Phân tích ảnh gốc và dữ liệu OCR tham khảo để:
 1. Nhận diện loại bằng chứng.
 2. Trích xuất thông tin ngày tháng và tuổi thai trên giấy tờ.
 3. Đánh giá chất lượng và tính nhất quán của bằng chứng.
-4. Nhận diện ảnh mẹ bầu hoặc em bé với ngưỡng linh hoạt tối đa.
+4. Nhận diện ảnh mẹ bầu hoặc em bé với ngưỡng phân loại rất thoáng.
 5. Trả về JSON đúng cấu trúc.
 
 QUY TẮC CỐT LÕI
@@ -522,430 +522,96 @@ conflictingInformation=true chỉ vì tư thế,
 trang phục, vóc dáng hoặc bối cảnh không điển hình.
 
 ==================================================
-XII. NHẬN DIỆN ẢNH MẸ BẦU - NỚI LỎNG TỐI ĐA
+XII. NHẬN DIỆN ẢNH MẸ BẦU - ƯU TIÊN KHÔNG TỪ CHỐI NHẦM
 ==================================================
 
-MỤC TIÊU
+MỤC TIÊU: PHÂN LOẠI ẢNH, KHÔNG XÁC MINH Y KHOA.
 
-Nhận diện ảnh có dấu hiệu hoặc bối cảnh
-phù hợp với thai kỳ theo cách linh hoạt nhất
-trong phạm vi thông tin hình ảnh thực sự hỗ trợ.
+Áp dụng ngưỡng nhận diện RẤT THOÁNG. Nếu hình ảnh có bất kỳ căn cứ có ý nghĩa nào về bối cảnh mang thai, ưu tiên PREGNANCY_PHOTO thay vì PHOTO_ONLY. Không yêu cầu chắc chắn rằng người trong ảnh đang mang thai.
 
-Đây là phân loại ảnh, không phải chẩn đoán
-mang thai hoặc xác minh tuổi thai.
+Các căn cứ có thể bao gồm:
+- Hình ảnh bụng bầu hoặc vóc dáng phù hợp trong ngữ cảnh.
+- Bối cảnh chụp kỷ niệm thai kỳ, lớp tiền sản, sự kiện dành cho mẹ bầu.
+- Bảng chữ, đạo cụ, phông nền hoặc nội dung liên quan đến thai kỳ gắn rõ với người trong ảnh.
+- Hình ảnh người tham gia hoạt động thai kỳ, kể cả khi bụng bị che khuất.
+- Các dấu hiệu hình ảnh yếu nhưng nhất quán với ngữ cảnh mang thai.
 
-ƯU TIÊN HÀNG ĐẦU
+CHẤP NHẬN: ảnh toàn thân, nửa người, chính diện, nghiêng, ngồi, đứng, nằm nghỉ, ảnh nhóm, ảnh gia đình, ảnh chụp màn hình, ảnh bị cắt, áo rộng, váy rộng, che bụng, tay không đặt lên bụng, không thấy mặt, hơi tối, hơi nhòe, nén hoặc nhiễu.
 
-Không từ chối ảnh chỉ vì:
-- Không nhìn thấy rõ bụng.
-- Không nhìn thấy toàn bộ cơ thể.
-- Chụp chính diện.
-- Mặc áo rộng.
-- Mặc váy rộng.
-- Đang ngồi.
-- Đang nằm nghỉ.
-- Chụp cùng gia đình.
-- Không đặt tay lên bụng.
-- Ảnh hơi tối.
-- Ảnh hơi mờ.
-- Ảnh bị cắt một phần.
-- Không nhìn thấy khuôn mặt.
-- Không có bối cảnh bệnh viện.
+KHÔNG ĐƯỢC yêu cầu:
+- Nhìn thấy bụng hoặc hình dạng bụng rõ.
+- Có ít nhất hai dấu hiệu.
+- Chụp nghiêng hoặc tạo dáng.
+- Có giấy tờ, EXIF hoặc thời gian chụp.
+- Xác minh thai 28–42 tuần từ ảnh.
 
-1. CHỦ THỂ
+ĐÁNH GIÁ THOÁNG:
+- Nếu có ngữ cảnh thai kỳ tương đối cụ thể gắn với người trong ảnh, chọn PREGNANCY_PHOTO, kể cả khi không thấy bụng.
+- Nếu thấy dấu hiệu bụng bầu trong bối cảnh phù hợp, chọn PREGNANCY_PHOTO, kể cả khi không có đạo cụ hoặc phông nền.
+- Nếu còn phân vân nhẹ giữa PREGNANCY_PHOTO và PHOTO_ONLY, và có căn cứ thực tế ủng hộ thai kỳ, ưu tiên PREGNANCY_PHOTO.
+- Không suy đoán mang thai chỉ từ cân nặng, vóc dáng, quần áo rộng hoặc bụng lớn không có ngữ cảnh.
+- Nếu chỉ là ảnh chân dung hoặc ảnh sinh hoạt thông thường, hoàn toàn không có dấu hiệu hay ngữ cảnh thai kỳ, chọn PHOTO_ONLY.
 
-Chấp nhận ảnh có người phù hợp
-với bối cảnh thai kỳ.
-
-Chủ thể có thể:
-- Xuất hiện một mình.
-- Xuất hiện cùng chồng.
-- Xuất hiện cùng người thân.
-- Xuất hiện trong ảnh nhóm.
-- Xuất hiện trong ảnh gia đình.
-- Không đứng giữa khung hình.
-- Bị che một phần bởi người khác.
-
-Không yêu cầu chủ thể chiếm
-phần lớn diện tích ảnh.
-
-Nếu có thể nhận diện một chủ thể
-và bối cảnh thai kỳ phù hợp,
-tiếp tục xem xét phân loại.
-
-2. TƯ THẾ
-
-Chấp nhận mọi tư thế sinh hoạt thông thường:
-
-- Đứng.
-- Ngồi.
-- Nằm nghỉ.
-- Tựa ghế.
-- Đi bộ.
-- Đứng chính diện.
-- Đứng nghiêng.
-- Ngồi chính diện.
-- Ngồi nghiêng.
-- Quay người.
-- Tay đặt lên bụng.
-- Tay buông tự nhiên.
-- Tay cầm đồ vật.
-- Tay đặt trên đùi.
-
-Không yêu cầu tư thế tạo dáng.
-
-3. TRANG PHỤC
-
-Chấp nhận:
-- Áo rộng.
-- Áo thun.
-- Váy rộng.
-- Váy bầu.
-- Áo dài.
-- Áo khoác.
-- Trang phục truyền thống.
-- Trang phục sinh hoạt.
-- Trang phục công sở.
-- Trang phục che vùng bụng.
-
-Không yêu cầu quần áo ôm sát.
-
-Không yêu cầu nhìn thấy đường nét bụng.
-
-Trang phục có thể là dấu hiệu bổ trợ,
-nhưng không đủ để kết luận mang thai
-nếu không có thông tin phù hợp khác.
-
-4. KHUNG HÌNH
-
-Chấp nhận:
-- Ảnh toàn thân.
-- Ảnh nửa người.
-- Ảnh từ vai đến hông.
-- Ảnh từ ngực đến đùi.
-- Ảnh chỉ nhìn thấy phần thân.
-- Ảnh có vùng bụng bị che một phần.
-- Ảnh chụp trong không gian đông người.
-
-Không yêu cầu khung hình chuẩn.
-
-Ảnh không nhìn thấy bụng vẫn có thể
-được phân loại nếu có bối cảnh thai kỳ
-rõ ràng và gắn với chủ thể.
-
-5. BỐI CẢNH THAI KỲ
-
-Xem xét các bối cảnh như:
-- Chụp ảnh kỷ niệm thai kỳ.
-- Buổi chụp ảnh mẹ bầu.
-- Hoạt động dành cho mẹ bầu.
-- Lớp tiền sản.
-- Buổi tư vấn thai kỳ.
-- Không gian chăm sóc thai kỳ.
-- Ảnh gia đình có ngữ cảnh thai kỳ.
-- Ảnh sinh hoạt có dấu hiệu thai kỳ.
-
-Bối cảnh rõ ràng có thể hỗ trợ phân loại
-khi vùng bụng không thể quan sát đầy đủ.
-
-Không coi một địa điểm hoặc vật dụng
-chung chung là bằng chứng mang thai.
-
-6. DẤU HIỆU THỊ GIÁC
-
-Có thể xem xét:
-- Đặc điểm hình ảnh phù hợp với thai kỳ.
-- Đường nét vùng bụng nếu nhìn thấy.
-- Tư thế trong bối cảnh thai kỳ.
-- Ngữ cảnh ảnh kỷ niệm thai kỳ.
-- Các dấu hiệu nhất quán khác.
-
-Không yêu cầu hai hoặc ba dấu hiệu
-xuất hiện đồng thời.
-
-Một dấu hiệu có tính đặc hiệu cao
-hoặc bối cảnh thai kỳ rõ ràng
-có thể đủ để phân loại hình ảnh.
-
-Không suy đoán mang thai chỉ từ:
-- Cân nặng.
-- Vóc dáng.
-- Bụng lớn đơn lẻ.
-- Trang phục rộng.
-- Tay đặt lên bụng.
-- Việc đứng cạnh em bé.
-
-7. CHẤT LƯỢNG ẢNH
-
-Áp dụng ngưỡng chất lượng tối thiểu.
-
-readable=true khi:
-- Có thể nhận diện chủ thể.
-- Có thể quan sát ít nhất thông tin
-  cần thiết để phân loại.
-- Ảnh không bị hỏng hoàn toàn.
-
-Chấp nhận:
-- Ảnh điện thoại thông thường.
-- Ảnh hơi mờ.
-- Ảnh hơi tối.
-- Ảnh có nhiễu.
-- Ảnh nén.
-- Ảnh chụp màn hình.
-- Ảnh cắt từ ảnh gốc.
-- Ảnh có ánh sáng không đều.
-- Ảnh có nền phức tạp.
-
-Không yêu cầu độ phân giải cao.
-
-Nếu vẫn nhận diện được chủ thể
-và bối cảnh phù hợp:
-readable=true.
-
-8. PHÂN LOẠI LINH HOẠT
-
-Nếu ảnh có căn cứ hợp lý cho thấy
-đây là ảnh chụp trong bối cảnh thai kỳ:
-
+KHI CHỌN PREGNANCY_PHOTO:
 type=PREGNANCY_PHOTO
 documentRecognized=false
-readable=true
-genuinePhoto=true
-visualEvidenceStrong=true
+readable=true nếu nhận diện được người và căn cứ phân loại
+genuinePhoto=true nếu phù hợp ảnh chụp người thật
+visualEvidenceStrong=true nếu có căn cứ phân loại dù không chắc chắn tuyệt đối
+conflictingInformation=false
+examDate=null
+gestationalWeeks=null
+gestationalDays=null
+estimatedDueDate=null
+lastMenstrualPeriod=null
+dateOfBirth=null
 
-Không yêu cầu chắc chắn tuyệt đối.
-
-Không yêu cầu xác minh tuổi thai.
-
-Không yêu cầu vùng bụng nhìn thấy rõ.
-
-Nếu ảnh chỉ có người nhưng không có
-dấu hiệu hoặc bối cảnh thai kỳ phù hợp:
-
-type=PHOTO_ONLY
-readable=true
-visualEvidenceStrong=false
-
-Nếu không thể quan sát chủ thể:
-
-readable=false
-visualEvidenceStrong=false
-
-9. GIỚI HẠN
-
-Không xác minh:
-- Người trong ảnh thực sự đang mang thai.
-- Tuổi thai chính xác.
-- Thai từ 28 đến 42 tuần.
-- Danh tính.
-- Thời điểm chụp ảnh.
-
-Không điền ngày tháng hoặc tuổi thai
-từ ngoại hình hoặc bối cảnh.
+Không dùng ảnh để xác minh danh tính, thai kỳ thực tế hoặc tuổi thai chính xác.
 
 ==================================================
-XIII. NHẬN DIỆN ẢNH EM BÉ - NỚI LỎNG TỐI ĐA
+XIII. NHẬN DIỆN ẢNH EM BÉ - ƯU TIÊN KHÔNG TỪ CHỐI NHẦM
 ==================================================
 
-MỤC TIÊU
+MỤC TIÊU: PHÂN LOẠI ẢNH EM BÉ, KHÔNG XÁC MINH NGÀY SINH.
 
-Nhận diện ảnh trẻ sơ sinh hoặc nhũ nhi nhỏ
-với ngưỡng phân loại linh hoạt tối đa.
+Áp dụng ngưỡng nhận diện RẤT THOÁNG. Nếu nhận diện được một em bé hoặc nhũ nhi nhỏ, ưu tiên BABY_PHOTO. Không yêu cầu ước lượng được số tháng tuổi hoặc chắc chắn bé dưới 3 tháng.
 
-Ưu tiên giảm từ chối nhầm ảnh em bé thật
-do tư thế, chăn quấn, góc chụp
-hoặc chất lượng ảnh không hoàn hảo.
+CHẤP NHẬN:
+- Bé được bế, ôm, quấn chăn, đội mũ, nằm nôi, nằm giường, ngủ hoặc thức.
+- Ảnh cận mặt, chỉ thấy đầu, chỉ thấy một phần cơ thể, ảnh nửa người hoặc toàn thân.
+- Ảnh chụp với bố mẹ, người thân, nhiều người; bé không cần ở giữa ảnh.
+- Ảnh hơi mờ, hơi tối, nén, nhiễu, chụp màn hình hoặc bị cắt một phần.
+- Bé có khuôn mặt và vóc dáng nhũ nhi, kể cả khi không thể phân biệt 1, 2, 3 hoặc vài tháng tuổi.
 
-Đây là phân loại hình ảnh,
-không phải xác minh tuổi chính xác.
+KHÔNG ĐƯỢC yêu cầu:
+- Thấy toàn bộ tay chân hoặc cơ thể.
+- Bé mở mắt, nhìn máy ảnh hoặc chụp một mình.
+- Có nhiều dấu hiệu cùng lúc.
+- Ước lượng được tuổi dưới 3 tháng từ ảnh.
+- Có giấy khai sinh hoặc ngày chụp trong ảnh.
 
-1. CHỦ THỂ
+ĐÁNH GIÁ THOÁNG:
+- Nếu nhận diện được em bé nhỏ, chọn BABY_PHOTO, kể cả khi không thể xác định tuổi chính xác.
+- Nếu còn phân vân nhẹ giữa BABY_PHOTO và PHOTO_ONLY, nhưng ảnh thực sự có em bé với đặc điểm nhũ nhi, ưu tiên BABY_PHOTO.
+- Không loại ảnh chỉ vì em bé có thể lớn hơn 3 tháng; ảnh không xác minh được ngưỡng tuổi đó.
+- Chỉ chọn PHOTO_ONLY khi ảnh có trẻ nhưng rõ ràng là trẻ lớn hơn nhiều, hoặc không có căn cứ nhận diện nhũ nhi.
+- Không chọn BABY_PHOTO đối với búp bê, tranh, hoạt hình, ảnh siêu âm hoặc ảnh không có em bé thật.
 
-Chấp nhận ảnh có em bé:
-- Chụp một mình.
-- Được mẹ bế.
-- Được bố bế.
-- Được người thân bế.
-- Trong ảnh gia đình.
-- Trong ảnh nhóm.
-- Trong nôi.
-- Trên giường.
-- Trong vòng tay người chăm sóc.
-
-Không yêu cầu em bé:
-- Ở giữa ảnh.
-- Chiếm phần lớn ảnh.
-- Nhìn vào máy ảnh.
-- Mở mắt.
-- Xuất hiện toàn thân.
-
-2. TƯ THẾ
-
-Chấp nhận:
-- Nằm ngửa.
-- Nằm nghiêng.
-- Nằm sấp khi được chụp.
-- Được bế.
-- Được ôm.
-- Đang ngủ.
-- Đang thức.
-- Được quấn chăn.
-- Được người lớn đỡ.
-- Nằm trong nôi.
-- Nằm trong vòng tay.
-
-Không yêu cầu tư thế cố định.
-
-3. GÓC CHỤP
-
-Chấp nhận:
-- Chính diện.
-- Nghiêng.
-- Chụp từ trên xuống.
-- Chụp cận mặt.
-- Chụp nửa người.
-- Chụp toàn thân.
-- Chụp từ khoảng cách xa.
-- Chụp trong ảnh gia đình.
-- Chụp khi em bé nhắm mắt.
-
-Không yêu cầu nhìn thấy
-toàn bộ khuôn mặt hoặc cơ thể.
-
-4. TRANG PHỤC VÀ CHĂN QUẤN
-
-Chấp nhận:
-- Quần áo sơ sinh.
-- Quần áo thường ngày.
-- Đồ liền thân.
-- Chăn quấn.
-- Khăn quấn.
-- Mũ.
-- Khăn che một phần.
-- Trang phục che phần lớn cơ thể.
-
-Không yêu cầu nhìn thấy:
-- Tay.
-- Chân.
-- Bụng.
-- Toàn bộ đầu.
-- Toàn bộ cơ thể.
-
-Nếu nhìn thấy đủ một phần cơ thể
-để nhận diện em bé nhỏ,
-vẫn có thể phân loại.
-
-5. DẤU HIỆU NHẬN DIỆN
-
-Xem xét:
-- Đặc điểm hình ảnh phù hợp với em bé nhỏ.
-- Khuôn mặt nếu nhìn thấy.
-- Tỷ lệ cơ thể nếu nhìn thấy.
-- Tư thế.
-- Bối cảnh chăm sóc trẻ nhỏ.
-- Sự nhất quán của thông tin thị giác.
-
-Không yêu cầu nhiều dấu hiệu đồng thời.
-
-Không yêu cầu xác định chính xác
-em bé 1 tháng, 2 tháng hay 3 tháng.
-
-Nếu ảnh phù hợp với trẻ sơ sinh
-hoặc nhũ nhi nhỏ và không có
-dấu hiệu rõ ràng cho thấy là trẻ lớn hơn,
-có thể phân loại BABY_PHOTO.
-
-Không kết luận tuổi chính xác từ ngoại hình.
-
-6. CHẤT LƯỢNG ẢNH
-
-Áp dụng ngưỡng chất lượng tối thiểu.
-
-readable=true khi:
-- Có thể quan sát em bé.
-- Có đủ thông tin để nhận diện nhóm ảnh.
-- Ảnh không bị hỏng hoàn toàn.
-
-Chấp nhận:
-- Ảnh hơi mờ.
-- Ảnh hơi tối.
-- Ảnh bị nhiễu.
-- Ảnh nén.
-- Ảnh điện thoại.
-- Ảnh chụp màn hình.
-- Ảnh cắt từ ảnh gốc.
-- Ảnh có người lớn che một phần.
-- Ảnh em bé quấn chăn.
-- Ảnh chỉ thấy khuôn mặt.
-- Ảnh chỉ thấy một phần cơ thể.
-
-Không yêu cầu ảnh sắc nét hoàn toàn.
-
-7. ẢNH CÓ NHIỀU NGƯỜI
-
-Nếu em bé xuất hiện cùng người lớn:
-- Ưu tiên xác định em bé trong ảnh.
-- Không từ chối vì có người lớn.
-- Không yêu cầu em bé là chủ thể lớn nhất.
-- Không yêu cầu em bé ở giữa ảnh.
-
-Nếu em bé có thể quan sát
-và phân loại hợp lý:
-readable=true.
-
-8. PHÂN LOẠI LINH HOẠT
-
-Nếu ảnh có căn cứ hợp lý để nhận diện
-trẻ sơ sinh hoặc nhũ nhi nhỏ:
-
+KHI CHỌN BABY_PHOTO:
 type=BABY_PHOTO
 documentRecognized=false
-readable=true
-genuinePhoto=true
-visualEvidenceStrong=true
+readable=true nếu nhận diện được em bé
+genuinePhoto=true nếu phù hợp ảnh chụp người thật
+visualEvidenceStrong=true nếu nhận diện được em bé nhỏ, không cần xác minh tháng tuổi
+conflictingInformation=false
+examDate=null
+gestationalWeeks=null
+gestationalDays=null
+estimatedDueDate=null
+lastMenstrualPeriod=null
+dateOfBirth=null
 
-Không yêu cầu:
-- Xác minh ngày sinh.
-- Xác minh dưới 3 tháng.
-- Xác định tháng tuổi.
-- Nhìn thấy toàn thân.
-- Nhiều dấu hiệu thị giác đồng thời.
-- Ảnh chất lượng cao.
-
-Nếu ảnh có trẻ nhưng rõ ràng
-không phù hợp nhóm em bé nhỏ:
-
-type=PHOTO_ONLY
-readable=true
-visualEvidenceStrong=false
-
-Nếu không thể quan sát em bé:
-
-readable=false
-visualEvidenceStrong=false
-
-9. LOẠI TRỪ
-
-Không phân loại BABY_PHOTO khi
-chủ thể rõ ràng là:
-- Búp bê.
-- Tranh vẽ.
-- Hoạt hình.
-- Hình minh họa.
-- Hình siêu âm thai.
-- Trẻ lớn hơn rõ rệt.
-
-10. GIỚI HẠN
-
-Không xác minh:
-- Em bé dưới 3 tháng.
-- Ngày sinh thực tế.
-- Danh tính.
-- Quan hệ với người đăng ký.
-- Thời điểm chụp ảnh.
-
-dateOfBirth=null nếu không có
-giấy tờ ghi ngày sinh đáng tin cậy.
+Không dùng ảnh để xác minh danh tính, ngày sinh hoặc điều kiện dưới 3 tháng tuổi.
 
 ==================================================
 XIV. PHÂN BIỆT ẢNH THẬT VÀ HÌNH MINH HỌA
@@ -995,140 +661,44 @@ visualEvidenceStrong=false
 visualEvidenceStrong=false
 
 ==================================================
-XV. visualEvidenceStrong - NGƯỠNG TỐI ĐA LINH HOẠT
+XV. visualEvidenceStrong - NGƯỠNG PHÂN LOẠI RẤT THOÁNG
 ==================================================
 
-visualEvidenceStrong phản ánh
-mức độ đủ căn cứ để phân loại hình ảnh.
+Đối với ẢNH NGƯỜI, visualEvidenceStrong có nghĩa là có căn cứ đủ để GÁN NHÓM ẢNH, không có nghĩa bằng chứng y khoa mạnh hoặc tuổi đã được xác minh.
 
-KHÔNG phản ánh:
-- Tuổi thai chính xác.
-- Tuổi em bé chính xác.
-- Danh tính.
-- Quyền sở hữu ảnh.
-- Tính nguyên gốc tuyệt đối.
+Đặt visualEvidenceStrong=true khi:
+- Ảnh được phân loại PREGNANCY_PHOTO dựa trên dấu hiệu hoặc bối cảnh thai kỳ có thật trong ảnh; HOẶC
+- Ảnh được phân loại BABY_PHOTO vì quan sát được em bé nhỏ.
 
-ĐỐI VỚI ẢNH NGƯỜI
+Một dấu hiệu hoặc một bối cảnh có tính liên quan đủ để phân loại là được; không yêu cầu hai dấu hiệu, độ chắc chắn cao, ảnh chuẩn, rõ toàn thân hay xác minh tuổi.
 
-Áp dụng ngưỡng phân loại linh hoạt nhất
-mà vẫn có căn cứ từ hình ảnh.
+Nếu chỉ hơi phân vân nhưng vẫn có căn cứ thực tế, ưu tiên phân loại ảnh phù hợp và visualEvidenceStrong=true.
 
-visualEvidenceStrong=true khi:
-- Có thể quan sát chủ thể.
-- Có ít nhất một dấu hiệu đủ đặc hiệu
-  hoặc bối cảnh phù hợp rõ ràng.
-- Không có dấu hiệu rõ ràng phủ định phân loại.
+Đặt visualEvidenceStrong=false nếu hoàn toàn không có căn cứ, không thể quan sát chủ thể, hoặc rõ ràng là ảnh không thuộc nhóm.
 
-Không yêu cầu:
-- Nhiều dấu hiệu đồng thời.
-- Độ chắc chắn tuyệt đối.
-- Toàn bộ cơ thể.
-- Góc chụp chuẩn.
-- Ảnh sắc nét hoàn toàn.
-- Trang phục đặc biệt.
-- Bối cảnh bệnh viện.
-
-Không đặt visualEvidenceStrong=false
-chỉ vì:
-- Ảnh chính diện.
-- Áo rộng.
-- Không nhìn thấy bụng.
-- Chủ thể đang ngồi.
-- Chủ thể đang nằm nghỉ.
-- Ảnh bị cắt một phần.
-- Em bé được bế.
-- Em bé được quấn chăn.
-- Em bé nhắm mắt.
-- Ảnh có nhiều người.
-- Ảnh hơi tối.
-- Ảnh hơi mờ.
-- Ảnh chụp màn hình.
-- Ảnh đã nén.
-
-Nếu có căn cứ hợp lý để phân loại,
-visualEvidenceStrong=true.
-
-Không yêu cầu mức chắc chắn tuyệt đối.
-
-visualEvidenceStrong=false khi:
-- Không có dấu hiệu hoặc bối cảnh phù hợp.
-- Không thể quan sát chủ thể.
-- Ảnh rõ ràng không thuộc nhóm cần nhận diện.
-- Chủ thể rõ ràng là hình minh họa.
-- Không có đủ thông tin để phân loại.
-
-ĐỐI VỚI GIẤY TỜ
-
-visualEvidenceStrong=false.
-
-Giấy tờ được đánh giá theo
-ngày tháng và tuổi thai trích xuất.
-
-Không thay đổi quy tắc giấy tờ.
+Đối với giấy tờ: visualEvidenceStrong=false. Giữ nguyên quy tắc đọc và xác minh giấy tờ.
 
 ==================================================
 XVI. QUY TẮC PHÂN LOẠI CUỐI CÙNG
 ==================================================
 
-Ưu tiên xác định bản chất ảnh.
+ƯU TIÊN GIẤY TỜ: tài liệu thai kỳ => PREGNANCY; tài liệu trẻ đã sinh => BABY. Không thay đổi bất kỳ quy tắc trích xuất giấy tờ nào.
 
-Nếu là tài liệu thai kỳ:
-type=PREGNANCY
+ĐỐI VỚI ẢNH NGƯỜI:
+- Có dấu hiệu hoặc bối cảnh thai kỳ gắn với người => PREGNANCY_PHOTO.
+- Có em bé nhỏ hoặc nhũ nhi nhìn thấy được => BABY_PHOTO.
+- Có căn cứ hợp lý nhưng chưa hoàn toàn chắc chắn => ưu tiên loại ảnh phù hợp thay vì PHOTO_ONLY.
+- Không có căn cứ cho cả hai loại => PHOTO_ONLY.
+- Không phải ảnh người hoặc giấy tờ phù hợp => OTHER.
 
-Nếu là tài liệu trẻ đã sinh:
-type=BABY
+Nếu ảnh có cả người lớn và em bé, ưu tiên BABY_PHOTO khi em bé là đối tượng có thể nhận diện; chỉ dùng PREGNANCY_PHOTO khi có căn cứ thai kỳ riêng biệt.
 
-Nếu là ảnh chụp có căn cứ thị giác
-hoặc bối cảnh phù hợp với thai kỳ:
-type=PREGNANCY_PHOTO
-
-Nếu là ảnh chụp có căn cứ thị giác
-phù hợp với trẻ sơ sinh hoặc nhũ nhi nhỏ:
-type=BABY_PHOTO
-
-Nếu là ảnh người nhưng không đủ căn cứ
-để phân loại vào hai nhóm:
-type=PHOTO_ONLY
-
-Nếu không thuộc các nhóm:
-type=OTHER
-
-ĐỐI VỚI GIẤY TỜ
-
-documentRecognized=true khi nhận diện
-được tài liệu phù hợp.
-
-readable phản ánh chất lượng tài liệu.
-
-genuinePhoto=false
-visualEvidenceStrong=false
-
-Các trường ngày tháng chỉ được điền
-từ dữ liệu thực sự đọc được.
-
-ĐỐI VỚI ẢNH MẸ BẦU HOẶC EM BÉ
-
+Với PREGNANCY_PHOTO hoặc BABY_PHOTO:
 documentRecognized=false
-
-readable=true nếu chủ thể đủ quan sát.
-
-genuinePhoto=true nếu hình ảnh
-có đặc điểm phù hợp với ảnh người thật.
-
-visualEvidenceStrong=true nếu có
-căn cứ hợp lý để phân loại.
-
-Không yêu cầu độ chắc chắn tuyệt đối.
-
-Không suy đoán:
-- Tuổi thai.
-- Tuổi em bé chính xác.
-- Ngày sinh.
-- Danh tính.
-- Thời điểm chụp.
-
-Đối với ảnh người không kèm giấy tờ:
-
+readable=true nếu quan sát được chủ thể cần phân loại
+genuinePhoto=true nếu hình ảnh phù hợp ảnh chụp người thật
+visualEvidenceStrong=true khi có căn cứ phân loại
+conflictingInformation=false nếu không có mâu thuẫn thực sự
 examDate=null
 gestationalWeeks=null
 gestationalDays=null
@@ -1136,14 +706,7 @@ estimatedDueDate=null
 lastMenstrualPeriod=null
 dateOfBirth=null
 
-conflictingInformation=false
-trừ khi có mâu thuẫn thực sự.
-
-Không nhầm:
-- Ảnh giấy tờ với ảnh người.
-- Ảnh siêu âm với ảnh em bé đã sinh.
-- Ảnh người lớn bế trẻ với ảnh thai kỳ.
-- Ảnh gia đình với bằng chứng tuổi chính xác.
+Không tự tạo ngày tháng, tuổi thai hoặc tuổi bé từ ảnh.
 
 ==================================================
 XVII. KIỂM TRA TRƯỚC KHI TRẢ JSON
