@@ -632,5 +632,5 @@ export async function checkImage(
     estimatedCostUsd,
   });
 
-  return "PASS";
+  return decision.result;
 }
