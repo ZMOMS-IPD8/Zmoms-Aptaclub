@@ -13,6 +13,10 @@ export const REGISTRATION_REFERRAL_MAPPING: Record<string, string[]> = {
   "Z-TPHP": ["B-TPHP"],
   "Z-HBB": ["S-HBB"],
   "Z-HN": ["L-BVHN"],
+  "Z-NHS01": ["SD"],
+  "Z-NHS02": ["SD"],
+  "Z-NHS03": ["SD"],
+  "Z-NHS04": ["SD"],
 };
 
 export const PURCHASE_REFERRAL_CODES: string[] = ["ABC123456"];
