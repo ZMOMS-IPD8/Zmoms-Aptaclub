@@ -42,6 +42,7 @@ type GestationalCandidate = {
   ageDays: number;
 };
 
+const ENABLE_AI_CHECK = false;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_OCR_LENGTH = 10000;
 
@@ -105,9 +106,7 @@ function getVietnamDate(): string {
   }).formatToParts(new Date());
 
   const year = parts.find((part) => part.type === "year")?.value;
-
   const month = parts.find((part) => part.type === "month")?.value;
-
   const day = parts.find((part) => part.type === "day")?.value;
 
   if (!year || !month || !day) {
@@ -232,7 +231,6 @@ export function parseEvidence(content: string): ExtractedEvidence {
   }
 
   const weeks = optionalInteger(value.gestationalWeeks, 0, 43);
-
   const days = optionalInteger(value.gestationalDays, 0, 6);
 
   if (value.gestationalWeeks !== null && weeks === null) {
@@ -284,7 +282,6 @@ function evaluateBabyDocument(
   }
 
   const threeMonthDate = addCalendarMonths(birth, 3);
-
   const valid = today.getTime() < threeMonthDate.getTime();
 
   return {
@@ -300,15 +297,12 @@ function buildGestationalCandidates(
   today: Date,
 ): GestationalCandidate[] {
   const candidates: GestationalCandidate[] = [];
-
   const examDate = parseDate(evidence.examDate);
-
   const weeks = evidence.gestationalWeeks;
   const days = evidence.gestationalDays;
 
   if (examDate && weeks !== null && days !== null) {
     const elapsedDays = daysBetween(examDate, today);
-
     const ageAtExam = weeks * 7 + days;
 
     if (
@@ -327,7 +321,6 @@ function buildGestationalCandidates(
 
   if (dueDate) {
     const daysUntilDue = daysBetween(today, dueDate);
-
     const ageFromEDD = 280 - daysUntilDue;
 
     candidates.push({
@@ -363,9 +356,7 @@ function evaluatePregnancyDocument(
   }
 
   const ages = candidates.map((candidate) => candidate.ageDays);
-
   const minimumAge = Math.min(...ages);
-
   const maximumAge = Math.max(...ages);
 
   if (maximumAge - minimumAge > MAX_GESTATIONAL_DISAGREEMENT_DAYS) {
@@ -446,14 +437,30 @@ export async function checkImage(
 ): Promise<ImageCheckResult> {
   if (!file || file.size === 0)
     throw new Error("File ảnh rỗng hoặc không hợp lệ");
+
   if (!ALLOWED_TYPES.has(file.type))
     throw new Error(`Định dạng ảnh không được hỗ trợ: ${file.type}`);
+
   if (file.size > MAX_FILE_SIZE) throw new Error("Ảnh vượt quá giới hạn 10 MB");
+
+  if (!ENABLE_AI_CHECK) {
+    console.info("[ImageCheck] AI disabled", {
+      result: "PASS",
+      verifiedByAI: false,
+      fileSize: file.size,
+      fileType: file.type,
+    });
+    return "PASS";
+  }
+
   const startedAt = Date.now();
   const today = parseDate(getVietnamDate());
+
   if (!today) throw new Error("Ngày kiểm tra không hợp lệ");
+
   const normalizedOCR =
     typeof ocrText === "string" ? ocrText.slice(0, MAX_OCR_LENGTH) : "";
+
   const result = await extractWithSelectedModel(
     file,
     normalizedOCR,
@@ -461,6 +468,7 @@ export async function checkImage(
     evaluateEvidence,
     parseEvidence,
   );
+
   const {
     evidence,
     decision,
@@ -471,6 +479,7 @@ export async function checkImage(
     totalEstimatedCostUsd,
     costComplete,
   } = result;
+
   console.info("[ImageCheck] Classification", {
     selectedModel,
     selectionReason,
@@ -495,5 +504,6 @@ export async function checkImage(
     durationMs: Date.now() - startedAt,
     totalEstimatedCostUsd: costComplete ? totalEstimatedCostUsd : null,
   });
+
   return decision.result;
 }
