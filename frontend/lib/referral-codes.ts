@@ -5,6 +5,8 @@ export const REGISTRATION_REFERRAL_MAPPING: Record<string, string[]> = {
   "NHS-UNKNOWN": ["SD"],
   "Z-00": ["SD"],
   "Z-07": ["SD"],
+  "Z-09": ["SD"],
+  "Z-10": ["SD"],
   "Z-GREEN": ["B-GR"],
   "Z-HMN": ["SD"],
   "Z-MEDUA": ["SD"],
