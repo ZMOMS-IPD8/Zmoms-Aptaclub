@@ -49,40 +49,17 @@ function normalizeOCR(text: string): string {
 
 function selectModel(ocrText: string): { model: string; reason: string } {
   const text = normalizeOCR(ocrText);
-  if (text.length < 35) return { model: MODEL_STRONG, reason: "ocr_too_short" };
-  const pregnancy =
-    /sieu am|kham thai|so kham thai|phieu kham thai|thai san|obstetric|ultrasound/.test(
-      text,
-    );
-  const baby =
-    /giay khai sinh|giay chung sinh|phieu chung sinh|birth certificate|certificate of live birth/.test(
-      text,
-    );
-  const date =
-    /(?:\b\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{4}\b|\b\d{4}[\/.\-]\d{1,2}[\/.\-]\d{1,2}\b)/.test(
-      text,
-    );
-  const gestation =
-    /(?:tuoi thai|thai duoc|gestational age|\bga\b)\s*[:=\-]?\s*\d{1,2}\s*(?:tuan|weeks?|w)\b/.test(
-      text,
-    );
-  const dueDate =
-    /(?:ngay du sinh|du kien sinh|\bedd\b|expected delivery)\s*[:=\-]?\s*\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{4}/.test(
-      text,
-    );
-  const lmp =
-    /(?:kinh cuoi|kinh chot|\blmp\b|last menstrual)\s*[:=\-]?\s*\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{4}/.test(
-      text,
-    );
-  const birthDate =
-    /(?:ngay sinh|sinh ngay|date of birth|\bdob\b)\s*[:=\-]?\s*\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{4}/.test(
-      text,
-    );
-  if (pregnancy && date && (gestation || dueDate || lmp))
-    return { model: MODEL_FAST, reason: "ocr_pregnancy_document" };
-  if (baby && birthDate)
-    return { model: MODEL_FAST, reason: "ocr_baby_document" };
-  return { model: MODEL_STRONG, reason: "ocr_insufficient_for_fast_model" };
+
+  if (text.length >= 100) {
+    return {
+      model: MODEL_FAST,
+      reason: "ocr_sufficient_text",
+    };
+  }
+  return {
+    model: MODEL_STRONG,
+    reason: "ocr_insufficient_text",
+  };
 }
 
 function shouldFallback(
