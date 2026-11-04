@@ -24,6 +24,7 @@ export type BathBookingData = {
 };
 
 type Step = "phone" | "booking" | "success" | "review";
+const PAGE_ENABLED = false;
 
 export default function HomeBabyCarePage() {
   const router = useRouter();
@@ -128,7 +129,13 @@ export default function HomeBabyCarePage() {
     setError("");
     setStep("success");
   };
-
+  if (!PAGE_ENABLED) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#F5F9FC]">
+        <p className="text-gray-500">Trang hiện đang tạm đóng.</p>
+      </main>
+    );
+  }
   return (
     <main className="min-h-screen bg-[#F5F9FC] px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto w-full max-w-[560px]">
