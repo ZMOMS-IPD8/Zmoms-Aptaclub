@@ -42,7 +42,7 @@ type GestationalCandidate = {
   ageDays: number;
 };
 
-const ENABLE_AI_CHECK = true;
+const ENABLE_AI_CHECK = false;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_OCR_LENGTH = 10000;
 
