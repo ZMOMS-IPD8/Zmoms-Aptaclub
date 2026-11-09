@@ -6,6 +6,8 @@ import {
 import { uploadProofImage } from "../../../lib/google-apps-script/uploadProofImage";
 import { submitDataMasterToAppsScript } from "@/lib/google-apps-script/data-master-apps-script";
 
+const ENABLE_PROOF_IMAGE_UPLOAD = false;
+
 type PancakeLead = {
   id?: string;
   lead_id?: string;
@@ -505,56 +507,60 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let uploadedImage: Awaited<ReturnType<typeof uploadProofImage>>;
+    let uploadedImage: Awaited<ReturnType<typeof uploadProofImage>> | null =
+      null;
+    let imageUpdateResult: PancakeResponse | null = null;
 
-    try {
-      uploadedImage = await uploadProofImage({
-        image: proofImageEntry,
-        phone: cleanPhone,
+    if (ENABLE_PROOF_IMAGE_UPLOAD) {
+      try {
+        uploadedImage = await uploadProofImage({
+          image: proofImageEntry,
+          phone: cleanPhone,
+        });
+      } catch (error) {
+        return NextResponse.json(
+          {
+            success: false,
+            status: "IMAGE_UPLOAD_FAILED",
+            registrationUpdated: true,
+            message:
+              error instanceof Error
+                ? `Thông tin hội viên đã cập nhật nhưng ảnh chưa tải lên được: ${error.message}`
+                : "Thông tin hội viên đã cập nhật nhưng ảnh chưa tải lên được. Vui lòng liên hệ ZMoms để hỗ trợ.",
+            zaloUrl,
+          },
+          { status: 502 },
+        );
+      }
+
+      const imageUpdateResponse = await fetch(updateUrl, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: String(leadId),
+          hinh_minh_chung: uploadedImage.file_url,
+        }),
       });
-    } catch (error) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "IMAGE_UPLOAD_FAILED",
-          registrationUpdated: true,
-          message:
-            error instanceof Error
-              ? `Thông tin hội viên đã cập nhật nhưng ảnh chưa tải lên được: ${error.message}`
-              : "Thông tin hội viên đã cập nhật nhưng ảnh chưa tải lên được. Vui lòng liên hệ ZMoms để hỗ trợ.",
-          zaloUrl,
-        },
-        { status: 502 },
-      );
-    }
 
-    const imageUpdateResponse = await fetch(updateUrl, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        id: String(leadId),
-        hinh_minh_chung: uploadedImage.file_url,
-      }),
-    });
+      imageUpdateResult = await parsePancakeResponse(imageUpdateResponse);
 
-    const imageUpdateResult = await parsePancakeResponse(imageUpdateResponse);
-
-    if (!imageUpdateResponse.ok) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "IMAGE_LINK_UPDATE_FAILED",
-          registrationUpdated: true,
-          imageUploaded: true,
-          message:
-            "Thông tin hội viên đã cập nhật và ảnh đã tải lên Drive, nhưng chưa ghi được đường dẫn ảnh vào Pancake.",
-          zaloUrl,
-        },
-        { status: 502 },
-      );
+      if (!imageUpdateResponse.ok) {
+        return NextResponse.json(
+          {
+            success: false,
+            status: "IMAGE_LINK_UPDATE_FAILED",
+            registrationUpdated: true,
+            imageUploaded: true,
+            message:
+              "Thông tin hội viên đã cập nhật và ảnh đã tải lên Drive, nhưng chưa ghi được đường dẫn ảnh vào Pancake.",
+            zaloUrl,
+          },
+          { status: 502 },
+        );
+      }
     }
 
     let dataMasterResult;
@@ -581,7 +587,7 @@ export async function POST(req: NextRequest) {
           success: false,
           status: "PANCAKE_SUCCESS_DATA_MASTER_FAILED",
           registrationUpdated: true,
-          imageUploaded: true,
+          imageUploaded: Boolean(uploadedImage),
           message:
             error instanceof Error
               ? `Pancake đã cập nhật thành công nhưng DATA_MASTER ghi thất bại: ${error.message}`
@@ -595,20 +601,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       status: "UPDATED",
-      message:
-        "Thông tin hội viên và hình minh chứng đã được cập nhật thành công.",
+      message: ENABLE_PROOF_IMAGE_UPLOAD
+        ? "Thông tin hội viên và hình minh chứng đã được cập nhật thành công."
+        : "Thông tin hội viên đã được cập nhật thành công.",
       eligibleForDanoneCRM,
       zaloUrl,
       pancake: updateResult,
-      proofImage: {
-        file_id: uploadedImage.file_id,
-        file_name: uploadedImage.file_name,
-        file_url: uploadedImage.file_url,
-        mime_type: uploadedImage.mime_type,
-        size: uploadedImage.size,
-        folder_id: uploadedImage.folder_id,
-      },
-      imagePancake: imageUpdateResult,
+      ...(uploadedImage && {
+        proofImage: {
+          file_id: uploadedImage.file_id,
+          file_name: uploadedImage.file_name,
+          file_url: uploadedImage.file_url,
+          mime_type: uploadedImage.mime_type,
+          size: uploadedImage.size,
+          folder_id: uploadedImage.folder_id,
+        },
+        imagePancake: imageUpdateResult,
+      }),
       dataMaster: dataMasterResult,
     });
   } catch (error) {
