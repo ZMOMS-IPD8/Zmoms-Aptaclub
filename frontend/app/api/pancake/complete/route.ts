@@ -3,10 +3,12 @@ import {
   isValidRegistrationReferralCode,
   getRegistrationReferralMapping,
 } from "@/lib/referral-codes";
-import { uploadProofImage } from "../../../lib/google-apps-script/uploadProofImage";
 import { submitDataMasterToAppsScript } from "@/lib/google-apps-script/data-master-apps-script";
 
-const ENABLE_PROOF_IMAGE_UPLOAD = false;
+export const runtime = "nodejs";
+
+const ENABLE_PROOF_IMAGE_UPLOAD =
+  process.env.ENABLE_PROOF_IMAGE_UPLOAD !== "false";
 
 type PancakeLead = {
   id?: string;
@@ -23,12 +25,25 @@ type PancakeResponse = {
   success?: boolean;
   data?: {
     entries?: PancakeLead[];
-    total_entries?: number;
     [key: string]: unknown;
   };
   message?: string;
   error?: string;
   [key: string]: unknown;
+};
+
+type CompleteRequest = {
+  fullName?: string;
+  phone?: string;
+  province?: string;
+  babyDate?: string;
+  referralCode?: string;
+  eventCode?: string;
+  consentMember?: boolean | string;
+  consentAptaclub?: boolean | string;
+  consentMarketing?: boolean | string;
+  consentDanone?: boolean | string;
+  proofImageUrl?: string;
 };
 
 function getFieldValue(value: unknown): string {
@@ -67,7 +82,6 @@ function parseDate(value: string): Date | null {
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-
   const date = new Date(year, month - 1, day);
 
   if (
@@ -79,7 +93,6 @@ function parseDate(value: string): Date | null {
   }
 
   date.setHours(0, 0, 0, 0);
-
   return date;
 }
 
@@ -108,7 +121,6 @@ function isEligibleBabyDate(babyDate: string): boolean {
 
   if (selectedDate > today) {
     const latestDueDate = new Date(today);
-
     latestDueDate.setDate(latestDueDate.getDate() + 84);
     latestDueDate.setHours(0, 0, 0, 0);
 
@@ -122,8 +134,16 @@ function isEligibleBabyDate(babyDate: string): boolean {
   );
 
   threeMonthsLater.setHours(0, 0, 0, 0);
-
   return threeMonthsLater > today;
+}
+
+function isTrue(value: unknown): boolean {
+  return (
+    value === true ||
+    String(value ?? "")
+      .trim()
+      .toLowerCase() === "true"
+  );
 }
 
 async function parsePancakeResponse(
@@ -138,9 +158,7 @@ async function parsePancakeResponse(
   try {
     return JSON.parse(text) as PancakeResponse;
   } catch {
-    return {
-      message: text.slice(0, 500),
-    };
+    return { message: text.slice(0, 500) };
   }
 }
 
@@ -159,46 +177,29 @@ function getPancakeErrorMessage(
   return `Pancake CRM trả lỗi HTTP ${response.status}.`;
 }
 
-function isImageFile(value: FormDataEntryValue | null): value is File {
-  return (
-    value !== null &&
-    typeof value !== "string" &&
-    typeof value.size === "number" &&
-    typeof value.type === "string" &&
-    typeof value.arrayBuffer === "function"
-  );
-}
-
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
+    const body = (await req.json()) as CompleteRequest;
 
-    const fullName = String(formData.get("fullName") ?? "").trim();
-    const phone = String(formData.get("phone") ?? "").trim();
-    const province = String(formData.get("province") ?? "").trim();
-    const babyDate = String(formData.get("babyDate") ?? "").trim();
+    const fullName = String(body.fullName ?? "").trim();
+    const phone = String(body.phone ?? "").trim();
+    const province = String(body.province ?? "").trim();
+    const babyDate = String(body.babyDate ?? "").trim();
 
-    const referralCode = String(formData.get("referralCode") ?? "")
+    const referralCode = String(body.referralCode ?? "")
       .trim()
       .toUpperCase();
 
-    const eventCode = String(formData.get("eventCode") ?? "")
+    const eventCode = String(body.eventCode ?? "")
       .trim()
       .toUpperCase();
 
-    const consentMember =
-      String(formData.get("consentMember") ?? "") === "true";
+    const consentMember = isTrue(body.consentMember);
+    const consentAptaclub = isTrue(body.consentAptaclub);
+    const consentMarketing = isTrue(body.consentMarketing);
+    const consentDanone = isTrue(body.consentDanone);
 
-    const consentAptaclub =
-      String(formData.get("consentAptaclub") ?? "") === "true";
-
-    const consentMarketing =
-      String(formData.get("consentMarketing") ?? "") === "true";
-
-    const consentDanone =
-      String(formData.get("consentDanone") ?? "") === "true";
-
-    const proofImageEntry = formData.get("hinh_minh_chung");
+    const proofImageUrl = String(body.proofImageUrl ?? "").trim();
 
     if (!fullName || !phone || !province || !babyDate) {
       return NextResponse.json(
@@ -222,41 +223,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!isImageFile(proofImageEntry) || proofImageEntry.size === 0) {
+    if (ENABLE_PROOF_IMAGE_UPLOAD && !proofImageUrl) {
       return NextResponse.json(
         {
           success: false,
           status: "PROOF_IMAGE_REQUIRED",
-          message: "Vui lòng chụp và gửi hình ảnh minh chứng.",
-        },
-        { status: 400 },
-      );
-    }
-
-    const allowedImageTypes = new Set([
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/gif",
-    ]);
-
-    if (!allowedImageTypes.has(proofImageEntry.type)) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "INVALID_IMAGE_TYPE",
-          message: "Ảnh phải có định dạng JPEG, PNG, WebP hoặc GIF.",
-        },
-        { status: 400 },
-      );
-    }
-
-    if (proofImageEntry.size > 10 * 1024 * 1024) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "IMAGE_TOO_LARGE",
-          message: "Dung lượng ảnh không được vượt quá 10 MB.",
+          message: "Chưa có ảnh minh chứng được upload thành công.",
         },
         { status: 400 },
       );
@@ -310,6 +282,31 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const cleanPhone = phone.replace(/\D/g, "");
+
+    if (!/^0\d{9}$/.test(cleanPhone)) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "INVALID_PHONE",
+          message: "Số điện thoại không đúng định dạng.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!parseDate(babyDate) || !isEligibleBabyDate(babyDate)) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "INVALID_DATE",
+          message:
+            "Thông tin ngày dự sinh hoặc ngày sinh của bé chưa phù hợp để đăng ký.",
+        },
+        { status: 400 },
+      );
+    }
+
     const workspaceId = process.env.PANCAKE_WORKSPACE_ID;
     const apiKey = process.env.PANCAKE_CRM_API_KEY;
     const zaloUrl = process.env.ZMOMS_ZALO_OA_URL || "";
@@ -324,39 +321,6 @@ export async function POST(req: NextRequest) {
         { status: 500 },
       );
     }
-
-    const cleanPhone = phone.replace(/\D/g, "");
-    const cleanFullName = fullName.trim();
-    const cleanProvince = province.trim();
-
-    if (!/^0\d{9}$/.test(cleanPhone)) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "INVALID_PHONE",
-          message: "Số điện thoại không đúng định dạng.",
-        },
-        { status: 400 },
-      );
-    }
-
-    const selectedDate = parseDate(babyDate);
-
-    if (!selectedDate || !isEligibleBabyDate(babyDate)) {
-      return NextResponse.json(
-        {
-          success: false,
-          status: "INVALID_DATE",
-          message:
-            "Thông tin ngày dự sinh hoặc ngày sinh của bé chưa phù hợp để đăng ký.",
-        },
-        { status: 400 },
-      );
-    }
-
-    const cleanBabyDate = `${babyDate} 00:00:00`;
-    const motherStatus = getMotherStatus(babyDate);
-    const registrationTime = new Date().toISOString();
 
     const finalReferralCode = referralCode || "NHS-UNKNOWN";
     const finalEventCode = eventCode || "SD";
@@ -394,22 +358,20 @@ export async function POST(req: NextRequest) {
 
     const checkResponse = await fetch(checkUrl, {
       method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
+      headers: { Accept: "application/json" },
       cache: "no-store",
     });
 
     const checkResult = await parsePancakeResponse(checkResponse);
 
-    if (!checkResponse.ok) {
+    if (!checkResponse.ok || checkResult.success === false) {
       return NextResponse.json(
         {
           success: false,
           status: "SEARCH_FAILED",
           message: getPancakeErrorMessage(checkResult, checkResponse),
         },
-        { status: checkResponse.status },
+        { status: checkResponse.ok ? 502 : checkResponse.status },
       );
     }
 
@@ -431,9 +393,8 @@ export async function POST(req: NextRequest) {
     }
 
     const lead = existingLeads[0];
-    const existingContactName = getFieldValue(lead.ho_va_ten_lien_he);
 
-    if (existingContactName) {
+    if (getFieldValue(lead.ho_va_ten_lien_he)) {
       return NextResponse.json(
         {
           success: false,
@@ -459,18 +420,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const cleanBabyDate = `${babyDate} 00:00:00`;
+    const motherStatus = getMotherStatus(babyDate);
+    const registrationTime = new Date().toISOString();
     const eligibleForDanoneCRM = consentAptaclub && consentDanone;
 
     const pancakePayload = {
       id: String(leadId),
-      name: String(lead.name ?? "").trim() || cleanFullName,
+      name: String(lead.name ?? "").trim() || fullName,
       phone_number: cleanPhone,
       so_dien_thoai_dang_ky: cleanPhone,
-      ho_va_ten_lien_he: cleanFullName,
+      ho_va_ten_lien_he: fullName,
       ngay_du_sinh_hoac_ngay_sinh_cua_be: cleanBabyDate,
       tinh_trang_me: motherStatus,
       thoi_gian_dang_ky: registrationTime,
-      thanh_pho: cleanProvince,
+      thanh_pho: province,
       ma_gioi_thieu_dang_ky: finalReferralCode,
       ma_su_kien: finalEventCode,
       team_thu_thap: teamThuThap,
@@ -478,6 +442,9 @@ export async function POST(req: NextRequest) {
       da_doc_chinh_sach_aptamil: consentDanone ? "true" : "false",
       dong_y_nhan_thong_bao: consentMarketing ? "true" : "false",
       chia_se_de_dang_ky_aptaclub: consentAptaclub ? "true" : "false",
+      ...(ENABLE_PROOF_IMAGE_UPLOAD && {
+        hinh_minh_chung: proofImageUrl,
+      }),
     };
 
     const updateUrl =
@@ -495,7 +462,7 @@ export async function POST(req: NextRequest) {
 
     const updateResult = await parsePancakeResponse(updateResponse);
 
-    if (!updateResponse.ok) {
+    if (!updateResponse.ok || updateResult.success === false) {
       return NextResponse.json(
         {
           success: false,
@@ -503,64 +470,8 @@ export async function POST(req: NextRequest) {
           message: getPancakeErrorMessage(updateResult, updateResponse),
           zaloUrl,
         },
-        { status: updateResponse.status },
+        { status: updateResponse.ok ? 502 : updateResponse.status },
       );
-    }
-
-    let uploadedImage: Awaited<ReturnType<typeof uploadProofImage>> | null =
-      null;
-    let imageUpdateResult: PancakeResponse | null = null;
-
-    if (ENABLE_PROOF_IMAGE_UPLOAD) {
-      try {
-        uploadedImage = await uploadProofImage({
-          image: proofImageEntry,
-          phone: cleanPhone,
-        });
-      } catch (error) {
-        return NextResponse.json(
-          {
-            success: false,
-            status: "IMAGE_UPLOAD_FAILED",
-            registrationUpdated: true,
-            message:
-              error instanceof Error
-                ? `Thông tin hội viên đã cập nhật nhưng ảnh chưa tải lên được: ${error.message}`
-                : "Thông tin hội viên đã cập nhật nhưng ảnh chưa tải lên được. Vui lòng liên hệ ZMoms để hỗ trợ.",
-            zaloUrl,
-          },
-          { status: 502 },
-        );
-      }
-
-      const imageUpdateResponse = await fetch(updateUrl, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: String(leadId),
-          hinh_minh_chung: uploadedImage.file_url,
-        }),
-      });
-
-      imageUpdateResult = await parsePancakeResponse(imageUpdateResponse);
-
-      if (!imageUpdateResponse.ok) {
-        return NextResponse.json(
-          {
-            success: false,
-            status: "IMAGE_LINK_UPDATE_FAILED",
-            registrationUpdated: true,
-            imageUploaded: true,
-            message:
-              "Thông tin hội viên đã cập nhật và ảnh đã tải lên Drive, nhưng chưa ghi được đường dẫn ảnh vào Pancake.",
-            zaloUrl,
-          },
-          { status: 502 },
-        );
-      }
     }
 
     let dataMasterResult;
@@ -569,11 +480,11 @@ export async function POST(req: NextRequest) {
       dataMasterResult = await submitDataMasterToAppsScript({
         pancakeId: String(leadId),
         registeredAt: registrationTime,
-        fullName: cleanFullName,
+        fullName,
         phone: cleanPhone,
         babyDate,
         motherStatus: motherStatus || "",
-        province: cleanProvince,
+        province,
         memberConsent: consentMember ? "Có" : "Không",
         aptamilPolicy: consentDanone ? "Có" : "Không",
         notificationConsent: consentMarketing ? "Có" : "Không",
@@ -582,12 +493,13 @@ export async function POST(req: NextRequest) {
         sourceCode: finalEventCode,
       });
     } catch (error) {
+      console.error("[DATA_MASTER_SUBMIT_ERROR]", error);
+
       return NextResponse.json(
         {
           success: false,
           status: "PANCAKE_SUCCESS_DATA_MASTER_FAILED",
           registrationUpdated: true,
-          imageUploaded: Boolean(uploadedImage),
           message:
             error instanceof Error
               ? `Pancake đã cập nhật thành công nhưng DATA_MASTER ghi thất bại: ${error.message}`
@@ -607,20 +519,12 @@ export async function POST(req: NextRequest) {
       eligibleForDanoneCRM,
       zaloUrl,
       pancake: updateResult,
-      ...(uploadedImage && {
-        proofImage: {
-          file_id: uploadedImage.file_id,
-          file_name: uploadedImage.file_name,
-          file_url: uploadedImage.file_url,
-          mime_type: uploadedImage.mime_type,
-          size: uploadedImage.size,
-          folder_id: uploadedImage.folder_id,
-        },
-        imagePancake: imageUpdateResult,
-      }),
+      proofImageUrl: ENABLE_PROOF_IMAGE_UPLOAD ? proofImageUrl : null,
       dataMaster: dataMasterResult,
     });
   } catch (error) {
+    console.error("[PANCAKE_COMPLETE_ERROR]", error);
+
     return NextResponse.json(
       {
         success: false,
@@ -628,7 +532,7 @@ export async function POST(req: NextRequest) {
         message:
           error instanceof Error
             ? error.message
-            : "Có lỗi xảy ra khi cập nhật thông tin. Vui lòng thử lại.",
+            : "Có lỗi xảy ra khi hoàn tất đăng ký. Vui lòng thử lại.",
       },
       { status: 500 },
     );

@@ -1,3 +1,4 @@
+// hooks/useRegistrationForm.ts
 "use client";
 
 import { useState } from "react";
@@ -201,6 +202,26 @@ export function useRegistrationForm() {
     return null;
   };
 
+  const showError = (title: string, message: string, zaloUrl?: string) => {
+    setDialog({
+      open: true,
+      title,
+      message,
+      status: "error",
+      zaloUrl,
+    });
+  };
+
+  const showWarning = (title: string, message: string, zaloUrl?: string) => {
+    setDialog({
+      open: true,
+      title,
+      message,
+      status: "warning",
+      zaloUrl,
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent, proofImage: File) => {
     e.preventDefault();
 
@@ -209,26 +230,17 @@ export function useRegistrationForm() {
     }
 
     if (!(proofImage instanceof File) || proofImage.size === 0) {
-      setDialog({
-        open: true,
-        title: "Thiếu hình minh chứng",
-        message: "Vui lòng chụp và kiểm tra ảnh minh chứng trước khi đăng ký.",
-        status: "warning",
-      });
-
+      showWarning(
+        "Thiếu hình minh chứng",
+        "Vui lòng chụp và kiểm tra ảnh minh chứng trước khi đăng ký.",
+      );
       return;
     }
 
-    const error = validate();
+    const validationError = validate();
 
-    if (error) {
-      setDialog({
-        open: true,
-        title: "Thông tin chưa phù hợp",
-        message: error,
-        status: "warning",
-      });
-
+    if (validationError) {
+      showWarning("Thông tin chưa phù hợp", validationError);
       return;
     }
 
@@ -237,162 +249,212 @@ export function useRegistrationForm() {
     try {
       setIsSubmitting(true);
 
-      const formData = new FormData();
+      const registrationPayload = {
+        fullName: data.fullName,
+        phone: data.phone,
+        province: data.province,
+        babyDate: data.babyDate,
+        referralCode: data.referralCode,
+        eventCode: data.eventCode,
+        consentMember: data.consentMember,
+        consentAptaclub: data.consentAptaclub,
+        consentMarketing: data.consentMarketing,
+        consentDanone: data.consentDanone,
+      };
 
-      formData.append("fullName", data.fullName);
-      formData.append("phone", data.phone);
-      formData.append("province", data.province);
-      formData.append("babyDate", data.babyDate);
-      formData.append("referralCode", data.referralCode);
-      formData.append("eventCode", data.eventCode);
-
-      formData.append("consentMember", String(data.consentMember));
-      formData.append("consentAptaclub", String(data.consentAptaclub));
-      formData.append("consentMarketing", String(data.consentMarketing));
-      formData.append("consentDanone", String(data.consentDanone));
-      formData.append("consentAptaclubZalo", String(data.consentAptaclubZalo));
-
-      formData.append("hinh_minh_chung", proofImage, proofImage.name);
-
-      const response = await fetch("/api/pancake", {
+      const checkResponse = await fetch("/api/pancake/check", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(registrationPayload),
       });
 
-      const result = await response.json();
+      const checkResult = await checkResponse.json();
 
-      if (result?.status === "NOT_IN_ZALO") {
-        setDialog({
-          open: true,
-          title: "Chưa tham gia Zalo OA",
-          message:
-            result?.message ||
+      if (checkResult?.status === "NOT_IN_ZALO") {
+        showWarning(
+          "Chưa tham gia Zalo OA",
+          checkResult.message ||
             "Hiện tại bạn chưa tham gia Zalo OA của ZMoms. Vui lòng vào Zalo OA và để lại số điện thoại Zalo của mình để tiếp tục.",
-          status: "warning",
-          zaloUrl: result?.zaloUrl,
-        });
-
+          checkResult.zaloUrl,
+        );
         return;
       }
 
-      if (result?.status === "ALREADY_REGISTERED") {
-        setDialog({
-          open: true,
-          title: "Thông tin đã được đăng ký",
-          message:
-            result?.message ||
+      if (checkResult?.status === "ALREADY_REGISTERED") {
+        showWarning(
+          "Thông tin đã được đăng ký",
+          checkResult.message ||
             "Thông tin của bạn đã được đăng ký rồi. Vui lòng liên hệ ZMoms để được hỗ trợ.",
-          status: "warning",
-          zaloUrl: result?.zaloUrl,
-        });
-
+          checkResult.zaloUrl,
+        );
         return;
       }
 
-      if (result?.status === "CONSENT_REQUIRED") {
-        setDialog({
-          open: true,
-          title: "Chưa đủ điều kiện đăng ký",
-          message:
-            result?.message || "Vui lòng đồng ý đăng ký hội viên để tiếp tục.",
-          status: "warning",
-        });
-
+      if (checkResult?.status === "CONSENT_REQUIRED") {
+        showWarning(
+          "Chưa đủ điều kiện đăng ký",
+          checkResult.message ||
+            "Vui lòng đồng ý đăng ký hội viên để tiếp tục.",
+        );
         return;
       }
 
-      if (result?.status === "INVALID_REFERRAL_CODE") {
-        setDialog({
-          open: true,
-          title: "Mã giới thiệu không hợp lệ",
-          message:
-            result?.message || "Vui lòng kiểm tra lại mã giới thiệu của bạn.",
-          status: "warning",
-        });
-
+      if (checkResult?.status === "INVALID_REFERRAL_CODE") {
+        showWarning(
+          "Mã giới thiệu không hợp lệ",
+          checkResult.message || "Vui lòng kiểm tra lại mã giới thiệu của bạn.",
+        );
         return;
       }
 
-      if (result?.status === "INVALID_EVENT_CODE") {
-        setDialog({
-          open: true,
-          title: "Mã sự kiện không hợp lệ",
-          message:
-            result?.message || "Mã sự kiện không phù hợp với mã giới thiệu.",
-          status: "warning",
-        });
-
+      if (checkResult?.status === "INVALID_EVENT_CODE") {
+        showWarning(
+          "Mã sự kiện không hợp lệ",
+          checkResult.message || "Mã sự kiện không phù hợp với mã giới thiệu.",
+        );
         return;
       }
 
-      if (result?.status === "INVALID_DATE") {
-        setDialog({
-          open: true,
-          title: "Thông tin chưa phù hợp",
-          message:
-            result?.message ||
+      if (checkResult?.status === "INVALID_DATE") {
+        showWarning(
+          "Thông tin chưa phù hợp",
+          checkResult.message ||
             "Thông tin ngày dự sinh hoặc ngày sinh của bé chưa phù hợp.",
-          status: "warning",
-        });
-
+        );
         return;
       }
 
-      if (result?.status === "UPDATED") {
-        const zaloUrl = result?.zaloUrl;
+      if (!checkResponse.ok || checkResult?.status !== "ELIGIBLE") {
+        showError(
+          "Kiểm tra đăng ký thất bại",
+          checkResult?.message ||
+            "Không thể kiểm tra điều kiện đăng ký. Vui lòng thử lại.",
+          checkResult?.zaloUrl,
+        );
+        return;
+      }
 
-        setDialog({
-          open: true,
-          title: "Chúc mừng đăng ký thành công",
-          message: "Cảm ơn mẹ đã đăng ký cùng ZMoms!",
-          status: "success",
-          zaloUrl,
-        });
+      const uploadFormData = new FormData();
 
-        if (zaloUrl) {
-          setTimeout(() => {
-            window.location.href = zaloUrl;
-          }, 1500);
+      uploadFormData.append("phone", data.phone);
+      uploadFormData.append("hinh_minh_chung", proofImage, proofImage.name);
+
+      const uploadResponse = await fetch("/api/pancake/upload", {
+        method: "POST",
+        body: uploadFormData,
+      });
+
+      const uploadResult = await uploadResponse.json();
+
+      if (!uploadResponse.ok || uploadResult?.success !== true) {
+        showError(
+          "Tải ảnh minh chứng thất bại",
+          uploadResult?.message ||
+            "Không thể tải ảnh minh chứng lên. Vui lòng thử lại.",
+        );
+        return;
+      }
+
+      let proofImageUrl = "";
+
+      if (uploadResult.status === "UPLOADED") {
+        proofImageUrl = uploadResult?.proofImage?.file_url || "";
+
+        if (!proofImageUrl) {
+          showError(
+            "Tải ảnh minh chứng thất bại",
+            "Ảnh đã được xử lý nhưng không nhận được đường dẫn lưu trữ. Vui lòng liên hệ ZMoms để được hỗ trợ.",
+          );
+          return;
         }
-
+      } else if (uploadResult.status !== "UPLOAD_DISABLED") {
+        showError(
+          "Tải ảnh minh chứng thất bại",
+          uploadResult?.message ||
+            "Trạng thái tải ảnh không hợp lệ. Vui lòng thử lại.",
+        );
         return;
       }
 
-      if (!response.ok) {
-        setDialog({
-          open: true,
-          title: "Cập nhật thất bại",
-          message:
-            result?.message ||
+      const completeResponse = await fetch("/api/pancake/complete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...registrationPayload,
+          proofImageUrl,
+        }),
+      });
+
+      const completeResult = await completeResponse.json();
+
+      if (completeResult?.status === "NOT_IN_ZALO") {
+        showWarning(
+          "Chưa tham gia Zalo OA",
+          completeResult.message ||
+            "Hiện tại bạn chưa tham gia Zalo OA của ZMoms.",
+          completeResult.zaloUrl,
+        );
+        return;
+      }
+
+      if (completeResult?.status === "ALREADY_REGISTERED") {
+        showWarning(
+          "Thông tin đã được đăng ký",
+          completeResult.message ||
+            "Thông tin của bạn đã được đăng ký rồi. Vui lòng liên hệ ZMoms để được hỗ trợ.",
+          completeResult.zaloUrl,
+        );
+        return;
+      }
+
+      if (completeResult?.status === "PANCAKE_SUCCESS_DATA_MASTER_FAILED") {
+        showError(
+          "Đăng ký chưa hoàn tất",
+          completeResult.message ||
+            "Pancake đã cập nhật thành công nhưng DATA_MASTER ghi thất bại. Vui lòng liên hệ ZMoms để được hỗ trợ, không gửi đăng ký lại.",
+          completeResult.zaloUrl,
+        );
+        return;
+      }
+
+      if (
+        !completeResponse.ok ||
+        completeResult?.success !== true ||
+        completeResult?.status !== "UPDATED"
+      ) {
+        showError(
+          "Cập nhật thất bại",
+          completeResult?.message ||
             "Cập nhật thông tin thất bại. Vui lòng thử lại hoặc liên hệ ZMoms để được hỗ trợ.",
-          status: "error",
-          zaloUrl: result?.zaloUrl,
-        });
-
+          completeResult?.zaloUrl,
+        );
         return;
       }
+
+      const zaloUrl = completeResult.zaloUrl;
 
       setDialog({
         open: true,
-        title: "Cập nhật thành công",
-        message:
-          result?.message || "Thông tin của bạn đã được cập nhật thành công.",
+        title: "Chúc mừng đăng ký thành công",
+        message: completeResult.message || "Cảm ơn mẹ đã đăng ký cùng ZMoms!",
         status: "success",
-        zaloUrl: result?.zaloUrl,
+        zaloUrl,
       });
 
-      if (result?.zaloUrl) {
+      if (zaloUrl) {
         setTimeout(() => {
-          window.location.href = result.zaloUrl;
+          window.location.href = zaloUrl;
         }, 1500);
       }
     } catch {
-      setDialog({
-        open: true,
-        title: "Có lỗi xảy ra",
-        message: "Có lỗi xảy ra khi cập nhật thông tin. Vui lòng thử lại.",
-        status: "error",
-      });
+      showError(
+        "Có lỗi xảy ra",
+        "Có lỗi xảy ra khi đăng ký thông tin. Vui lòng thử lại hoặc liên hệ ZMoms để được hỗ trợ.",
+      );
     } finally {
       setIsSubmitting(false);
     }
