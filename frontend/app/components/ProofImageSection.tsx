@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { extractImageText } from "@/lib/ocr/client-ocr";
 import { optimizeProofImage } from "@/lib/images/optimize-proof-image";
 
+const ENABLE_AI_CHECK = false;
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const MAX_OCR_LENGTH = 10000;
 const ALLOWED_IMAGE_TYPES = new Set([
@@ -71,6 +72,7 @@ export default function ProofImageSection({
   const originalFileRef = useRef<File | null>(null);
   const optimizedFileRef = useRef<File | null>(null);
   const processingRef = useRef(false);
+
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [verification, setVerification] = useState<VerificationState>({
     file: null,
@@ -119,6 +121,7 @@ export default function ProofImageSection({
 
   function openCamera() {
     if (isBusy) return;
+
     if (inputRef.current) {
       inputRef.current.value = "";
       inputRef.current.click();
@@ -128,6 +131,7 @@ export default function ProofImageSection({
   async function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
+
     if (!file) return;
 
     resetVerification();
@@ -170,6 +174,7 @@ export default function ProofImageSection({
 
     try {
       const optimizedFile = await optimizeProofImage(file);
+
       if (requestIdRef.current !== requestId) return;
 
       const selectedFile =
@@ -200,6 +205,7 @@ export default function ProofImageSection({
         stage: null,
         error: "",
       });
+
       setProofImage(selectedFile);
     } catch (error) {
       if (requestIdRef.current !== requestId) return;
@@ -210,18 +216,29 @@ export default function ProofImageSection({
 
       originalFileRef.current = file;
       optimizedFileRef.current = file;
-      setVerification({ file, checking: false, stage: null, error: "" });
+
+      setVerification({
+        file,
+        checking: false,
+        stage: null,
+        error: "",
+      });
+
       setProofImage(file);
     } finally {
-      if (requestIdRef.current === requestId) setIsOptimizing(false);
+      if (requestIdRef.current === requestId) {
+        setIsOptimizing(false);
+      }
     }
   }
 
   async function handleCheckImage() {
     const file = proofImage;
+
     if (!file || isBusy || processingRef.current) return;
 
     processingRef.current = true;
+
     const requestId = ++requestIdRef.current;
     const controller = new AbortController();
 
@@ -230,7 +247,9 @@ export default function ProofImageSection({
 
     const isCurrentRequest = () =>
       requestIdRef.current === requestId && !controller.signal.aborted;
+
     const verificationStartedAt = performance.now();
+
     const ocrFile =
       optimizedFileRef.current === file && originalFileRef.current
         ? originalFileRef.current
@@ -241,10 +260,16 @@ export default function ProofImageSection({
       originalSize: ocrFile.size,
       uploadSize: file.size,
       fileType: file.type,
+      aiEnabled: ENABLE_AI_CHECK,
     });
 
     setIsImageVerified(false);
-    setVerification({ file, checking: true, stage: "OCR", error: "" });
+    setVerification({
+      file,
+      checking: true,
+      stage: "OCR",
+      error: "",
+    });
 
     try {
       let ocrText = "";
@@ -276,7 +301,32 @@ export default function ProofImageSection({
 
       if (!isCurrentRequest()) return;
 
-      setVerification({ file, checking: true, stage: "AI", error: "" });
+      if (!ENABLE_AI_CHECK) {
+        console.info("[ImageCheck Client] AI disabled, API request skipped", {
+          requestId,
+          ocrLength: ocrText.slice(0, MAX_OCR_LENGTH).length,
+          totalDurationMs: Math.round(
+            performance.now() - verificationStartedAt,
+          ),
+        });
+
+        setIsImageVerified(true);
+        setVerification({
+          file,
+          checking: false,
+          stage: null,
+          error: "",
+        });
+
+        return;
+      }
+
+      setVerification({
+        file,
+        checking: true,
+        stage: "AI",
+        error: "",
+      });
 
       const formData = new FormData();
       formData.append("image", file, file.name);
@@ -293,6 +343,7 @@ export default function ProofImageSection({
       });
 
       const apiStartedAt = performance.now();
+
       const response = await fetch("/api/ai/check-image", {
         method: "POST",
         body: formData,
@@ -336,6 +387,7 @@ export default function ProofImageSection({
           error:
             result.message || "Không thể xác thực hình ảnh. Vui lòng thử lại.",
         });
+
         return;
       }
 
@@ -349,7 +401,13 @@ export default function ProofImageSection({
         });
 
         setIsImageVerified(true);
-        setVerification({ file, checking: false, stage: null, error: "" });
+        setVerification({
+          file,
+          checking: false,
+          stage: null,
+          error: "",
+        });
+
         return;
       }
 
@@ -369,6 +427,7 @@ export default function ProofImageSection({
           error:
             "Hình ảnh chưa đáp ứng điều kiện xác thực. Vui lòng cung cấp hình ảnh hoặc giấy tờ rõ ràng, có thông tin chứng minh thai kỳ từ 28–42 tuần hoặc em bé dưới 3 tháng tuổi.",
         });
+
         return;
       }
 
@@ -407,6 +466,7 @@ export default function ProofImageSection({
       if (isCurrentRequest()) {
         processingRef.current = false;
         abortControllerRef.current = null;
+
         setVerification((current) =>
           current.file === file
             ? { ...current, checking: false, stage: null }
@@ -418,11 +478,15 @@ export default function ProofImageSection({
 
   function handleRemoveImage() {
     if (isBusy) return;
+
     resetVerification();
     originalFileRef.current = null;
     optimizedFileRef.current = null;
     setProofImage(null);
-    if (inputRef.current) inputRef.current.value = "";
+
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
   }
 
   return (
@@ -494,9 +558,12 @@ export default function ProofImageSection({
             <div className="flex items-center justify-between gap-2 pb-3">
               <span className="text-[12px] font-semibold text-[#27845D]">
                 {isImageVerified
-                  ? "Hình ảnh đã được xác thực"
+                  ? ENABLE_AI_CHECK
+                    ? "Hình ảnh đã được xác thực"
+                    : "Hình ảnh đã được xác thực"
                   : "Hình ảnh đã sẵn sàng"}
               </span>
+
               <span className="text-[11px] text-[#858997]">
                 {(proofImage.size / 1048576).toFixed(2)} MB
               </span>
@@ -559,11 +626,14 @@ export default function ProofImageSection({
           {isCheckingImage && (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
           )}
+
           {isCheckingImage
             ? checkingStage === "OCR"
               ? "ĐANG ĐỌC THÔNG TIN..."
               : "ĐANG XÁC THỰC HÌNH ẢNH..."
-            : "KIỂM TRA HÌNH ẢNH MINH CHỨNG"}
+            : ENABLE_AI_CHECK
+              ? "KIỂM TRA HÌNH ẢNH MINH CHỨNG"
+              : "KIỂM TRA HÌNH ẢNH MINH CHỨNG"}
         </button>
       )}
 
@@ -585,7 +655,10 @@ export default function ProofImageSection({
           aria-live="polite"
           className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[13px] font-semibold text-emerald-700"
         >
-          ✓ Hình ảnh minh chứng hợp lệ. Bạn có thể tiếp tục đăng ký hội viên.
+          ✓{" "}
+          {ENABLE_AI_CHECK
+            ? "Hình ảnh minh chứng hợp lệ. Bạn có thể tiếp tục đăng ký hội viên."
+            : "Hình ảnh minh chứng hợp lệ. Bạn có thể tiếp tục đăng ký hội viên."}
         </div>
       )}
 
