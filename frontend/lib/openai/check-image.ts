@@ -42,7 +42,6 @@ type GestationalCandidate = {
   ageDays: number;
 };
 
-const ENABLE_AI_CHECK = false;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_OCR_LENGTH = 10000;
 
@@ -442,16 +441,6 @@ export async function checkImage(
     throw new Error(`Định dạng ảnh không được hỗ trợ: ${file.type}`);
 
   if (file.size > MAX_FILE_SIZE) throw new Error("Ảnh vượt quá giới hạn 10 MB");
-
-  if (!ENABLE_AI_CHECK) {
-    console.info("[ImageCheck] AI disabled", {
-      result: "PASS",
-      verifiedByAI: false,
-      fileSize: file.size,
-      fileType: file.type,
-    });
-    return "PASS";
-  }
 
   const startedAt = Date.now();
   const today = parseDate(getVietnamDate());
