@@ -36,6 +36,25 @@ function normalizeText(value: unknown): string {
   return String(value ?? "").trim();
 }
 
+function getOrderDate(): string {
+  const now = new Date();
+
+  const vietnamTime = new Date(
+    now.toLocaleString("en-US", {
+      timeZone: "Asia/Ho_Chi_Minh",
+    }),
+  );
+
+  const minutesOfDay = vietnamTime.getHours() * 60 + vietnamTime.getMinutes();
+
+  const adjustedTime =
+    minutesOfDay >= 17 * 60 + 30
+      ? now.getTime() + 7 * 60 * 60 * 1000
+      : now.getTime();
+
+  return new Date(adjustedTime).toISOString();
+}
+
 function getBusinessErrorMessage(message: unknown): string {
   if (typeof message !== "string" || !message.trim()) {
     return "Chưa thể hoàn tất lên đơn hàng. Vui lòng kiểm tra thông tin và thử lại.";
@@ -134,7 +153,6 @@ export function useOrder() {
         return null;
       }
 
-      // Nguồn bán lấy trực tiếp từ value của field.
       if (!salesSource) {
         setError("Vui lòng chọn nguồn bán.");
         return null;
@@ -150,10 +168,9 @@ export function useOrder() {
         return null;
       }
 
-      // Gộp nguồn bán và ghi chú thành một giá trị.
       const combinedSalesSource = `${salesSource} - ${note}`;
 
-      const orderDate = new Date().toISOString();
+      const orderDate = getOrderDate();
 
       if (!Number.isFinite(Date.parse(orderDate))) {
         setError("Không thể xác định thời gian lên đơn. Vui lòng thử lại.");
