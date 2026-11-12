@@ -19,6 +19,7 @@ export type DataMasterAppsScriptPayload = {
   aptaclubConsent: string;
   staffCode: string;
   sourceCode: string;
+  imageLink?: string;
 };
 
 function normalizeDataMasterText(value: unknown): string {
@@ -165,6 +166,7 @@ export async function submitDataMasterToAppsScript(
     aptaclubConsent: payload.aptaclubConsent.trim(),
     staffCode: payload.staffCode.trim(),
     sourceCode: payload.sourceCode.trim(),
+    imageLink: normalizeDataMasterText(payload.imageLink),
   };
 
   let response: Response;

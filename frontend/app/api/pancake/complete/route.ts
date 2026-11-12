@@ -491,6 +491,7 @@ export async function POST(req: NextRequest) {
         aptaclubConsent: consentAptaclub ? "Có" : "Không",
         staffCode: finalReferralCode,
         sourceCode: finalEventCode,
+        imageLink: ENABLE_PROOF_IMAGE_UPLOAD ? proofImageUrl : "",
       });
     } catch (error) {
       console.error("[DATA_MASTER_SUBMIT_ERROR]", error);
