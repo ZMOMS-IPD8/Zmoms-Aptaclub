@@ -53,7 +53,15 @@ export default function RegistrationForm() {
   async function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!proofImage || !isImageVerified || isSubmitting) {
+    if (
+      !proofImage ||
+      !isImageVerified ||
+      !consentMember ||
+      !consentAptaclub ||
+      !consentMarketing ||
+      !consentDanone ||
+      isSubmitting
+    ) {
       return;
     }
 
@@ -230,19 +238,23 @@ export default function RegistrationForm() {
             setConsentDanone={setConsentDanone}
           />
 
-          {isImageVerified && (
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={`mt-6 h-12 w-full rounded-xl font-sans text-[15px] font-bold text-white transition sm:mt-7 sm:h-14 sm:rounded-2xl sm:text-[16px] ${
-                isSubmitting
-                  ? "cursor-not-allowed bg-[#D9D9D9]"
-                  : "bg-[#EC068D] shadow-[0_5px_15px_rgba(236,6,141,0.2)] hover:bg-[#D9057F] active:scale-[0.99]"
-              }`}
-            >
-              {isSubmitting ? "ĐANG ĐĂNG KÝ..." : "ĐĂNG KÝ HỘI VIÊN"}
-            </button>
-          )}
+          {isImageVerified &&
+            consentMember &&
+            consentAptaclub &&
+            consentMarketing &&
+            consentDanone && (
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`mt-6 h-12 w-full rounded-xl font-sans text-[15px] font-bold text-white transition sm:mt-7 sm:h-14 sm:rounded-2xl sm:text-[16px] ${
+                  isSubmitting
+                    ? "cursor-not-allowed bg-[#D9D9D9]"
+                    : "bg-[#EC068D] shadow-[0_5px_15px_rgba(236,6,141,0.2)] hover:bg-[#D9057F] active:scale-[0.99]"
+                }`}
+              >
+                {isSubmitting ? "ĐANG ĐĂNG KÝ..." : "ĐĂNG KÝ HỘI VIÊN"}
+              </button>
+            )}
         </div>
       </form>
 
